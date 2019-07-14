@@ -11,4 +11,5 @@ package orienteering.data
 class Instance(val budget: Double,
                val sourceTarget: Int,
                val destinationTarget: Int,
-               val numTargets: Int)
+               val numTargets: Int,
+               val numVertices: Int)

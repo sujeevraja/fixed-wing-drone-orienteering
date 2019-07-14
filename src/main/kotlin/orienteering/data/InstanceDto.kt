@@ -28,7 +28,8 @@ class InstanceDto(
                 budget=0.0,
                 sourceTarget = 0,
                 destinationTarget = 1,
-                numTargets = 0)
+                numTargets = 0,
+                numVertices = 0)
         logger.info("completed instance initialization.")
     }
 }
