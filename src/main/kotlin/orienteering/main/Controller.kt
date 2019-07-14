@@ -2,9 +2,10 @@ package orienteering.main
 
 import ilog.cplex.IloCplex
 import mu.KLogging
+import orienteering.data.InstanceDto
 
 /**
- * Clas that manages the entire solution process
+ * Manages the entire solution process.
  */
 class Controller {
     companion object: KLogging()
@@ -14,6 +15,7 @@ class Controller {
      * Runs the solver.
      */
     fun run() {
+        val instance = InstanceDto("", "").instance
     }
 
     /**
