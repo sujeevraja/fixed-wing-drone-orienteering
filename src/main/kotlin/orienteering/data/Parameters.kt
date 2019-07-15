@@ -1,10 +1,19 @@
 package orienteering.data
 
 /**
- * Holds global parameters.
+ * Class to hold all the parameters of the algorithm/instance
  *
- * @property instanceName name of file with problem data
- * @property instancePath path to folder containing file [instanceName]
+ * @param instanceName name of the instance
+ * @param instancePath path for the instance
+ * @param algorithm 1 for enumeration, 2 for branch-and-cut, 3 for branch-and-price
+ * @param turnRadius turn radius of the vehicle
+ * @param numDiscretizations number of discretizations of the heading angle at each target
  */
-data class Parameters(val instanceName: String,
-                      val instancePath: String)
+data class Parameters(
+        val instanceName: String,
+        val instancePath: String,
+        val algorithm: Int,
+        val turnRadius: Double,
+        val numDiscretizations: Int
+)
+

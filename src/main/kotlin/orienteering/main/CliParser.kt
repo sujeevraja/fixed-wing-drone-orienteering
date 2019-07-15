@@ -1,45 +1,60 @@
-package orienteering.main
+package orienteering
 
-import com.github.ajalt.clikt.core.CliktCommand
-import com.github.ajalt.clikt.parameters.options.default
-import com.github.ajalt.clikt.parameters.options.option
-import com.github.ajalt.clikt.parameters.options.validate
-import mu.KLogging
 import java.io.File
 
+import com.github.ajalt.clikt.core.CliktCommand
+import com.github.ajalt.clikt.parameters.options.option
+import com.github.ajalt.clikt.parameters.options.default
+import com.github.ajalt.clikt.parameters.options.validate
+import com.github.ajalt.clikt.parameters.types.double
+import com.github.ajalt.clikt.parameters.types.int
+import mu.KLogging
 
-class CliParser: CliktCommand() {
+/**
+ * Class to parse the command line arguments
+ *
+ */
+class CliParser : CliktCommand() {
     /**
      * Logger object.
      */
     companion object: KLogging()
 
     /**
-     * File name of instance.
+     * @property instanceName name of the instance
+     * @property instancePath path for instance
      */
-    val instanceName: String by option("-n", help="instance name")
-            .default("todo.txt")
-            .validate {
-                require(it.isNotEmpty()) {
-                    "instance name cannot be empty"
-                }
-            }
-
-    /**
-     * Path to folder containing file specified by [instanceName].
-     */
-    val instancePath: String by option("-p", help="instance path")
-            .default("todo")
-            .validate {
+    val instanceName: String by option("-n", help="instance name").default("p2.2.a.txt")
+    val instancePath: String by option("-p", help="instance path").default("./data/Set_21_234/").
+            validate {
                 require(File(instancePath + instanceName).exists()) {
-                    "file does not exist, check path and file name"
+                    "file does not exist, check the file path and name"
                 }
             }
 
-    /**
-     * Runs the CLI parser.
-     */
+    val algorithm: Int by option("-a",
+            help="1 for DSSR, 2 for branch-and-cut, 3 for branch-and-price").
+            int().default(1).validate {
+        require(it in 1 until 4) {
+            "algorithm option can be in the set {1, 2, 3}"
+        }
+    }
+
+    val turnRadius: Double by option("-r", help="turn radius of the vehicle").double().
+            default(1.0).validate {
+        require(it > 0.0) {
+            "turn radius has to be a positive number"
+        }
+    }
+
+    val numDiscretizations: Int by option("-d", help="number of discretizations of the heading angle").int().
+            default(2).validate {
+        require(it >= 1) {
+            "number of discretizations has to be >= 1 and integral"
+        }
+    }
+
     override fun run() {
-        logger.info("parsing command line arguments...")
+        logger.info("reading command line arguments...")
     }
 }
