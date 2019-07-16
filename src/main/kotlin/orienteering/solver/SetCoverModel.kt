@@ -1,3 +1,5 @@
+package orienteering.solver
+
 import ilog.concert.IloLinearNumExpr
 import ilog.concert.IloNumVar
 import ilog.concert.IloNumVarType
@@ -12,21 +14,27 @@ import orienteering.data.Route
  *
  * @param cplex Cplex class object
  */
-
-class SetCoveringFormulation(private var cplex: IloCplex) {
+class SetCoverModel(private var cplex: IloCplex) {
 
     /**
-     * @property hasTargetConstraint Boolean list indicating if the model has a constraint corresponding to a target
-     * @property routeConstraintId constraint id for route constraint
-     * @property targetConstraintId constraint id list for target constraint
-     * @property routeVariable array of decision variables
-     * @property constraints array of constraints
+     * Boolean list indicating if the model has a constraint corresponding to a target
      */
-
     private lateinit var hasTargetConstraint: MutableList<Boolean>
+    /**
+     * constraint id for route constraint
+     */
     private var routeConstraintId: Int = 0
+    /**
+     * constraint id list for target constraint
+     */
     private lateinit var targetConstraintId: MutableList<Int?>
+    /**
+     * array of decision variables
+     */
     private lateinit var routeVariable: ArrayList<IloNumVar>
+    /**
+     * array of constraints
+     */
     private lateinit var constraints: ArrayList<IloRange>
 
     /**
@@ -139,5 +147,4 @@ class SetCoveringFormulation(private var cplex: IloCplex) {
      * Function to clear cplex object
      */
     fun clearModel() { cplex.clearModel() }
-
 }

@@ -46,6 +46,7 @@ class Controller {
      */
     private fun initCPLEX() {
         cplex = IloCplex()
+        logger.info("initialized CPLEX")
     }
 
     /**
@@ -54,6 +55,7 @@ class Controller {
     private fun clearCPLEX() {
         cplex.clearModel()
         cplex.end()
+        logger.info("cleared CPLEX")
     }
 
     /**
@@ -61,28 +63,10 @@ class Controller {
      */
     fun run() {
         when (parameters.algorithm) {
-            1 -> runDssrAlgorithm()
+            1 -> runBranchAndPriceAlgorithm()
             2 -> runBranchAndCutAlgorithm()
-            3 -> runBranchAndPriceAlgorithm()
         }
-    }
-
-
-    /**
-     * Runs standalone DSSR solver
-     */
-    private fun runDssrAlgorithm() {
-
-    }
-
-    /**
-     * Function to run the branch-and-cut algorithm
-     */
-    private fun runBranchAndCutAlgorithm() {
-        logger.info("starting the branch-and-cut algorithm")
-        initCPLEX()
-
-        clearCPLEX()
+        logger.info("run completed")
     }
 
     /**
@@ -90,6 +74,20 @@ class Controller {
      */
     private fun runBranchAndPriceAlgorithm() {
         logger.info("starting the branch-and-price algorithm")
+        initCPLEX()
+        val bp = BranchAndPrice(instance, cplex)
+        val solution = bp.solve()
+        logger.info("final solution:")
+        for (route in solution)
+            logger.info(route.toString())
+        clearCPLEX()
+    }
+
+    /**
+     * Function to run the branch-and-cut algorithm
+     */
+    private fun runBranchAndCutAlgorithm() {
+        logger.info("starting the branch-and-cut algorithm")
         initCPLEX()
 
         clearCPLEX()
