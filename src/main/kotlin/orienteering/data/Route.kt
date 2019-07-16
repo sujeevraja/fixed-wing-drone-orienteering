@@ -3,7 +3,7 @@ package orienteering.data
 /**
  * Route data of a vehicle.
  *
- * @param path list of sequence of vertices.
- * @param score score for each route.
+ * @param path sequence of vertices.
+ * @param score score for.
  */
-data class Route(val path: List<List<Int>>, val score: List<Double>)
+data class Route(val path: List<Int>, val score: Double)

@@ -34,6 +34,8 @@ class InstanceDto(
      * @property pseudoDestination additional pseudo destination vertex to convert problem to single destination problem
      * @property numVertices number of vertices in network
      * @property numTargets number of targets in problem instance
+     * @property numVehicles number of vehicles
+     * @property budget total budget
      * @property verticesInTarget map of target id to vertices corresponding to the target
      * @property targetOfVertex target id indexed by vertex id
      */
@@ -47,6 +49,7 @@ class InstanceDto(
     private var numVertices = 0
     private var numTargets = 0
     private var numVehicles = 0
+    private var budget = 0.0
     private var verticesInTarget = mutableListOf<List<Int>>()
     private var targetOfVertex = mutableListOf<Int>()
 
@@ -92,7 +95,7 @@ class InstanceDto(
         numVehicles = numVehiclesLine.last().toInt()
 
         val budgetLine = lines[2].split("[ \t]".toRegex())
-        val budget = budgetLine.last().toDouble()
+        budget = budgetLine.last().toDouble()
 
         val vertexCoords = lines.subList(3, lines.size).map(::parseCoords)
         source = 0
@@ -169,7 +172,7 @@ class InstanceDto(
      * @return scores indexed by vertex id.
      */
     private fun buildScoreMap(): MutableList<Double> {
-        val targetScore: List<Double> = lines.subList(1, lines.size).map(::parseScore)
+        val targetScore: List<Double> = lines.subList(3, lines.size).map(::parseScore)
         val vertexScore: MutableList<Double> = MutableList(numVertices) { -1.0 }
         for (i in 0 until numTargets-2)
             for (j in 0 until numDiscretizations)
