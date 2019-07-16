@@ -2,6 +2,8 @@ package orienteering.main
 
 import ilog.cplex.IloCplex
 import mu.KLogging
+import orienteering.CliParser
+import orienteering.data.Instance
 import orienteering.data.InstanceDto
 import orienteering.data.Parameters
 import orienteering.solver.BranchAndPrice
@@ -11,6 +13,8 @@ import orienteering.solver.BranchAndPrice
  */
 class Controller {
     companion object: KLogging()
+
+    private lateinit var instance: Instance
     private lateinit var cplex: IloCplex
     private lateinit var parameters: Parameters
 
@@ -22,34 +26,72 @@ class Controller {
         parser.main(args)
         parameters = Parameters(
                 instanceName = parser.instanceName,
-                instancePath = parser.instancePath)
-        logger.info("finished parsing command line arguments")
+                instancePath = parser.instancePath,
+                algorithm = parser.algorithm,
+                turnRadius = parser.turnRadius,
+                numDiscretizations = parser.numDiscretizations)
+        logger.info("finished parsing command line arguments and populating parameters")
     }
 
     /**
-     * Runs the branch and price solver.
+     * function to populate the instance
      */
-    fun run() {
-        val instance = InstanceDto(parameters.instanceName, parameters.instancePath).instance
-        initCplex()
-        val bpSolver = BranchAndPrice(instance, cplex)
-        bpSolver.solve()
-        endCplex()
+    fun populateInstance() {
+        instance = InstanceDto(parameters.instanceName, parameters.instancePath,
+                    parameters.numDiscretizations, parameters.turnRadius).getInstance()
     }
 
     /**
-     * Initializes CPLEX object.
+     * Initializes CPLEX container.
      */
-    private fun initCplex() {
+    private fun initCPLEX() {
         cplex = IloCplex()
-        logger.info("initialized CPLEX")
     }
 
     /**
-     * Clears CPLEX object.
+     * Clears CPLEX container.
      */
-    private fun endCplex() {
+    private fun clearCPLEX() {
         cplex.clearModel()
         cplex.end()
+    }
+
+    /**
+     * Function to start the solver
+     */
+    fun run() {
+        when (parameters.algorithm) {
+            1 -> runDssrAlgorithm()
+            2 -> runBranchAndCutAlgorithm()
+            3 -> runBranchAndPriceAlgorithm()
+        }
+    }
+
+
+    /**
+     * Runs standalone DSSR solver
+     */
+    private fun runDssrAlgorithm() {
+
+    }
+
+    /**
+     * Function to run the branch-and-cut algorithm
+     */
+    private fun runBranchAndCutAlgorithm() {
+        logger.info("starting the branch-and-cut algorithm")
+        initCPLEX()
+
+        clearCPLEX()
+    }
+
+    /**
+     * Function to run branch-and-price algorithm
+     */
+    private fun runBranchAndPriceAlgorithm() {
+        logger.info("starting the branch-and-price algorithm")
+        initCPLEX()
+
+        clearCPLEX()
     }
 }
