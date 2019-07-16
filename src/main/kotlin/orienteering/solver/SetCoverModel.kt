@@ -68,7 +68,7 @@ class SetCoveringFormulation(private var cplex: IloCplex) {
 
         cplex.addMaximize(objExpr)
         constraints = arrayListOf()
-        constraints.add(cplex.addLe(routeExpr, 1.0))
+        constraints.add(cplex.addLe(routeExpr, instance.numVehicles.toDouble()))
         routeConstraintId = 0
 
         for (i in 0 until instance.numTargets) {
