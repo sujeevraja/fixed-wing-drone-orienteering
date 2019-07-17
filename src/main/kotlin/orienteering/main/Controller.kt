@@ -76,7 +76,7 @@ class Controller {
     private fun runBranchAndPriceAlgorithm() {
         logger.info("starting the branch-and-price algorithm")
         initCPLEX()
-        val bp = BranchAndPrice(instance, cplex)
+        val bp = BranchAndPrice(instance, parameters.numReducedCostColumns, cplex)
         val solution = bp.solve()
         logger.info("final solution:")
         for (route in solution)

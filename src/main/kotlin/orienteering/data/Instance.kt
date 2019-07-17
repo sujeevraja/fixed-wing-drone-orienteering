@@ -22,7 +22,7 @@ class Instance(val budget: Double,
                val destination: Int,
                val numVehicles: Int,
                val numVertices: Int,
-               val numTargets: Int?,
+               val numTargets: Int,
                private val score: List<Double>,
                private val edges: Map<Int, Map<Int, Double>>,
                private val targetOfVertex: List<Int>,
@@ -34,26 +34,11 @@ class Instance(val budget: Double,
     companion object: KLogging()
 
     /**
-     * Function to query the score of a given target
+     * Function to query the score of a given vertex
      * @param i vertex index
-     * @return score of vertex if index exists, else returns null
+     * @return score of vertex i
      */
-    fun getScore(i: Int): Double? { return score.getOrNull(i) }
-
-    /**
-     * Return score of the given target.
-     *
-     * We assume that if a target has any vertices, all vertex scores are
-     * equal. So, the target's score will simply be the score of its first
-     * vertex.
-     *
-     * @param i target index
-     * @return score of target if it exists, null otherwise.
-     */
-    fun getTargetScore(i: Int): Double {
-        val firstVertex: Int? = getVertices(i)?.getOrNull(0)
-        return if (firstVertex != null) score.getOrNull(firstVertex) ?: 0.0 else 0.0
-    }
+    fun getScore(i: Int): Double { return score[i] }
 
     /**
      * Function to query if an edge exists

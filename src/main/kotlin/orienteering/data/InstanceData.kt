@@ -16,4 +16,3 @@ data class Coords(val x: Double, val y: Double)
  * @param theta orientation of the vehicle at the vertex
  */
 data class DubinsCoords(val x: Double, val y: Double, val theta: Double)
-

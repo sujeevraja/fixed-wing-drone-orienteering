@@ -44,7 +44,7 @@ class CliParser : CliktCommand() {
 
     val numReducedCostColumns: Int by option("-c",
             help="limit on number of reduced columns to collect during pricing")
-            .int().default(10).validate {
+            .int().default(8).validate {
                 require (it >= 1) {
                     "limit should be at least 1"
                 }
