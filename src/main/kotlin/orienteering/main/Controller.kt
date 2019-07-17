@@ -29,7 +29,8 @@ class Controller {
                 instancePath = parser.instancePath,
                 algorithm = parser.algorithm,
                 turnRadius = parser.turnRadius,
-                numDiscretizations = parser.numDiscretizations)
+                numDiscretizations = parser.numDiscretizations,
+                numReducedCostColumns = parser.numReducedCostColumns)
         logger.info("finished parsing command line arguments and populating parameters")
     }
 

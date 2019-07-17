@@ -8,12 +8,14 @@ package orienteering.data
  * @param algorithm 1 for enumeration, 2 for branch-and-cut, 3 for branch-and-price
  * @param turnRadius turn radius of the vehicle
  * @param numDiscretizations number of discretizations of the heading angle at each target
+ * @param numReducedCostColumns limit on number of reduced cost columns to stop pricing problem
  */
 data class Parameters(
         val instanceName: String,
         val instancePath: String,
         val algorithm: Int,
         val turnRadius: Double,
-        val numDiscretizations: Int
+        val numDiscretizations: Int,
+        val numReducedCostColumns: Int
 )
 
