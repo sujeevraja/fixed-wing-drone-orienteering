@@ -127,7 +127,7 @@ class Instance(val budget: Double,
      * @param i vertex index
      * @return target index
      */
-    fun whichTarget(i: Int): Int? { return targetOfVertex.getOrNull(i) }
+    fun whichTarget(i: Int): Int { return targetOfVertex[i] }
 
     /**
      * Function to get the list of vertices in a target
@@ -151,4 +151,19 @@ class Instance(val budget: Double,
      * target edges.
      */
     fun getDestinationVertex(): Int { return verticesInTarget[destination][0] }
+
+    /**
+     * Function to get the targets on which the covering constraint can be skipped
+     *
+     * These targets correspond to outgoing targets from source and incoming from destination
+     */
+    fun getTargetsToSkipCovering(): List<Int> {
+        val sourceAdjacentVertices = getOutgoingEdgeList(source)
+        val sourceToSkip = whichTarget(sourceAdjacentVertices.first().second)
+
+        val destinationAdjacentVertices = getIncomingEdgeList(destination)
+        val destinationToSkip = whichTarget(destinationAdjacentVertices.first().first)
+
+        return listOf(sourceToSkip, destinationToSkip)
+    }
 }

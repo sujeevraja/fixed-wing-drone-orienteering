@@ -53,7 +53,7 @@ class BranchAndPrice(private val instance: Instance,
      * Solves restricted mater problem with latest available columns.
      */
     private fun solveRestrictedMasterProblem() {
-        val setCoverModel = SetCoverModel(cplex)
+        val setCoverModel = SetCoveringFormulation(cplex)
         setCoverModel.createModel(instance, columns)
         setCoverModel.solve()
     }

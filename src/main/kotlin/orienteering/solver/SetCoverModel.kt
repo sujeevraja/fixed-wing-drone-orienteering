@@ -68,17 +68,18 @@ class SetCoveringFormulation(private var cplex: IloCplex) {
 
         cplex.addMaximize(objExpr)
         constraints = arrayListOf()
-        constraints.add(cplex.addLe(routeExpr, instance.numVehicles.toDouble()))
+        constraints.add(cplex.addLe(routeExpr, instance.numVehicles.toDouble(), "route-cover"))
         routeConstraintId = 0
 
         for (i in 0 until instance.numTargets) {
-            if (i == instance.source || i == instance.destination) continue
+            if (i == instance.source || i == instance.destination ||
+                    i in instance.getTargetsToSkipCovering()) continue
             if (whichRoutes[i].size == 0) continue
             val expr: IloLinearNumExpr = cplex.linearNumExpr()
             for (routeId in whichRoutes[i])
                 expr.addTerm(1.0, routeVariable[routeId])
             targetConstraintId[i] = constraints.size
-            constraints.add(cplex.addLe(expr, 1.0))
+            constraints.add(cplex.addLe(expr, 1.0, "target-cover-$i"))
         }
 
     }
