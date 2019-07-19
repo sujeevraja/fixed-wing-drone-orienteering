@@ -6,8 +6,8 @@ import mu.KLogging
  * Class that holds orienteering instance data.
  *
  * @param budget budget of any path through targets.
- * @param source source target index in case of set orienteering.
- * @param destination source target index in case of set orienteering.
+ * @param sourceTarget source target index in case of set orienteering.
+ * @param destinationTarget source target index in case of set orienteering.
  * @param numVehicles number of vehicles
  * @param numVertices vertices that can be visited.
  * @param numTargets number of targets (clusters), if null, then the instance does not have cluster specifications
@@ -18,8 +18,8 @@ import mu.KLogging
  */
 class Instance(
     val budget: Double,
-    val source: Int,
-    val destination: Int,
+    val sourceTarget: Int,
+    val destinationTarget: Int,
     val numVehicles: Int,
     val numVertices: Int,
     val numTargets: Int,
@@ -137,7 +137,7 @@ class Instance(
      * target edges.
      */
     fun getSourceVertex(): Int {
-        return verticesInTarget[source][0]
+        return verticesInTarget[sourceTarget][0]
     }
 
     /**
@@ -147,7 +147,7 @@ class Instance(
      * target edges.
      */
     fun getDestinationVertex(): Int {
-        return verticesInTarget[destination][0]
+        return verticesInTarget[destinationTarget][0]
     }
     /**
      * Function to get the targets on which the covering constraint can be skipped
@@ -155,13 +155,13 @@ class Instance(
      * These targets correspond to outgoing targets from source and incoming from destination
      */
     private fun getTargetsToSkipCovering(): List<Int> {
-        val sourceAdjacentVertices = getOutgoingEdgeList(source)
+        val sourceAdjacentVertices = getOutgoingEdgeList(getSourceVertex())
         val sourceToSkip = whichTarget(sourceAdjacentVertices.first().second)
 
-        val destinationAdjacentVertices = getIncomingEdgeList(destination)
+        val destinationAdjacentVertices = getIncomingEdgeList(getDestinationVertex())
         val destinationToSkip = whichTarget(destinationAdjacentVertices.first().first)
 
-        return listOf(source, destination, sourceToSkip, destinationToSkip)
+        return listOf(sourceTarget, destinationTarget, sourceToSkip, destinationToSkip)
     }
 
     /**

@@ -138,8 +138,8 @@ class InstanceDto(
 
         instance = Instance(
             budget = budget,
-            source = pseudoSource,
-            destination = pseudoDestination,
+            sourceTarget = pseudoSource,
+            destinationTarget = pseudoDestination,
             numVehicles = numVehicles,
             numTargets = numTargets,
             numVertices = numVertices,
