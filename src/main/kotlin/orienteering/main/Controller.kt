@@ -22,12 +22,13 @@ class Controller {
         val parser = CliParser()
         parser.main(args)
         parameters = Parameters(
-                instanceName = parser.instanceName,
-                instancePath = parser.instancePath,
-                algorithm = parser.algorithm,
-                turnRadius = parser.turnRadius,
-                numDiscretizations = parser.numDiscretizations,
-                numReducedCostColumns = parser.numReducedCostColumns)
+            instanceName = parser.instanceName,
+            instancePath = parser.instancePath,
+            algorithm = parser.algorithm,
+            turnRadius = parser.turnRadius,
+            numDiscretizations = parser.numDiscretizations,
+            numReducedCostColumns = parser.numReducedCostColumns
+        )
         logger.info("finished parsing command line arguments and populating parameters")
     }
 
@@ -35,17 +36,26 @@ class Controller {
      * function to populate the instance
      */
     fun populateInstance() {
-        instance = InstanceDto(parameters.instanceName, parameters.instancePath,
-                    parameters.numDiscretizations, parameters.turnRadius).getInstance()
+        instance = InstanceDto(
+            parameters.instanceName, parameters.instancePath,
+            parameters.numDiscretizations, parameters.turnRadius
+        ).getInstance()
+    }
+
+    fun logInstanceData() {
         logger.info("number of targets: ${instance.numTargets}")
         logger.info("number of vertices: ${instance.numVertices}")
         logger.info("maximum path length: ${instance.budget}")
         for (i in 0 until instance.numTargets) {
-            logger.debug("target $i: score: ${instance.targetScores[i]}, vertices: ${instance.getVertices(i)}")
+            logger.debug(
+                "target $i: score: ${instance.targetScores[i]}, vertices: ${instance.getVertices(
+                    i
+                )}"
+            )
         }
         for (i in 0 until instance.numVertices) {
-            for (j in i+1 until instance.numVertices) {
-                if (instance.hasEdge(i,j)) {
+            for (j in i + 1 until instance.numVertices) {
+                if (instance.hasEdge(i, j)) {
                     logger.info("length of $i -> $j: ${instance.getEdgeLength(i, j)}")
                 }
             }
@@ -103,8 +113,11 @@ class Controller {
         val bp = BranchAndPrice(instance, parameters.numReducedCostColumns, cplex)
         val solution = bp.solve()
         logger.info("final solution:")
-        for (route in solution)
+        for (route in solution) {
             logger.info(route.toString())
+        }
+        val totalScore = solution.sumByDouble { it.score }
+        logger.info("final score: $totalScore")
         clearCPLEX()
     }
 
@@ -121,5 +134,5 @@ class Controller {
     /**
      * Logger object.
      */
-    companion object: KLogging()
+    companion object : KLogging()
 }

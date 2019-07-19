@@ -29,6 +29,11 @@ class Instance(
     private val verticesInTarget: List<List<Int>>
 ) {
     /**
+     * Targets that can be visited multiple times.
+     */
+    val multiVisitTargets: List<Int> = getTargetsToSkipCovering()
+
+    /**
      * Scores indexed by target id.
      */
     val targetScores = (0 until numTargets).map {
@@ -149,14 +154,14 @@ class Instance(
      *
      * These targets correspond to outgoing targets from source and incoming from destination
      */
-    fun getTargetsToSkipCovering(): List<Int> {
+    private fun getTargetsToSkipCovering(): List<Int> {
         val sourceAdjacentVertices = getOutgoingEdgeList(source)
         val sourceToSkip = whichTarget(sourceAdjacentVertices.first().second)
 
         val destinationAdjacentVertices = getIncomingEdgeList(destination)
         val destinationToSkip = whichTarget(destinationAdjacentVertices.first().first)
 
-        return listOf(sourceToSkip, destinationToSkip)
+        return listOf(source, destination, sourceToSkip, destinationToSkip)
     }
 
     /**

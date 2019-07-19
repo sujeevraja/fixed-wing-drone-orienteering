@@ -17,7 +17,6 @@ import orienteering.data.Route
  * @param cplex Cplex class object
  */
 class SetCoverModel(private var cplex: IloCplex) {
-
     /**
      * Boolean list indicating if the model has a constraint corresponding to a target
      */
@@ -40,11 +39,6 @@ class SetCoverModel(private var cplex: IloCplex) {
     private lateinit var constraints: ArrayList<IloRange>
 
     /**
-     * Companion object.
-     */
-    companion object : KLogging()
-
-    /**
      * Function to create the Set-Covering model
      * @param instance object of the Instance Class
      * @param routes list of route objects
@@ -64,13 +58,12 @@ class SetCoverModel(private var cplex: IloCplex) {
             else
                 routeVariable.add(cplex.numVar(0.0, Double.MAX_VALUE, IloNumVarType.Float, "z_$i"))
             for (vertex in routes[i].path) {
-                val targetId = instance.whichTarget(vertex)
-                whichRoutes[targetId].add(i)
-                if (instance.whichTarget(vertex) == instance.source ||
-                    instance.whichTarget(vertex) == instance.destination
-                )
+                val target = instance.whichTarget(vertex)
+                whichRoutes[target].add(i)
+                if (target in instance.multiVisitTargets) {
                     continue
-                hasTargetConstraint[targetId] = true
+                }
+                hasTargetConstraint[target] = true
             }
             routeExpr.addTerm(1.0, routeVariable[i])
             objExpr.addTerm(routes[i].score, routeVariable[i])
@@ -79,18 +72,21 @@ class SetCoverModel(private var cplex: IloCplex) {
 
         cplex.addMaximize(objExpr)
         constraints = arrayListOf()
-        constraints.add(cplex.addLe(routeExpr, instance.numVehicles.toDouble(), "route-cover"))
+        constraints.add(cplex.addLe(routeExpr, instance.numVehicles.toDouble(), "route_cover"))
         routeConstraintId = 0
 
         for (i in 0 until instance.numTargets) {
-            if (i == instance.source || i == instance.destination ||
-                    i in instance.getTargetsToSkipCovering()) continue
-            if (whichRoutes[i].size == 0) continue
+            if (i in instance.multiVisitTargets) {
+                continue
+            }
+            if (whichRoutes[i].size == 0) {
+                continue
+            }
             val expr: IloLinearNumExpr = cplex.linearNumExpr()
             for (routeId in whichRoutes[i])
                 expr.addTerm(1.0, routeVariable[routeId])
             targetConstraintId[i] = constraints.size
-            constraints.add(cplex.addLe(expr, 1.0, "target-cover-$i"))
+            constraints.add(cplex.addLe(expr, 1.0, "target_cover_$i"))
         }
 
     }
@@ -147,4 +143,9 @@ class SetCoverModel(private var cplex: IloCplex) {
     fun clearModel() {
         cplex.clearModel()
     }
+
+    /**
+     * Companion object.
+     */
+    companion object : KLogging()
 }

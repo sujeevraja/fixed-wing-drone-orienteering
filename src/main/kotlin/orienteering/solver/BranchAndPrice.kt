@@ -2,8 +2,10 @@ package orienteering.solver
 
 import ilog.cplex.IloCplex
 import mu.KLogging
+import orienteering.Constants
 import orienteering.data.Instance
 import orienteering.data.Route
+import kotlin.math.absoluteValue
 
 /**
  * Solves the multi-vehicle orienteering problem with branch and price.
@@ -28,7 +30,7 @@ class BranchAndPrice(
     /**
      * Final solution
      */
-    lateinit var solution: List<Route>
+    private lateinit var solution: List<Route>
 
     /**
      * Runs the branch and price algorithm.
@@ -100,7 +102,9 @@ class BranchAndPrice(
             vehicleCoverDual = setCoverModel.getRouteDual()
             targetDuals = setCoverModel.getTargetDuals()
             for (i in 0 until targetDuals.size) {
-                logger.debug("dual of target $i: ${targetDuals[i]}")
+                if (targetDuals[i].absoluteValue >= Constants.EPS) {
+                    logger.debug("dual of target $i: ${targetDuals[i]}")
+                }
             }
             logger.info("solved restricted master LP and stored duals")
         }
@@ -111,5 +115,5 @@ class BranchAndPrice(
     /**
      * Logger object.
      */
-    companion object: KLogging()
+    companion object : KLogging()
 }
