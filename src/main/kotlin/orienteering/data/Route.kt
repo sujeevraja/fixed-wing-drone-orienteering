@@ -13,4 +13,12 @@ data class Route(
     val score: Double,
     val length: Double,
     val reducedCost: Double
-)
+) {
+    override fun equals(other: Any?): Boolean {
+        return other != null && (other is Route) && path == other.path
+    }
+
+    override fun hashCode(): Int {
+        return path.hashCode()
+    }
+}

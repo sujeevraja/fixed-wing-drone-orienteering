@@ -378,7 +378,7 @@ class Pricer(
             logger.debug("opt update: $route")
         }
 
-        if (!hasCycle(joinedPath)) {
+        if (!hasCycle(joinedPath) && (route !in elementaryRoutes)) {
             elementaryRoutes.add(route)
             if (!printed) {
                 logger.debug("join at ${forwardState.vertex} -> ${backwardState.vertex}")
