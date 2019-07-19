@@ -71,7 +71,7 @@ class BranchAndPrice(
         val reducedCosts = (0 until instance.numTargets).map {
             targetDuals[it] - instance.targetScores[it]
         }
-        val pricer = Pricer(instance, vehicleCoverDual, reducedCosts, numReducedCostColumns)
+        val pricer = PricingProblemSolver(instance, vehicleCoverDual, reducedCosts, numReducedCostColumns)
         pricer.generateColumns()
         val routes = pricer.elementaryRoutes
         if (routes.isEmpty()) {

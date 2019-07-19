@@ -24,7 +24,7 @@ import kotlin.math.absoluteValue
  * @param targetReducedCosts reduced costs indexed by vertex id
  * @param numReducedCostColumns maxim
  */
-class Pricer(
+class PricingProblemSolver(
     private val instance: Instance,
     private val routeDual: Double,
     private val targetReducedCosts: List<Double>,
