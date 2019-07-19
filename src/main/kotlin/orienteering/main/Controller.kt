@@ -50,6 +50,20 @@ class Controller {
                 }
             }
         }
+        for (i in 0 until instance.numVertices) {
+            if (i != instance.getDestinationVertex()) {
+                logger.debug("outgoing from vertex $i")
+                for (edge in instance.getOutgoingEdgeList(i)) {
+                    logger.debug("$edge length ${instance.getEdgeLength(edge.first, edge.second)}")
+                }
+            }
+            if (i != instance.getSourceVertex()) {
+                logger.info("incoming to vertex $i")
+                for (edge in instance.getIncomingEdgeList(i)) {
+                    logger.debug("$edge length ${instance.getEdgeLength(edge.first, edge.second)}")
+                }
+            }
+        }
     }
 
     /**

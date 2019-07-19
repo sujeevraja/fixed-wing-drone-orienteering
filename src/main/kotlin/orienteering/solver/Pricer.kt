@@ -174,12 +174,11 @@ class Pricer(
             if (processForwardState) {
                 if (unprocessedForwardStates.isNotEmpty()) {
                     state = unprocessedForwardStates.remove()
-                    processForwardState = false
                 }
             } else if (unprocessedBackwardStates.isNotEmpty()) {
                 state = unprocessedBackwardStates.remove()
-                processForwardState = true
             }
+            processForwardState = !processForwardState
             if (state == null || state.dominated) {
                 continue
             }

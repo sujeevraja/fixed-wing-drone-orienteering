@@ -13,12 +13,6 @@ class State private constructor(
     val numTargetVisits: MutableList<Int>
 ) : Comparable<State> {
     /**
-     * Reduced cost per unit length.
-     *
-     * Generally, lower this value, better the state.
-     */
-    private val bangForBuck = if (pathLength >= Constants.EPS) reducedCost / pathLength else 0.0
-    /**
      * true if all extensions have been generated, false otherwise
      */
     var extended = false
@@ -27,20 +21,17 @@ class State private constructor(
      */
     var dominated = false
 
+    override fun toString(): String {
+        val typeStr = if (isForward) "forward" else "backward"
+        return "State($typeStr,v=$vertex,l=$pathLength,s=$score,r=$reducedCost)"
+    }
+
     override fun compareTo(other: State): Int {
         return when {
             reducedCost <= other.reducedCost - Constants.EPS -> -1
             reducedCost >= other.reducedCost + Constants.EPS -> 1
             else -> 0
         }
-        /*
-        return when {
-            bangForBuck <= other.bangForBuck - Constants.EPS -> -1
-            bangForBuck >= other.bangForBuck + Constants.EPS -> 1
-            else -> 0
-        }
-
-         */
     }
 
     fun extend(
