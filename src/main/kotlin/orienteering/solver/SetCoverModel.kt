@@ -104,6 +104,15 @@ class SetCoverModel(private var cplex: IloCplex) {
         if (!cplex.solve()) {
             throw OrienteeringException("Set covering problem infeasible")
         }
+        logger.debug("set cover objective: ${cplex.objValue}")
+        logger.debug("----- solution print start")
+        for (i in 0 until routeVariable.size) {
+            val solutionValue = cplex.getValue(routeVariable[i])
+            if (solutionValue >= Constants.EPS) {
+                logger.debug("column $i: $solutionValue")
+            }
+        }
+        logger.debug("----- solution print end")
     }
 
     fun getOptimalRouteIndices(): List<Int> {
