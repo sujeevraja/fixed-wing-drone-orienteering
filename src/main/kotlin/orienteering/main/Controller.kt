@@ -2,7 +2,6 @@ package orienteering.main
 
 import ilog.cplex.IloCplex
 import mu.KLogging
-import orienteering.CliParser
 import orienteering.data.Instance
 import orienteering.data.InstanceDto
 import orienteering.data.Parameters
@@ -12,8 +11,6 @@ import orienteering.solver.BranchAndPrice
  * Manages the entire solution process.
  */
 class Controller {
-    companion object: KLogging()
-
     private lateinit var instance: Instance
     private lateinit var cplex: IloCplex
     private lateinit var parameters: Parameters
@@ -40,6 +37,9 @@ class Controller {
     fun populateInstance() {
         instance = InstanceDto(parameters.instanceName, parameters.instancePath,
                     parameters.numDiscretizations, parameters.turnRadius).getInstance()
+        logger.info("number of targets: ${instance.numTargets}")
+        logger.info("number of vertices: ${instance.numVertices}")
+        logger.info("maximum path length: ${instance.budget}")
     }
 
     /**
@@ -93,4 +93,9 @@ class Controller {
 
         clearCPLEX()
     }
+
+    /**
+     * Logger object.
+     */
+    companion object: KLogging()
 }

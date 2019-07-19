@@ -6,6 +6,8 @@ import ilog.concert.IloNumVarType
 import ilog.concert.IloRange
 import ilog.cplex.IloCplex
 import mu.KLogging
+import orienteering.Constants
+import orienteering.OrienteeringException
 import orienteering.data.Instance
 import orienteering.data.Route
 
@@ -47,13 +49,12 @@ class SetCoverModel(private var cplex: IloCplex) {
      * @param instance object of the Instance Class
      * @param routes list of route objects
      */
-    fun createModel(instance: Instance, routes: MutableList<Route>, binary: Boolean = false) {
+    fun createModel(instance: Instance, routes: MutableList<Route>, binary: Boolean) {
         hasTargetConstraint = MutableList(instance.numTargets) { false }
         targetConstraintId = MutableList(instance.numTargets) { null }
 
         routeVariable = arrayListOf()
-        val whichRoutes: MutableList<MutableList<Int>> =
-            MutableList(instance.numTargets) { mutableListOf<Int>() }
+        val whichRoutes = MutableList(instance.numTargets) { mutableListOf<Int>() }
         val routeExpr: IloLinearNumExpr = cplex.linearNumExpr()
         val objExpr: IloLinearNumExpr = cplex.linearNumExpr()
 
@@ -98,36 +99,17 @@ class SetCoverModel(private var cplex: IloCplex) {
      * Function to solve the model
      * @return optimal route index
      */
-    fun solve(): List<Double> {
+    fun solve() {
         cplex.setOut(null)
-        if (!cplex.solve())
-            throw RuntimeException("Set covering problem infeasible")
-        return getOptimalSolution()
-    }
-
-    /**
-     * Function to get the optimal solution value
-     * @return list of values indexed by route index
-     */
-    private fun getOptimalSolution(): List<Double> {
-        return routeVariable.map { cplex.getValue(it) }
-    }
-
-    /**
-     * Function to obtain optimal route index
-     * @return the optimal route index (throws RuntimeException if fractional solution is obtained)
-     */
-    fun getOptimalRouteIndex(): Int {
-        var optimalRouteIndex: Int? = null
-        val solution = getOptimalSolution()
-        for (i in 0 until solution.size)
-            if (solution[i] > 0.9)
-                optimalRouteIndex = i
-        if (optimalRouteIndex == null) {
-            logger.info("set covering problem has fractional solution")
-            throw RuntimeException("Fractional set covering solution")
+        if (!cplex.solve()) {
+            throw OrienteeringException("Set covering problem infeasible")
         }
-        return optimalRouteIndex
+    }
+
+    fun getOptimalRouteIndices(): List<Int> {
+        return (0 until routeVariable.size).filter {
+            cplex.getValue(routeVariable[it]) >= Constants.EPS
+        }
     }
 
     /**
@@ -140,12 +122,12 @@ class SetCoverModel(private var cplex: IloCplex) {
 
     /**
      * Function to get the dual value of constraint corresponding to the targets
-     * @return a list of dual values (if target constraint is not present, then a null is returned for that target)
+     * @return a list of dual values with a default of 0.0 if a target constraint is not present.
      */
-    fun getTargetDuals(): List<Double?> {
+    fun getTargetDuals(): List<Double> {
         return (0 until hasTargetConstraint.size).map {
             if (hasTargetConstraint[it])
-                cplex.getDual(constraints[targetConstraintId[it]!!]) else null
+                cplex.getDual(constraints[targetConstraintId[it]!!]) else 0.0
         }
     }
 

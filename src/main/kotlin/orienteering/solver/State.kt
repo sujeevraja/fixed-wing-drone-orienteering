@@ -17,7 +17,7 @@ class State private constructor(
      *
      * Generally, lower this value, better the state.
      */
-    private val bangForBuck = reducedCost / pathLength
+    private val bangForBuck = if (pathLength >= Constants.EPS) reducedCost / pathLength else 0.0
     /**
      * true if all extensions have been generated, false otherwise
      */

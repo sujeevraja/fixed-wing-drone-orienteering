@@ -11,34 +11,30 @@ import mu.KLogging
  * @param numVehicles number of vehicles
  * @param numVertices vertices that can be visited.
  * @param numTargets number of targets (clusters), if null, then the instance does not have cluster specifications
- * @param score scores indexed by vertex ids.
+ * @param vertexScores scores indexed by vertex ids.
  * @param edges directed edges on the vertices stored as a adjacency list
  * @param targetOfVertex value at index i is target of vertex i
  * @param verticesInTarget list of vertex ids in each target, indexed by target ids
  */
-
-class Instance(val budget: Double,
-               val source: Int,
-               val destination: Int,
-               val numVehicles: Int,
-               val numVertices: Int,
-               val numTargets: Int,
-               private val score: List<Double>,
-               private val edges: Map<Int, Map<Int, Double>>,
-               private val targetOfVertex: List<Int>,
-               private val verticesInTarget: List<List<Int>>) {
-
+class Instance(
+    val budget: Double,
+    val source: Int,
+    val destination: Int,
+    val numVehicles: Int,
+    val numVertices: Int,
+    val numTargets: Int,
+    private val vertexScores: List<Double>,
+    private val edges: Map<Int, Map<Int, Double>>,
+    private val targetOfVertex: List<Int>,
+    private val verticesInTarget: List<List<Int>>
+) {
     /**
-     * Logger object.
+     * Scores indexed by target id.
      */
-    companion object: KLogging()
-
-    /**
-     * Function to query the score of a given vertex
-     * @param i vertex index
-     * @return score of vertex i
-     */
-    fun getScore(i: Int): Double { return score[i] }
+    val targetScores = (0 until numTargets).map {
+        val vertices = verticesInTarget[it]
+        if (vertices.isEmpty()) 0.0 else vertexScores[vertices[0]]
+    }
 
     /**
      * Function to query if an edge exists
@@ -54,7 +50,9 @@ class Instance(val budget: Double,
      * @param i vertex id
      * @return adjacent vertices as a Map<Int, Double>, where Double is the cost of the edge
      */
-    fun getAdjacentVertices(i: Int): Map<Int, Double>? { return edges[i] }
+    fun getAdjacentVertices(i: Int): Map<Int, Double>? {
+        return edges[i]
+    }
 
     /**
      * Function to get incoming edges
@@ -105,21 +103,27 @@ class Instance(val budget: Double,
      * @param j to vertex id
      * @return cost or null
      */
-    fun getEdgeLength(i: Int, j: Int): Double? { return edges[i]?.get(j) }
+    fun getEdgeLength(i: Int, j: Int): Double? {
+        return edges[i]?.get(j)
+    }
 
     /**
      * Function to query target that a vertex belongs to
      * @param i vertex index
      * @return target index
      */
-    fun whichTarget(i: Int): Int { return targetOfVertex[i] }
+    fun whichTarget(i: Int): Int {
+        return targetOfVertex[i]
+    }
 
     /**
      * Function to get the list of vertices in a target
      * @param i target index
      * @return List of vertex indexes
      */
-    fun getVertices(i: Int): List<Int>? { return verticesInTarget.getOrNull(i) }
+    fun getVertices(i: Int): List<Int>? {
+        return verticesInTarget.getOrNull(i)
+    }
 
     /**
      * Return only vertex in pseudo source target
@@ -127,7 +131,9 @@ class Instance(val budget: Double,
      * Consider replacing pseudo targets with vertices as we only deal with vertex edges and not
      * target edges.
      */
-    fun getSourceVertex(): Int { return verticesInTarget[source][0] }
+    fun getSourceVertex(): Int {
+        return verticesInTarget[source][0]
+    }
 
     /**
      * Return only vertex in pseudo sink target
@@ -135,8 +141,9 @@ class Instance(val budget: Double,
      * Consider replacing pseudo targets with vertices as we only deal with vertex edges and not
      * target edges.
      */
-    fun getDestinationVertex(): Int { return verticesInTarget[destination][0] }
-
+    fun getDestinationVertex(): Int {
+        return verticesInTarget[destination][0]
+    }
     /**
      * Function to get the targets on which the covering constraint can be skipped
      *
@@ -151,4 +158,9 @@ class Instance(val budget: Double,
 
         return listOf(sourceToSkip, destinationToSkip)
     }
+
+    /**
+     * Logger object.
+     */
+    companion object : KLogging()
 }

@@ -21,13 +21,13 @@ import kotlin.math.absoluteValue
  * This class implements Algorithm 3 in the paper.
  *
  * @param instance problem data
- * @param vertexReducedCosts reduced costs indexed by vertex id
+ * @param targetReducedCosts reduced costs indexed by vertex id
  * @param numReducedCostColumns maxim
  */
 class Pricer(
     private val instance: Instance,
     private val routeDual: Double,
-    private val vertexReducedCosts: List<Double>,
+    private val targetReducedCosts: List<Double>,
     private val numReducedCostColumns: Int
 ) {
     /**
@@ -340,8 +340,8 @@ class Pricer(
             neighborTarget,
             isCritical[neighborTarget],
             edgeLength,
-            instance.getScore(neighbor),
-            vertexReducedCosts[neighbor]
+            instance.targetScores[neighborTarget],
+            targetReducedCosts[neighborTarget]
         )
     }
 
@@ -370,12 +370,20 @@ class Pricer(
         val route = Route(
             joinedPath, forwardState.score + backwardState.score, routeLength, reducedCost
         )
+        var printed = false
         if (optimalRoute == null || reducedCost <= optimalRoute!!.reducedCost - Constants.EPS) {
             optimalRoute = route
+            logger.debug("join at ${forwardState.vertex} -> ${backwardState.vertex}")
+            printed = true
+            logger.debug("opt update: $route")
         }
 
         if (!hasCycle(joinedPath)) {
             elementaryRoutes.add(route)
+            if (!printed) {
+                logger.debug("join at ${forwardState.vertex} -> ${backwardState.vertex}")
+            }
+            logger.debug("ele update: $route")
             if (elementaryRoutes.size >= numReducedCostColumns) {
                 return true
             }

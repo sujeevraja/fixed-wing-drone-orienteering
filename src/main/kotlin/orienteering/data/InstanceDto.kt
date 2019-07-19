@@ -143,7 +143,7 @@ class InstanceDto(
             numVehicles = numVehicles,
             numTargets = numTargets,
             numVertices = numVertices,
-            score = buildScoreMap(),
+            vertexScores = buildScoreMap(),
             edges = getEdges(vertices, budget),
             targetOfVertex = targetOfVertex,
             verticesInTarget = verticesInTarget
