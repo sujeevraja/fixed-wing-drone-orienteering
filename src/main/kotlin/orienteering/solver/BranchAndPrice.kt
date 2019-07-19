@@ -41,13 +41,18 @@ class BranchAndPrice(
         // negative reduced cost columns.
         columns.addAll(generateColumns())
 
+        var columnGenIteration = 0
         while (true) {
+            logger.info("----- START column generation iteration $columnGenIteration")
             solveRestrictedMasterProblem()
             val newColumns = generateColumns()
             if (newColumns.isEmpty()) {
+                logger.info("----- TERMINATE due to optimality")
                 break
             }
             columns.addAll(newColumns)
+            logger.info("----- END column generation iteration $columnGenIteration")
+            columnGenIteration++
         }
 
         solveRestrictedMasterProblem(asMip = true)

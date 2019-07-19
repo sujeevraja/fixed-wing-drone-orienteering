@@ -95,6 +95,7 @@ class Pricer(
      * @return list of elementaryRoutes with negative reduced cost.
      */
     fun generateColumns() {
+        logger.debug("vehicle cover dual: $routeDual")
         logger.debug("starting column generation...")
 
         // Store source state.
@@ -176,8 +177,12 @@ class Pricer(
                 state = unprocessedBackwardStates.remove()
                 processForwardState = true
             }
-            if (state == null) {
+            if (state == null || state.dominated) {
                 continue
+            }
+
+            if (state.extended) {
+                throw OrienteeringException("extended state in unprocessed state container")
             }
 
             val vertex = state.vertex
@@ -274,10 +279,7 @@ class Pricer(
         for ((_, neighbor) in outgoingEdges) {
             val edgeLength = instance.getEdgeLength(vertex, neighbor) ?: continue
             val extension = extendIfFeasible(state, neighbor, edgeLength) ?: continue
-            if (forwardStates[neighbor].none { it.dominates(extension) }) {
-                forwardStates[neighbor].add(extension)
-                unprocessedForwardStates.add(extension)
-            }
+            updateNonDominatedStates(forwardStates[neighbor], extension)
         }
     }
 
@@ -296,14 +298,15 @@ class Pricer(
         for ((neighbor, _) in incomingEdges) {
             val edgeLength = instance.getEdgeLength(neighbor, vertex) ?: continue
             val extension = extendIfFeasible(state, neighbor, edgeLength) ?: continue
-            if (backwardStates[neighbor].none { it.dominates(extension) }) {
-                backwardStates[neighbor].add(extension)
-                unprocessedBackwardStates.add(extension)
-            }
+            updateNonDominatedStates(backwardStates[neighbor], extension)
         }
     }
 
     private fun canExtend(state: State): Boolean {
+        if (state.dominated) {
+            return false
+        }
+
         // Prevent extension of states that have consumed more than half the path length
         // budget. This reduces the number of extensions to be considered, while ensuring that
         // optimality is unaffected. Refer to section 4.3 in the paper for further details.
@@ -353,7 +356,7 @@ class Pricer(
      * @return true if enough negative reduced cost columns are available, false otherwise
      */
     private fun save(forwardState: State, backwardState: State): Boolean {
-        if (!(feasible(forwardState, backwardState) && halfway(forwardState, backwardState))) {
+        if (!feasible(forwardState, backwardState) || !halfway(forwardState, backwardState)) {
             return false
         }
 
@@ -460,6 +463,38 @@ class Pricer(
             prevDiff = instance.getEdgeLength(fs.parent.vertex, fs.vertex)?.absoluteValue ?: 0.0
         }
         return currDiff <= prevDiff + Constants.EPS
+    }
+
+    /**
+     * Adds [newState] to [existingStates] if it is not dominated by any state in [existingStates].
+     * Also removes states in [existingStates] dominated by [newState].
+     *
+     * @return true if newState is a non-dominated state and false otherwise.
+     */
+    private fun updateNonDominatedStates(
+        existingStates: MutableList<State>,
+        newState: State
+    ) {
+        var i = 0
+        while (i < existingStates.size) {
+            val state = existingStates[i]
+            if (state.dominates(newState)) {
+                newState.dominated = true
+                return
+            }
+            if (newState.dominates(state)) {
+                state.dominated = true
+                existingStates.removeAt(i)
+            } else {
+                i++
+            }
+        }
+        existingStates.add(newState)
+        if (newState.isForward) {
+            unprocessedForwardStates.add(newState)
+        } else {
+            unprocessedBackwardStates.add(newState)
+        }
     }
 
     /**
