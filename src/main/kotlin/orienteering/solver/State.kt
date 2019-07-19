@@ -29,10 +29,18 @@ class State private constructor(
 
     override fun compareTo(other: State): Int {
         return when {
+            reducedCost <= other.reducedCost - Constants.EPS -> -1
+            reducedCost >= other.reducedCost + Constants.EPS -> 1
+            else -> 0
+        }
+        /*
+        return when {
             bangForBuck <= other.bangForBuck - Constants.EPS -> -1
             bangForBuck >= other.bangForBuck + Constants.EPS -> 1
             else -> 0
         }
+
+         */
     }
 
     fun extend(

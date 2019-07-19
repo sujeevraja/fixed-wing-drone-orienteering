@@ -99,6 +99,9 @@ class BranchAndPrice(
         } else {
             vehicleCoverDual = setCoverModel.getRouteDual()
             targetDuals = setCoverModel.getTargetDuals()
+            for (i in 0 until targetDuals.size) {
+                logger.debug("dual of target $i: ${targetDuals[i]}")
+            }
             logger.info("solved restricted master LP and stored duals")
         }
         setCoverModel.clearModel()

@@ -96,6 +96,9 @@ class Pricer(
      */
     fun generateColumns() {
         logger.debug("vehicle cover dual: $routeDual")
+        for (i in 0 until numTargets) {
+            logger.debug("reduced cost of target: $i: ${targetReducedCosts[i]}")
+        }
         logger.debug("starting column generation...")
 
         // Store source state.
