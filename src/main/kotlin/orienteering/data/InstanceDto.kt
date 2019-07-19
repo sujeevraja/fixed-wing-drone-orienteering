@@ -2,11 +2,8 @@ package orienteering.data
 
 import dubins.DubinsCurve
 import mu.KLogging
-import orienteering.data.Coords
-import orienteering.data.DubinsCoords
 import java.io.File
 import kotlin.math.PI
-import orienteering.data.Instance
 import kotlin.math.sqrt
 
 /**
@@ -23,7 +20,8 @@ class InstanceDto(
     private val name: String,
     private val path: String,
     private val numDiscretizations: Int,
-    private val rho: Double) {
+    private val rho: Double
+) {
 
     /**
      * @property instance object orienteering instance object
@@ -56,7 +54,7 @@ class InstanceDto(
     /**
      * Logger object.
      */
-    companion object: KLogging() {
+    companion object : KLogging() {
         /**
          * Builds Coords objects from a String containing coordinates and score.
          *
@@ -99,10 +97,11 @@ class InstanceDto(
 
         val vertexCoords = lines.subList(3, lines.size).map(::parseCoords)
         source = 0
-        destination = vertexCoords.size-1
+        destination = vertexCoords.size - 1
 
         numVertices = numTargets * numDiscretizations
-        val vertices: MutableList<DubinsCoords> = MutableList(numVertices) { DubinsCoords(-1.0, -1.0, -1.0) }
+        val vertices: MutableList<DubinsCoords> =
+            MutableList(numVertices) { DubinsCoords(-1.0, -1.0, -1.0) }
 
         targetOfVertex = MutableList(numVertices) { -1 }
         verticesInTarget = MutableList(numTargets) { emptyList<Int>() }
@@ -117,11 +116,11 @@ class InstanceDto(
             for (j in 0 until numDiscretizations) {
                 targetOfVertex[i * discretizations.size + j] = i
                 vertices[i * discretizations.size + j] =
-                        DubinsCoords(
-                                vertexCoords[i].x,
-                                vertexCoords[i].y,
-                                discretizations[j]
-                        )
+                    DubinsCoords(
+                        vertexCoords[i].x,
+                        vertexCoords[i].y,
+                        discretizations[j]
+                    )
             }
         }
 
@@ -138,16 +137,17 @@ class InstanceDto(
 
 
         instance = Instance(
-                budget = budget,
-                source = pseudoSource,
-                destination = pseudoDestination,
-                numVehicles = numVehicles,
-                numTargets = numTargets,
-                numVertices = numVertices,
-                score = buildScoreMap(),
-                edges = getEdges(vertices, budget),
-                targetOfVertex = targetOfVertex,
-                verticesInTarget = verticesInTarget)
+            budget = budget,
+            source = pseudoSource,
+            destination = pseudoDestination,
+            numVehicles = numVehicles,
+            numTargets = numTargets,
+            numVertices = numVertices,
+            vertexScores = buildScoreMap(),
+            edges = getEdges(vertices, budget),
+            targetOfVertex = targetOfVertex,
+            verticesInTarget = verticesInTarget
+        )
 
         logger.info("completed instance initialization.")
     }
@@ -157,12 +157,16 @@ class InstanceDto(
      *
      * @return built instance
      */
-    fun getInstance(): Instance { return instance }
+    fun getInstance(): Instance {
+        return instance
+    }
 
     /**
      * Collects lines from problem data file and update some variables for further parsing.
      */
-    private fun collectLinesFromFile() { lines = File(path + name).readLines() }
+    private fun collectLinesFromFile() {
+        lines = File(path + name).readLines()
+    }
 
     /**
      * Builds and returns a map of each target to its score (reward).
@@ -174,12 +178,12 @@ class InstanceDto(
     private fun buildScoreMap(): MutableList<Double> {
         val targetScore: List<Double> = lines.subList(3, lines.size).map(::parseScore)
         val vertexScore: MutableList<Double> = MutableList(numVertices) { -1.0 }
-        for (i in 0 until numTargets-2)
+        for (i in 0 until numTargets - 2)
             for (j in 0 until numDiscretizations)
                 vertexScore[i * numDiscretizations + j] = targetScore[i]
 
-        vertexScore[numVertices-2] = 0.0
-        vertexScore[numVertices-1] = 0.0
+        vertexScore[numVertices - 2] = 0.0
+        vertexScore[numVertices - 1] = 0.0
         return vertexScore
     }
 
@@ -211,7 +215,7 @@ class InstanceDto(
         val y1: Double = c1.y
         val x2: Double = c2.x
         val y2: Double = c2.y
-        return sqrt((x2-x1)*(x2-x1) + (y2-y1)*(y2-y1))
+        return sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1))
     }
 
     /**
@@ -221,27 +225,30 @@ class InstanceDto(
      * @param budget orienteering problem budget
      * @return edges as a map of map
      */
-    private fun getEdges(vertices: MutableList<DubinsCoords>,
-                         budget: Double): MutableMap<Int, MutableMap<Int, Double>> {
+    private fun getEdges(
+        vertices: MutableList<DubinsCoords>,
+        budget: Double
+    ): MutableMap<Int, MutableMap<Int, Double>> {
         val edges = mutableMapOf<Int, MutableMap<Int, Double>>()
         /* add all the edges that do not correspond to pseudoSource or pseudoDestination */
-        for (i in 0 until numVertices-2) {
+        for (i in 0 until numVertices - 2) {
             edges[i] = mutableMapOf()
             val iTargetId = targetOfVertex[i]
             if (iTargetId == destination) continue
             val otherVertices = verticesInTarget[iTargetId]
-            for (j in 0 until numVertices-2) {
+            for (j in 0 until numVertices - 2) {
                 val jTargetId = targetOfVertex[j]
                 if (jTargetId == source) continue
                 if (j in otherVertices) continue
 
                 if (numDiscretizations == 1) {
-                    val edgeLength: Double = getEdgeLength(Coords(vertices[i].x, vertices[i].y),
-                            Coords(vertices[j].x, vertices[j].y))
+                    val edgeLength: Double = getEdgeLength(
+                        Coords(vertices[i].x, vertices[i].y),
+                        Coords(vertices[j].x, vertices[j].y)
+                    )
                     if (edgeLength > budget) continue
                     edges.getValue(i)[j] = edgeLength
-                }
-                else {
+                } else {
                     val edgeLength: Double = getEdgeLength(vertices[i], vertices[j])
                     if (edgeLength > budget) continue
                     edges.getValue(i)[j] = edgeLength

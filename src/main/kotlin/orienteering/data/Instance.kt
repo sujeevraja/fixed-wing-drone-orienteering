@@ -11,48 +11,34 @@ import mu.KLogging
  * @param numVehicles number of vehicles
  * @param numVertices vertices that can be visited.
  * @param numTargets number of targets (clusters), if null, then the instance does not have cluster specifications
- * @param score scores indexed by vertex ids.
+ * @param vertexScores scores indexed by vertex ids.
  * @param edges directed edges on the vertices stored as a adjacency list
  * @param targetOfVertex value at index i is target of vertex i
  * @param verticesInTarget list of vertex ids in each target, indexed by target ids
  */
-
-class Instance(val budget: Double,
-               val source: Int,
-               val destination: Int,
-               val numVehicles: Int,
-               val numVertices: Int,
-               val numTargets: Int?,
-               private val score: List<Double>,
-               private val edges: Map<Int, Map<Int, Double>>,
-               private val targetOfVertex: List<Int>,
-               private val verticesInTarget: List<List<Int>>) {
+class Instance(
+    val budget: Double,
+    val source: Int,
+    val destination: Int,
+    val numVehicles: Int,
+    val numVertices: Int,
+    val numTargets: Int,
+    private val vertexScores: List<Double>,
+    private val edges: Map<Int, Map<Int, Double>>,
+    private val targetOfVertex: List<Int>,
+    private val verticesInTarget: List<List<Int>>
+) {
+    /**
+     * Targets that can be visited multiple times.
+     */
+    val multiVisitTargets: List<Int> = getTargetsToSkipCovering()
 
     /**
-     * Logger object.
+     * Scores indexed by target id.
      */
-    companion object: KLogging()
-
-    /**
-     * Function to query the score of a given target
-     * @param i vertex index
-     * @return score of vertex if index exists, else returns null
-     */
-    fun getScore(i: Int): Double? { return score.getOrNull(i) }
-
-    /**
-     * Return score of the given target.
-     *
-     * We assume that if a target has any vertices, all vertex scores are
-     * equal. So, the target's score will simply be the score of its first
-     * vertex.
-     *
-     * @param i target index
-     * @return score of target if it exists, null otherwise.
-     */
-    fun getTargetScore(i: Int): Double {
-        val firstVertex: Int? = getVertices(i)?.getOrNull(0)
-        return if (firstVertex != null) score.getOrNull(firstVertex) ?: 0.0 else 0.0
+    val targetScores = (0 until numTargets).map {
+        val vertices = verticesInTarget[it]
+        if (vertices.isEmpty()) 0.0 else vertexScores[vertices[0]]
     }
 
     /**
@@ -69,7 +55,9 @@ class Instance(val budget: Double,
      * @param i vertex id
      * @return adjacent vertices as a Map<Int, Double>, where Double is the cost of the edge
      */
-    fun getAdjacentVertices(i: Int): Map<Int, Double>? { return edges[i] }
+    fun getAdjacentVertices(i: Int): Map<Int, Double>? {
+        return edges[i]
+    }
 
     /**
      * Function to get incoming edges
@@ -120,21 +108,27 @@ class Instance(val budget: Double,
      * @param j to vertex id
      * @return cost or null
      */
-    fun getEdgeLength(i: Int, j: Int): Double? { return edges[i]?.get(j) }
+    fun getEdgeLength(i: Int, j: Int): Double? {
+        return edges[i]?.get(j)
+    }
 
     /**
      * Function to query target that a vertex belongs to
      * @param i vertex index
      * @return target index
      */
-    fun whichTarget(i: Int): Int { return targetOfVertex[i] }
+    fun whichTarget(i: Int): Int {
+        return targetOfVertex[i]
+    }
 
     /**
      * Function to get the list of vertices in a target
      * @param i target index
      * @return List of vertex indexes
      */
-    fun getVertices(i: Int): List<Int>? { return verticesInTarget.getOrNull(i) }
+    fun getVertices(i: Int): List<Int>? {
+        return verticesInTarget.getOrNull(i)
+    }
 
     /**
      * Return only vertex in pseudo source target
@@ -142,7 +136,9 @@ class Instance(val budget: Double,
      * Consider replacing pseudo targets with vertices as we only deal with vertex edges and not
      * target edges.
      */
-    fun getSourceVertex(): Int { return verticesInTarget[source][0] }
+    fun getSourceVertex(): Int {
+        return verticesInTarget[source][0]
+    }
 
     /**
      * Return only vertex in pseudo sink target
@@ -150,20 +146,26 @@ class Instance(val budget: Double,
      * Consider replacing pseudo targets with vertices as we only deal with vertex edges and not
      * target edges.
      */
-    fun getDestinationVertex(): Int { return verticesInTarget[destination][0] }
-
+    fun getDestinationVertex(): Int {
+        return verticesInTarget[destination][0]
+    }
     /**
      * Function to get the targets on which the covering constraint can be skipped
      *
      * These targets correspond to outgoing targets from source and incoming from destination
      */
-    fun getTargetsToSkipCovering(): List<Int> {
+    private fun getTargetsToSkipCovering(): List<Int> {
         val sourceAdjacentVertices = getOutgoingEdgeList(source)
         val sourceToSkip = whichTarget(sourceAdjacentVertices.first().second)
 
         val destinationAdjacentVertices = getIncomingEdgeList(destination)
         val destinationToSkip = whichTarget(destinationAdjacentVertices.first().first)
 
-        return listOf(sourceToSkip, destinationToSkip)
+        return listOf(source, destination, sourceToSkip, destinationToSkip)
     }
+
+    /**
+     * Logger object.
+     */
+    companion object : KLogging()
 }

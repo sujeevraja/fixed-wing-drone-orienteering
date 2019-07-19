@@ -65,6 +65,12 @@ tasks {
         includeNonPublic = true
         noStdlibLink = true
     }
+
+    register<Delete>("cleanLogs") {
+        delete(fileTree("logs") {
+            include("*.log", "*.lp")
+        })
+    }
 }
 
 application {
