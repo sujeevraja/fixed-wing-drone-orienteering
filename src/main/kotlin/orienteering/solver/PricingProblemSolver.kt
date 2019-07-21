@@ -1,6 +1,7 @@
 package orienteering.solver
 
 import mu.KLogging
+import org.jgrapht.Graphs
 import orienteering.Constants
 import orienteering.OrienteeringException
 import orienteering.data.Instance
@@ -31,19 +32,23 @@ class PricingProblemSolver(
     private val numReducedCostColumns: Int
 ) {
     /**
+     * directed graph weighted with edge lengths
+     */
+    private val graph = instance.graph
+    /**
      * Number of targets (i.e. vertex clusters) in given instance.
      */
     private val numTargets = instance.numTargets
     /**
      * Number of vertices in given instance.
      */
-    private val numVertices = instance.getNumVertices()
+    private val numVertices = graph.vertexSet().size
     /**
      * source vertices
      */
     private val srcVertices = instance.getVertices(instance.sourceTarget)
     /**
-     *
+     * destination vertices
      */
     private val dstVertices = instance.getVertices(instance.destinationTarget)
     /**
@@ -201,13 +206,13 @@ class PricingProblemSolver(
 
             val vertex = state.vertex
             if (state.isForward) {
-                if (vertex !in dstVertices) {
+                if (Graphs.vertexHasSuccessors(graph, vertex)) {
                     extendForward(state)
                 }
 
                 // Join with all backward states.
                 for (j in 0 until numVertices) {
-                    if (j == vertex || !instance.hasEdge(vertex, j)) {
+                    if (j == vertex || !graph.containsEdge(vertex, j)) {
                         continue
                     }
                     for (bs in backwardStates[j]) {
@@ -218,13 +223,13 @@ class PricingProblemSolver(
                     }
                 }
             } else {
-                if (vertex !in dstVertices) {
+                if (Graphs.vertexHasPredecessors(graph, vertex)) {
                     extendBackward(state)
                 }
 
                 // Join with all forward states.
                 for (j in 0 until numVertices) {
-                    if (j == vertex || !instance.hasEdge(j, vertex)) {
+                    if (j == vertex || !graph.containsEdge(j, vertex)) {
                         continue
                     }
                     for (fs in forwardStates[j]) {
@@ -289,8 +294,8 @@ class PricingProblemSolver(
         }
 
         val vertex = state.vertex
-        for (nextVertex in instance.getSuccessors(vertex)) {
-            val edgeLength = instance.getEdgeLength(vertex, nextVertex)
+        for (nextVertex in Graphs.successorListOf(graph, vertex)) {
+            val edgeLength = graph.getEdgeWeight(graph.getEdge(vertex, nextVertex))
             val extension = extendIfFeasible(state, nextVertex, edgeLength) ?: continue
             updateNonDominatedStates(forwardStates[nextVertex], extension)
         }
@@ -307,8 +312,8 @@ class PricingProblemSolver(
         }
 
         val vertex = state.vertex
-        for (prevVertex in instance.getPredecessors(vertex)) {
-            val edgeLength = instance.getEdgeLength(prevVertex, vertex)
+        for (prevVertex in Graphs.predecessorListOf(graph, vertex)) {
+            val edgeLength = graph.getEdgeWeight(graph.getEdge(prevVertex, vertex))
             val extension = extendIfFeasible(state, prevVertex, edgeLength) ?: continue
             updateNonDominatedStates(backwardStates[prevVertex], extension)
         }
@@ -424,7 +429,7 @@ class PricingProblemSolver(
      * @return computed path cost (i.e. total edge length)
      */
     private fun getJoinedPathLength(fs: State, bs: State): Double {
-        return fs.pathLength + bs.pathLength + instance.getEdgeLength(fs.vertex, bs.vertex)
+        return fs.pathLength + bs.pathLength + graph.getEdgeWeight(graph.getEdge(fs.vertex, bs.vertex))
     }
 
     /**
@@ -456,14 +461,14 @@ class PricingProblemSolver(
         if (fs.pathLength <= bs.pathLength - Constants.EPS) {
             var nextDiff = 0.0
             if (bs.parent != null) {
-                nextDiff = instance.getEdgeLength(bs.vertex, bs.parent.vertex).absoluteValue
+                nextDiff = graph.getEdgeWeight(graph.getEdge(bs.vertex, bs.parent.vertex))
             }
             return currDiff <= nextDiff - Constants.EPS
         }
 
         var prevDiff = 0.0
         if (fs.parent != null) {
-            prevDiff = instance.getEdgeLength(fs.parent.vertex, fs.vertex).absoluteValue
+            prevDiff = graph.getEdgeWeight(graph.getEdge(fs.parent.vertex, fs.vertex))
         }
         return currDiff <= prevDiff + Constants.EPS
     }

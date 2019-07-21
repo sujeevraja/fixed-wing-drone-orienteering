@@ -127,6 +127,7 @@ class InstanceDto(
         buildGraph(vertices)
 
         instance = Instance(
+            graph = graph,
             budget = budget,
             sourceTarget = source,
             destinationTarget = destination,
@@ -134,8 +135,7 @@ class InstanceDto(
             numTargets = numTargets,
             vertexScores = buildScoreMap(),
             targetOfVertex = targetOfVertex,
-            verticesInTarget = verticesInTarget,
-            graph = graph
+            verticesInTarget = verticesInTarget
         )
 
         logger.info("completed instance initialization.")
