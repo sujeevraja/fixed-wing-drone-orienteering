@@ -131,8 +131,8 @@ class PricingProblemSolver(
             }
 
             multipleVisits()
-            searchIteration++
             logger.debug("----- END search iteration $searchIteration")
+            searchIteration++
         } while (isVisitedMultipleTimes.any { it })
 
         logger.debug("completed column generation.")
