@@ -332,7 +332,7 @@ class PricingProblemSolver(
     private fun extendIfFeasible(state: State, neighbor: Int, edgeLength: Double): State? {
         // Prevent multiple visits to critical targets.
         val neighborTarget = instance.whichTarget(neighbor)
-        if (isCritical[neighborTarget] && state.numTargetVisits[neighborTarget] > 0) {
+        if (isCritical[neighborTarget] && state.visits(neighborTarget)) {
             return null
         }
 
@@ -405,16 +405,7 @@ class PricingProblemSolver(
      * @return true if path is budget-feasible, false otherwise.
      */
     private fun feasible(fs: State, bs: State): Boolean {
-        val totalCost = getJoinedPathLength(fs, bs)
-        if (totalCost >= maxPathLength) {
-            return false
-        }
-
-        if ((0 until numTargets).any { fs.numTargetVisits[it] + bs.numTargetVisits[it] > 1 }) {
-            return false
-        }
-
-        return true
+        return !fs.hasCommonVisits(bs) && getJoinedPathLength(fs, bs) <= maxPathLength
     }
 
     /**
