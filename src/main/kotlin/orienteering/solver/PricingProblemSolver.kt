@@ -53,12 +53,12 @@ class PricingProblemSolver(
     /**
      * True at index i if target i is critical (Theta in paper).
      */
-    private var isCritical = MutableList(numTargets) { false }
+    private var isCritical = BooleanArray(numTargets) { false }
     /**
      * True at index i if target i is visited multiple times by the optimal path of a search
      * iteration (Psi in paper).
      */
-    private var isVisitedMultipleTimes = MutableList(numTargets) { false }
+    private var isVisitedMultipleTimes = BooleanArray(numTargets) { false }
     /**
      * Forward states indexed by vertex id.
      */
@@ -231,10 +231,10 @@ class PricingProblemSolver(
     }
 
     private fun multipleVisits() {
-        isVisitedMultipleTimes = MutableList(numTargets) { false }
+        isVisitedMultipleTimes.fill(false)
         val optimalPath = optimalRoute?.path ?: return
 
-        val numVisits = MutableList(numTargets) { 0 }
+        val numVisits = IntArray(numTargets) { 0 }
         for (vertex in optimalPath) {
             val target = instance.whichTarget(vertex)
             numVisits[target]++
