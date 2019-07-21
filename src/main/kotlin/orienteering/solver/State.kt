@@ -10,7 +10,7 @@ class State private constructor(
     val score: Double,
     val reducedCost: Double,
     val numTargetsVisited: Int,
-    val numTargetVisits: MutableList<Int>
+    private val visitedBits: LongArray
 ) : Comparable<State> {
     /**
      * true if all extensions have been generated, false otherwise
@@ -42,9 +42,9 @@ class State private constructor(
         vertexScore: Double,
         vertexReducedCost: Double
     ): State {
-        val newVisited = numTargetVisits.toMutableList()
+        val newVisitedBits = visitedBits.copyOf()
         if (isCritical) {
-            newVisited[newTarget] += 1
+            markVisited(newVisitedBits, newTarget)
         }
 
         return State(
@@ -55,7 +55,7 @@ class State private constructor(
             score + vertexScore,
             reducedCost + vertexReducedCost,
             numTargetsVisited + 1,
-            newVisited
+            newVisitedBits
         )
     }
 
@@ -76,14 +76,21 @@ class State private constructor(
         if (!strict && pathLength <= other.pathLength - Constants.EPS) {
             strict = true
         }
-        for ((thisVisit, otherVisit) in numTargetVisits zip other.numTargetVisits) {
-            if (thisVisit > otherVisit) {
+
+        for (i in 0 until visitedBits.size) {
+            // Following condition is satisfied when "this" visits a critical target and "other"
+            // does not. So, "this" does not dominate the "other".
+            if (visitedBits[i] and other.visitedBits[i].inv() != 0L) {
                 return false
             }
-            if (!strict && thisVisit < otherVisit) {
+
+            // Following condition is satisfied when "this" does not visit a critical target and
+            // "other" does. So, "this" strictly dominates "other".
+            if (!strict && (visitedBits[i].inv() and other.visitedBits[i] != 0L)) {
                 strict = true
             }
         }
+
         return strict
     }
 
@@ -108,6 +115,24 @@ class State private constructor(
     }
 
     /**
+     * Returns true if [target] is on partial path, false otherwise.
+     */
+    fun visits(target: Int): Boolean {
+        val quotient: Int = target / Constants.NUM_BITS
+        val remainder: Int = target % Constants.NUM_BITS
+        return visitedBits[quotient] and (1L shl remainder) != 0L
+    }
+
+    fun hasCommonVisits(other: State): Boolean {
+        for (i in 0 until visitedBits.size) {
+            if (visitedBits[i] and other.visitedBits[i] != 0L) {
+                return true
+            }
+        }
+        return false
+    }
+
+    /**
      * Companion object to provide a factory constructor for terminal states.
      */
     companion object {
@@ -116,8 +141,15 @@ class State private constructor(
             vertex: Int,
             numTargets: Int
         ): State {
+            val size: Int = (numTargets / Constants.NUM_BITS) + 1
             return State(isForward, null, vertex, 0.0, 0.0, 0.0,
-                0, MutableList(numTargets) { 0 })
+                0, LongArray(size) { 0L })
+        }
+
+        private fun markVisited(visitedBits: LongArray, target: Int) {
+            val quotient: Int = target / Constants.NUM_BITS
+            val remainder: Int = target % Constants.NUM_BITS
+            visitedBits[quotient] = visitedBits[quotient] or (1L shl remainder)
         }
     }
 }

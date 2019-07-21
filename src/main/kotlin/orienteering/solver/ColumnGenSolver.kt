@@ -8,9 +8,9 @@ import orienteering.data.Route
 import kotlin.math.absoluteValue
 
 /**
- * Solves the multi-vehicle orienteering problem with branch and price.
+ * Solves the multi-vehicle orienteering problem with column generation.
  */
-class BranchAndPrice(
+class ColumnGenSolver(
     private val instance: Instance,
     private val numReducedCostColumns: Int,
     private val cplex: IloCplex
@@ -33,7 +33,12 @@ class BranchAndPrice(
     private lateinit var solution: List<Route>
 
     /**
-     * Runs the branch and price algorithm.
+     * Runs the column generation algorithm.
+     *
+     * This algorithm works by iterating between solving a set cover LP of a Restricted Master
+     * Problem (RMP) with a limited number of columns and solving a pricing problem to find a
+     * pre-specified number of reduced cost columns. Optimality is reached with the pricing problem
+     * solver fails to find any negative reduced cost columns.
      */
     fun solve(): List<Route> {
         // Both the route cover and target cover constraints are of the <= form. So, for a primal
@@ -71,7 +76,8 @@ class BranchAndPrice(
         val reducedCosts = (0 until instance.numTargets).map {
             targetDuals[it] - instance.targetScores[it]
         }
-        val pricer = PricingProblemSolver(instance, vehicleCoverDual, reducedCosts, numReducedCostColumns)
+        val pricer =
+            PricingProblemSolver(instance, vehicleCoverDual, reducedCosts, numReducedCostColumns)
         pricer.generateColumns()
         val routes = pricer.elementaryRoutes
         if (routes.isEmpty()) {

@@ -53,12 +53,12 @@ class PricingProblemSolver(
     /**
      * True at index i if target i is critical (Theta in paper).
      */
-    private var isCritical = MutableList(numTargets) { false }
+    private var isCritical = BooleanArray(numTargets) { false }
     /**
      * True at index i if target i is visited multiple times by the optimal path of a search
      * iteration (Psi in paper).
      */
-    private var isVisitedMultipleTimes = MutableList(numTargets) { false }
+    private var isVisitedMultipleTimes = BooleanArray(numTargets) { false }
     /**
      * Forward states indexed by vertex id.
      */
@@ -131,8 +131,8 @@ class PricingProblemSolver(
             }
 
             multipleVisits()
-            searchIteration++
             logger.debug("----- END search iteration $searchIteration")
+            searchIteration++
         } while (isVisitedMultipleTimes.any { it })
 
         logger.debug("completed column generation.")
@@ -231,10 +231,10 @@ class PricingProblemSolver(
     }
 
     private fun multipleVisits() {
-        isVisitedMultipleTimes = MutableList(numTargets) { false }
+        isVisitedMultipleTimes.fill(false)
         val optimalPath = optimalRoute?.path ?: return
 
-        val numVisits = MutableList(numTargets) { 0 }
+        val numVisits = IntArray(numTargets) { 0 }
         for (vertex in optimalPath) {
             val target = instance.whichTarget(vertex)
             numVisits[target]++
@@ -332,7 +332,7 @@ class PricingProblemSolver(
     private fun extendIfFeasible(state: State, neighbor: Int, edgeLength: Double): State? {
         // Prevent multiple visits to critical targets.
         val neighborTarget = instance.whichTarget(neighbor)
-        if (isCritical[neighborTarget] && state.numTargetVisits[neighborTarget] > 0) {
+        if (isCritical[neighborTarget] && state.visits(neighborTarget)) {
             return null
         }
 
@@ -405,16 +405,7 @@ class PricingProblemSolver(
      * @return true if path is budget-feasible, false otherwise.
      */
     private fun feasible(fs: State, bs: State): Boolean {
-        val totalCost = getJoinedPathLength(fs, bs)
-        if (totalCost >= maxPathLength) {
-            return false
-        }
-
-        if ((0 until numTargets).any { fs.numTargetVisits[it] + bs.numTargetVisits[it] > 1 }) {
-            return false
-        }
-
-        return true
+        return !fs.hasCommonVisits(bs) && getJoinedPathLength(fs, bs) <= maxPathLength
     }
 
     /**
