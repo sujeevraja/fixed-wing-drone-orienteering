@@ -45,7 +45,7 @@ class PricingProblemSolver(
     /**
      * Number of vertices in given instance.
      */
-    private val numVertices = instance.numVertices
+    private val numVertices = instance.getNumVertices()
     /**
      * maximum length of a vehicle's path
      */
@@ -279,11 +279,10 @@ class PricingProblemSolver(
         }
 
         val vertex = state.vertex
-        val outgoingEdges = instance.getOutgoingEdgeList(vertex)
-        for ((_, neighbor) in outgoingEdges) {
-            val edgeLength = instance.getEdgeLength(vertex, neighbor) ?: continue
-            val extension = extendIfFeasible(state, neighbor, edgeLength) ?: continue
-            updateNonDominatedStates(forwardStates[neighbor], extension)
+        for (nextVertex in instance.getSuccessors(vertex)) {
+            val edgeLength = instance.getEdgeLength(vertex, nextVertex)
+            val extension = extendIfFeasible(state, nextVertex, edgeLength) ?: continue
+            updateNonDominatedStates(forwardStates[nextVertex], extension)
         }
     }
 
@@ -298,11 +297,10 @@ class PricingProblemSolver(
         }
 
         val vertex = state.vertex
-        val incomingEdges = instance.getIncomingEdgeList(vertex)
-        for ((neighbor, _) in incomingEdges) {
-            val edgeLength = instance.getEdgeLength(neighbor, vertex) ?: continue
-            val extension = extendIfFeasible(state, neighbor, edgeLength) ?: continue
-            updateNonDominatedStates(backwardStates[neighbor], extension)
+        for (prevVertex in instance.getPredecessors(vertex)) {
+            val edgeLength = instance.getEdgeLength(prevVertex, vertex)
+            val extension = extendIfFeasible(state, prevVertex, edgeLength) ?: continue
+            updateNonDominatedStates(backwardStates[prevVertex], extension)
         }
     }
 
@@ -416,7 +414,7 @@ class PricingProblemSolver(
      * @return computed path cost (i.e. total edge length)
      */
     private fun getJoinedPathLength(fs: State, bs: State): Double {
-        return fs.pathLength + bs.pathLength + instance.getEdgeLength(fs.vertex, bs.vertex)!!
+        return fs.pathLength + bs.pathLength + instance.getEdgeLength(fs.vertex, bs.vertex)
     }
 
     /**
@@ -448,14 +446,14 @@ class PricingProblemSolver(
         if (fs.pathLength <= bs.pathLength - Constants.EPS) {
             var nextDiff = 0.0
             if (bs.parent != null) {
-                nextDiff = instance.getEdgeLength(bs.vertex, bs.parent.vertex)?.absoluteValue ?: 0.0
+                nextDiff = instance.getEdgeLength(bs.vertex, bs.parent.vertex).absoluteValue
             }
             return currDiff <= nextDiff - Constants.EPS
         }
 
         var prevDiff = 0.0
         if (fs.parent != null) {
-            prevDiff = instance.getEdgeLength(fs.parent.vertex, fs.vertex)?.absoluteValue ?: 0.0
+            prevDiff = instance.getEdgeLength(fs.parent.vertex, fs.vertex).absoluteValue
         }
         return currDiff <= prevDiff + Constants.EPS
     }

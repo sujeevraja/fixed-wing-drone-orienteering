@@ -42,40 +42,6 @@ class Controller {
         ).getInstance()
     }
 
-    fun logInstanceData() {
-        logger.info("number of targets: ${instance.numTargets}")
-        logger.info("number of vertices: ${instance.numVertices}")
-        logger.info("maximum path length: ${instance.budget}")
-        for (i in 0 until instance.numTargets) {
-            logger.debug(
-                "target $i: score: ${instance.targetScores[i]}, vertices: ${instance.getVertices(
-                    i
-                )}"
-            )
-        }
-        for (i in 0 until instance.numVertices) {
-            for (j in i + 1 until instance.numVertices) {
-                if (instance.hasEdge(i, j)) {
-                    logger.info("length of $i -> $j: ${instance.getEdgeLength(i, j)}")
-                }
-            }
-        }
-        for (i in 0 until instance.numVertices) {
-            if (i != instance.getDestinationVertex()) {
-                logger.debug("outgoing from vertex $i")
-                for (edge in instance.getOutgoingEdgeList(i)) {
-                    logger.debug("$edge length ${instance.getEdgeLength(edge.first, edge.second)}")
-                }
-            }
-            if (i != instance.getSourceVertex()) {
-                logger.info("incoming to vertex $i")
-                for (edge in instance.getIncomingEdgeList(i)) {
-                    logger.debug("$edge length ${instance.getEdgeLength(edge.first, edge.second)}")
-                }
-            }
-        }
-    }
-
     /**
      * Initializes CPLEX container.
      */

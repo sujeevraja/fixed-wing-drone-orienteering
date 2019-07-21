@@ -104,7 +104,7 @@ class InstanceDto(
             MutableList(numVertices) { DubinsCoords(-1.0, -1.0, -1.0) }
 
         targetOfVertex = MutableList(numVertices) { -1 }
-        verticesInTarget = MutableList(numTargets) { emptyList() }
+        verticesInTarget = MutableList(numTargets) { emptyList<Int>() }
 
         val h: Double = 2.0 * PI / numDiscretizations.toDouble()
         val discretizations: Array<Double> = Array(numDiscretizations) { it * h }

@@ -1,6 +1,7 @@
 package orienteering.data
 
 import mu.KLogging
+import org.jgrapht.Graphs
 import org.jgrapht.graph.DefaultWeightedEdge
 import org.jgrapht.graph.SimpleDirectedWeightedGraph
 
@@ -29,11 +30,6 @@ class Instance(
     private val verticesInTarget: List<List<Int>>,
     private val graph: SimpleDirectedWeightedGraph<Int, DefaultWeightedEdge>
 ) {
-    /**
-     * Logger object
-     */
-    companion object : KLogging()
-
     val targetScores = (0 until numTargets).map {
         val vertices = verticesInTarget[it]
         if (vertices.isEmpty()) 0.0 else vertexScores[vertices[0]]
@@ -73,13 +69,6 @@ class Instance(
     }
 
     /**
-     * Function to get edge length
-     * @param edge of type DefaultWeightedEdge
-     * @return edge length
-     */
-    fun getEdgeLength(edge: DefaultWeightedEdge): Double = graph.getEdgeWeight(edge)
-
-    /**
      * Function to get the number of vertices
      * @return number of vertices
      */
@@ -99,4 +88,24 @@ class Instance(
      */
     fun getVertices(i: Int): List<Int> = verticesInTarget[i]
 
+    fun getSourceVertex(): Int {
+        return verticesInTarget[sourceTarget][0]
+    }
+
+    fun getDestinationVertex(): Int {
+        return verticesInTarget[destinationTarget][0]
+    }
+
+    fun getPredecessors(vertex: Int): List<Int> {
+        return Graphs.predecessorListOf(graph, vertex)
+    }
+
+    fun getSuccessors(vertex: Int): List<Int> {
+        return Graphs.successorListOf(graph, vertex)
+    }
+
+    /**
+     * Logger object
+     */
+    companion object : KLogging()
 }
