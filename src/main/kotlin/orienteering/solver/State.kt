@@ -76,11 +76,11 @@ class State private constructor(
         if (!strict && pathLength <= other.pathLength - Constants.EPS) {
             strict = true
         }
-        for ((thisVisit, otherVisit) in numTargetVisits zip other.numTargetVisits) {
-            if (thisVisit > otherVisit) {
+        for (i in 0 until numTargetVisits.size) {
+            if (numTargetVisits[i] > other.numTargetVisits[i]) {
                 return false
             }
-            if (!strict && thisVisit < otherVisit) {
+            if (!strict && numTargetVisits[i] < other.numTargetVisits[i]) {
                 strict = true
             }
         }
