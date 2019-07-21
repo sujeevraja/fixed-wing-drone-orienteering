@@ -88,14 +88,6 @@ class Instance(
      */
     fun getVertices(i: Int): List<Int> = verticesInTarget[i]
 
-    fun getSourceVertex(): Int {
-        return verticesInTarget[sourceTarget][0]
-    }
-
-    fun getDestinationVertex(): Int {
-        return verticesInTarget[destinationTarget][0]
-    }
-
     fun getPredecessors(vertex: Int): List<Int> {
         return Graphs.predecessorListOf(graph, vertex)
     }

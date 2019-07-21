@@ -31,14 +31,6 @@ class PricingProblemSolver(
     private val numReducedCostColumns: Int
 ) {
     /**
-     * Source vertex of given instance.
-     */
-    private val src = instance.getSourceVertex()
-    /**
-     * Destination vertex of given instance.
-     */
-    private val dst = instance.getDestinationVertex()
-    /**
      * Number of targets (i.e. vertex clusters) in given instance.
      */
     private val numTargets = instance.numTargets
@@ -46,6 +38,14 @@ class PricingProblemSolver(
      * Number of vertices in given instance.
      */
     private val numVertices = instance.getNumVertices()
+    /**
+     * source vertices
+     */
+    private val srcVertices = instance.getVertices(instance.sourceTarget)
+    /**
+     *
+     */
+    private val dstVertices = instance.getVertices(instance.destinationTarget)
     /**
      * maximum length of a vehicle's path
      */
@@ -103,26 +103,36 @@ class PricingProblemSolver(
         }
         logger.debug("starting column generation...")
 
-        // Store source state.
-        val srcState = State.buildTerminalState(true, src, numTargets)
-        forwardStates[src].add(srcState)
+        // Store source states.
+        for (srcVertex in srcVertices) {
+            forwardStates[srcVertex].add(State.buildTerminalState(true, srcVertex, numTargets))
+        }
 
         // Store destination state.
-        val dstState = State.buildTerminalState(false, dst, numTargets)
-        backwardStates[dst].add(dstState)
+        for (dstVertex in dstVertices) {
+            backwardStates[dstVertex].add(State.buildTerminalState(false, dstVertex, numTargets))
+        }
 
         var searchIteration = 0
         do {
             logger.debug("----- START search iteration $searchIteration")
             initializeIteration()
 
-            // Extend source state.
-            srcState.extended = false
-            extendForward(srcState)
+            // Extend source states.
+            for (srcVertex in srcVertices) {
+                for (state in forwardStates[srcVertex]) {
+                    state.extended = false
+                    extendForward(state)
+                }
+            }
 
             // Extend destination state.
-            dstState.extended = false
-            extendBackward(dstState)
+            for (dstVertex in dstVertices) {
+                for (state in backwardStates[dstVertex]) {
+                    state.extended = false
+                    extendBackward(state)
+                }
+            }
 
             val stopSearch = search()
             if (stopSearch) {
@@ -148,10 +158,10 @@ class PricingProblemSolver(
 
         // Clear all states except source and destination.
         for (i in 0 until forwardStates.size) {
-            if (i != src) {
+            if (i !in srcVertices) {
                 forwardStates[i].clear()
             }
-            if (i != dst) {
+            if (i !in dstVertices) {
                 backwardStates[i].clear()
             }
         }
@@ -191,7 +201,7 @@ class PricingProblemSolver(
 
             val vertex = state.vertex
             if (state.isForward) {
-                if (vertex != dst) {
+                if (vertex !in dstVertices) {
                     extendForward(state)
                 }
 
@@ -208,7 +218,7 @@ class PricingProblemSolver(
                     }
                 }
             } else {
-                if (vertex != src) {
+                if (vertex !in dstVertices) {
                     extendBackward(state)
                 }
 
