@@ -5,7 +5,7 @@ import mu.KLogging
 import orienteering.data.Instance
 import orienteering.data.InstanceDto
 import orienteering.data.Parameters
-import orienteering.solver.BranchAndPrice
+import orienteering.solver.ColumnGenSolver
 
 /**
  * Manages the entire solution process.
@@ -110,7 +110,7 @@ class Controller {
     private fun runBranchAndPriceAlgorithm() {
         logger.info("starting the branch-and-price algorithm")
         initCPLEX()
-        val bp = BranchAndPrice(instance, parameters.numReducedCostColumns, cplex)
+        val bp = ColumnGenSolver(instance, parameters.numReducedCostColumns, cplex)
         val solution = bp.solve()
         logger.info("final solution:")
         for (route in solution) {
