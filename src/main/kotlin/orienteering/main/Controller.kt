@@ -8,6 +8,7 @@ import orienteering.data.InstanceDto
 import orienteering.data.Parameters
 import orienteering.solver.ColumnGenSolver
 import kotlin.system.measureTimeMillis
+import orienteering.solver.BoundingLP
 
 /**
  * Manages the entire solution process.
@@ -99,7 +100,10 @@ class Controller {
     private fun runBranchAndCutAlgorithm() {
         logger.info("starting the branch-and-cut algorithm")
         initCPLEX()
-
+        val bc = BoundingLP(instance, cplex, targetDuals = List(instance.numTargets) { 0.0 })
+        bc.createModel()
+        bc.exportModel()
+        bc.solve()
         clearCPLEX()
     }
 

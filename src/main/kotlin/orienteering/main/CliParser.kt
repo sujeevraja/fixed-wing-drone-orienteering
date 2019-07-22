@@ -57,7 +57,7 @@ class CliParser : CliktCommand() {
         "-d",
         help = "number of discretizations of the heading angle"
     )
-        .int().default(2).validate {
+        .int().default(1).validate {
             require(it >= 1) {
                 "number of discretizations has to be >= 1 and integral"
             }
