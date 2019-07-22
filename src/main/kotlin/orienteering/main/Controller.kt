@@ -2,6 +2,7 @@ package orienteering.main
 
 import ilog.cplex.IloCplex
 import mu.KLogging
+import orienteering.OrienteeringException
 import orienteering.data.Instance
 import orienteering.data.InstanceDto
 import orienteering.data.Parameters
@@ -66,8 +67,10 @@ class Controller {
     fun run() {
         val timeElapsedMillis = measureTimeMillis {
             when (parameters.algorithm) {
-                1 -> runBranchAndPriceAlgorithm()
-                2 -> runBranchAndCutAlgorithm()
+                1 -> runBranchAndCutAlgorithm()
+                2 -> runColumnGenAlgorithm()
+                3 -> TODO("runBranchAndPrice()")
+                else -> throw OrienteeringException("unknown algorithm type")
             }
         }
         logger.info("run completed, time: ${timeElapsedMillis / 1000.0} seconds")
@@ -76,7 +79,7 @@ class Controller {
     /**
      * Function to run branch-and-price algorithm
      */
-    private fun runBranchAndPriceAlgorithm() {
+    private fun runColumnGenAlgorithm() {
         logger.info("starting the branch-and-price algorithm")
         initCPLEX()
         val bp = ColumnGenSolver(instance, parameters.numReducedCostColumns, cplex)
