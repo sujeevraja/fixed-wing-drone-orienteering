@@ -46,4 +46,13 @@ class Instance(
      * @return List of vertex indexes
      */
     fun getVertices(i: Int): List<Int> = verticesInTarget[i]
+
+    /**
+     * Function to get vertex score
+     * @param i vertex index
+     * @return vertex score
+     */
+    fun getScore(i: Int): Double = vertexScores[i]
 }
+
+fun SimpleDirectedWeightedGraph<Int, DefaultWeightedEdge>.numVertices() = this.vertexSet().size
