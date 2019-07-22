@@ -6,6 +6,7 @@ import orienteering.data.Instance
 import orienteering.data.InstanceDto
 import orienteering.data.Parameters
 import orienteering.solver.ColumnGenSolver
+import kotlin.system.measureTimeMillis
 
 /**
  * Manages the entire solution process.
@@ -63,11 +64,13 @@ class Controller {
      * Function to start the solver
      */
     fun run() {
-        when (parameters.algorithm) {
-            1 -> runBranchAndPriceAlgorithm()
-            2 -> runBranchAndCutAlgorithm()
+        val timeElapsedMillis = measureTimeMillis {
+            when (parameters.algorithm) {
+                1 -> runBranchAndPriceAlgorithm()
+                2 -> runBranchAndCutAlgorithm()
+            }
         }
-        logger.info("run completed")
+        logger.info("run completed, time: ${timeElapsedMillis / 1000.0} seconds")
     }
 
     /**

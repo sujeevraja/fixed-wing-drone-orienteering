@@ -97,7 +97,7 @@ class SetCoverModel(private var cplex: IloCplex) {
      */
     fun solve() {
         cplex.setOut(null)
-        cplex.exportModel("logs/set_cover.lp")
+        // cplex.exportModel("logs/set_cover.lp")
         if (!cplex.solve()) {
             throw OrienteeringException("Set covering problem infeasible")
         }
