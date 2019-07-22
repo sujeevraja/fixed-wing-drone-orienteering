@@ -60,7 +60,7 @@ class SetCoverModel(private var cplex: IloCplex) {
             for (vertex in routes[i].path) {
                 val target = instance.whichTarget(vertex)
                 whichRoutes[target].add(i)
-                if (target in instance.multiVisitTargets) {
+                if (target == instance.sourceTarget || target == instance.destinationTarget) {
                     continue
                 }
                 hasTargetConstraint[target] = true
@@ -76,7 +76,7 @@ class SetCoverModel(private var cplex: IloCplex) {
         routeConstraintId = 0
 
         for (i in 0 until instance.numTargets) {
-            if (i in instance.multiVisitTargets) {
+            if (i == instance.sourceTarget || i == instance.destinationTarget) {
                 continue
             }
             if (whichRoutes[i].size == 0) {
@@ -97,7 +97,7 @@ class SetCoverModel(private var cplex: IloCplex) {
      */
     fun solve() {
         cplex.setOut(null)
-        cplex.exportModel("logs/set_cover.lp")
+        // cplex.exportModel("logs/set_cover.lp")
         if (!cplex.solve()) {
             throw OrienteeringException("Set covering problem infeasible")
         }

@@ -1,6 +1,7 @@
 package orienteering.solver
 
 import mu.KLogging
+import org.jgrapht.Graphs
 import orienteering.Constants
 import orienteering.OrienteeringException
 import orienteering.data.Instance
@@ -31,13 +32,9 @@ class PricingProblemSolver(
     private val numReducedCostColumns: Int
 ) {
     /**
-     * Source vertex of given instance.
+     * directed graph weighted with edge lengths
      */
-    private val src = instance.getSourceVertex()
-    /**
-     * Destination vertex of given instance.
-     */
-    private val dst = instance.getDestinationVertex()
+    private val graph = instance.graph
     /**
      * Number of targets (i.e. vertex clusters) in given instance.
      */
@@ -45,7 +42,15 @@ class PricingProblemSolver(
     /**
      * Number of vertices in given instance.
      */
-    private val numVertices = instance.numVertices
+    private val numVertices = graph.vertexSet().size
+    /**
+     * source vertices
+     */
+    private val srcVertices = instance.getVertices(instance.sourceTarget)
+    /**
+     * destination vertices
+     */
+    private val dstVertices = instance.getVertices(instance.destinationTarget)
     /**
      * maximum length of a vehicle's path
      */
@@ -103,26 +108,36 @@ class PricingProblemSolver(
         }
         logger.debug("starting column generation...")
 
-        // Store source state.
-        val srcState = State.buildTerminalState(true, src, numTargets)
-        forwardStates[src].add(srcState)
+        // Store source states.
+        for (srcVertex in srcVertices) {
+            forwardStates[srcVertex].add(State.buildTerminalState(true, srcVertex, numTargets))
+        }
 
         // Store destination state.
-        val dstState = State.buildTerminalState(false, dst, numTargets)
-        backwardStates[dst].add(dstState)
+        for (dstVertex in dstVertices) {
+            backwardStates[dstVertex].add(State.buildTerminalState(false, dstVertex, numTargets))
+        }
 
         var searchIteration = 0
         do {
             logger.debug("----- START search iteration $searchIteration")
             initializeIteration()
 
-            // Extend source state.
-            srcState.extended = false
-            extendForward(srcState)
+            // Extend source states.
+            for (srcVertex in srcVertices) {
+                for (state in forwardStates[srcVertex]) {
+                    state.extended = false
+                    extendForward(state)
+                }
+            }
 
             // Extend destination state.
-            dstState.extended = false
-            extendBackward(dstState)
+            for (dstVertex in dstVertices) {
+                for (state in backwardStates[dstVertex]) {
+                    state.extended = false
+                    extendBackward(state)
+                }
+            }
 
             val stopSearch = search()
             if (stopSearch) {
@@ -148,10 +163,10 @@ class PricingProblemSolver(
 
         // Clear all states except source and destination.
         for (i in 0 until forwardStates.size) {
-            if (i != src) {
+            if (i !in srcVertices) {
                 forwardStates[i].clear()
             }
-            if (i != dst) {
+            if (i !in dstVertices) {
                 backwardStates[i].clear()
             }
         }
@@ -191,13 +206,13 @@ class PricingProblemSolver(
 
             val vertex = state.vertex
             if (state.isForward) {
-                if (vertex != dst) {
+                if (Graphs.vertexHasSuccessors(graph, vertex)) {
                     extendForward(state)
                 }
 
                 // Join with all backward states.
                 for (j in 0 until numVertices) {
-                    if (j == vertex || !instance.hasEdge(vertex, j)) {
+                    if (j == vertex || !graph.containsEdge(vertex, j)) {
                         continue
                     }
                     for (bs in backwardStates[j]) {
@@ -208,13 +223,13 @@ class PricingProblemSolver(
                     }
                 }
             } else {
-                if (vertex != src) {
+                if (Graphs.vertexHasPredecessors(graph, vertex)) {
                     extendBackward(state)
                 }
 
                 // Join with all forward states.
                 for (j in 0 until numVertices) {
-                    if (j == vertex || !instance.hasEdge(j, vertex)) {
+                    if (j == vertex || !graph.containsEdge(j, vertex)) {
                         continue
                     }
                     for (fs in forwardStates[j]) {
@@ -279,11 +294,10 @@ class PricingProblemSolver(
         }
 
         val vertex = state.vertex
-        val outgoingEdges = instance.getOutgoingEdgeList(vertex)
-        for ((_, neighbor) in outgoingEdges) {
-            val edgeLength = instance.getEdgeLength(vertex, neighbor) ?: continue
-            val extension = extendIfFeasible(state, neighbor, edgeLength) ?: continue
-            updateNonDominatedStates(forwardStates[neighbor], extension)
+        for (nextVertex in Graphs.successorListOf(graph, vertex)) {
+            val edgeLength = graph.getEdgeWeight(graph.getEdge(vertex, nextVertex))
+            val extension = extendIfFeasible(state, nextVertex, edgeLength) ?: continue
+            updateNonDominatedStates(forwardStates[nextVertex], extension)
         }
     }
 
@@ -298,11 +312,10 @@ class PricingProblemSolver(
         }
 
         val vertex = state.vertex
-        val incomingEdges = instance.getIncomingEdgeList(vertex)
-        for ((neighbor, _) in incomingEdges) {
-            val edgeLength = instance.getEdgeLength(neighbor, vertex) ?: continue
-            val extension = extendIfFeasible(state, neighbor, edgeLength) ?: continue
-            updateNonDominatedStates(backwardStates[neighbor], extension)
+        for (prevVertex in Graphs.predecessorListOf(graph, vertex)) {
+            val edgeLength = graph.getEdgeWeight(graph.getEdge(prevVertex, vertex))
+            val extension = extendIfFeasible(state, prevVertex, edgeLength) ?: continue
+            updateNonDominatedStates(backwardStates[prevVertex], extension)
         }
     }
 
@@ -416,7 +429,7 @@ class PricingProblemSolver(
      * @return computed path cost (i.e. total edge length)
      */
     private fun getJoinedPathLength(fs: State, bs: State): Double {
-        return fs.pathLength + bs.pathLength + instance.getEdgeLength(fs.vertex, bs.vertex)!!
+        return fs.pathLength + bs.pathLength + graph.getEdgeWeight(graph.getEdge(fs.vertex, bs.vertex))
     }
 
     /**
@@ -448,14 +461,14 @@ class PricingProblemSolver(
         if (fs.pathLength <= bs.pathLength - Constants.EPS) {
             var nextDiff = 0.0
             if (bs.parent != null) {
-                nextDiff = instance.getEdgeLength(bs.vertex, bs.parent.vertex)?.absoluteValue ?: 0.0
+                nextDiff = graph.getEdgeWeight(graph.getEdge(bs.vertex, bs.parent.vertex))
             }
             return currDiff <= nextDiff - Constants.EPS
         }
 
         var prevDiff = 0.0
         if (fs.parent != null) {
-            prevDiff = instance.getEdgeLength(fs.parent.vertex, fs.vertex)?.absoluteValue ?: 0.0
+            prevDiff = graph.getEdgeWeight(graph.getEdge(fs.parent.vertex, fs.vertex))
         }
         return currDiff <= prevDiff + Constants.EPS
     }

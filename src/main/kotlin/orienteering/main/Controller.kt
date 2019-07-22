@@ -2,10 +2,12 @@ package orienteering.main
 
 import ilog.cplex.IloCplex
 import mu.KLogging
+import orienteering.OrienteeringException
 import orienteering.data.Instance
 import orienteering.data.InstanceDto
 import orienteering.data.Parameters
 import orienteering.solver.ColumnGenSolver
+import kotlin.system.measureTimeMillis
 
 /**
  * Manages the entire solution process.
@@ -42,40 +44,6 @@ class Controller {
         ).getInstance()
     }
 
-    fun logInstanceData() {
-        logger.info("number of targets: ${instance.numTargets}")
-        logger.info("number of vertices: ${instance.numVertices}")
-        logger.info("maximum path length: ${instance.budget}")
-        for (i in 0 until instance.numTargets) {
-            logger.debug(
-                "target $i: score: ${instance.targetScores[i]}, vertices: ${instance.getVertices(
-                    i
-                )}"
-            )
-        }
-        for (i in 0 until instance.numVertices) {
-            for (j in i + 1 until instance.numVertices) {
-                if (instance.hasEdge(i, j)) {
-                    logger.info("length of $i -> $j: ${instance.getEdgeLength(i, j)}")
-                }
-            }
-        }
-        for (i in 0 until instance.numVertices) {
-            if (i != instance.getDestinationVertex()) {
-                logger.debug("outgoing from vertex $i")
-                for (edge in instance.getOutgoingEdgeList(i)) {
-                    logger.debug("$edge length ${instance.getEdgeLength(edge.first, edge.second)}")
-                }
-            }
-            if (i != instance.getSourceVertex()) {
-                logger.info("incoming to vertex $i")
-                for (edge in instance.getIncomingEdgeList(i)) {
-                    logger.debug("$edge length ${instance.getEdgeLength(edge.first, edge.second)}")
-                }
-            }
-        }
-    }
-
     /**
      * Initializes CPLEX container.
      */
@@ -97,17 +65,21 @@ class Controller {
      * Function to start the solver
      */
     fun run() {
-        when (parameters.algorithm) {
-            1 -> runBranchAndPriceAlgorithm()
-            2 -> runBranchAndCutAlgorithm()
+        val timeElapsedMillis = measureTimeMillis {
+            when (parameters.algorithm) {
+                1 -> runBranchAndCutAlgorithm()
+                2 -> runColumnGenAlgorithm()
+                3 -> TODO("runBranchAndPrice()")
+                else -> throw OrienteeringException("unknown algorithm type")
+            }
         }
-        logger.info("run completed")
+        logger.info("run completed, time: ${timeElapsedMillis / 1000.0} seconds")
     }
 
     /**
      * Function to run branch-and-price algorithm
      */
-    private fun runBranchAndPriceAlgorithm() {
+    private fun runColumnGenAlgorithm() {
         logger.info("starting the branch-and-price algorithm")
         initCPLEX()
         val bp = ColumnGenSolver(instance, parameters.numReducedCostColumns, cplex)

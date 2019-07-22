@@ -35,9 +35,9 @@ class CliParser : CliktCommand() {
 
     val algorithm: Int by option(
         "-a",
-        help = "1 for DSSR, 2 for branch-and-cut, 3 for branch-and-price"
+        help = "1 for branch-and-cut, 2 for column-gen, 3 for branch-and-price"
     )
-        .int().default(1).validate {
+        .int().default(2).validate {
             require(it in 1 until 4) {
                 "algorithm option can be in the set {1, 2, 3}"
             }

@@ -2,6 +2,8 @@ package orienteering.data
 
 import dubins.DubinsCurve
 import mu.KLogging
+import org.jgrapht.graph.DefaultWeightedEdge
+import org.jgrapht.graph.SimpleDirectedWeightedGraph
 import java.io.File
 import kotlin.math.PI
 import kotlin.math.sqrt
@@ -28,28 +30,26 @@ class InstanceDto(
      * @property lines lines that will be read from given set instance file
      * @property source constant for source vertex of network
      * @property destination constant for destination vertices of network
-     * @property pseudoSource additional pseudo source vertex to convert problem to a single source problem
-     * @property pseudoDestination additional pseudo destination vertex to convert problem to single destination problem
      * @property numVertices number of vertices in network
      * @property numTargets number of targets in problem instance
      * @property numVehicles number of vehicles
      * @property budget total budget
      * @property verticesInTarget map of target id to vertices corresponding to the target
      * @property targetOfVertex target id indexed by vertex id
+     * @property graph directed weighted graph containing all the information
      */
 
     private var instance: Instance
     private lateinit var lines: List<String>
     private var source = 0
     private var destination = 1
-    private var pseudoSource = 0
-    private var pseudoDestination = 1
     private var numVertices = 0
     private var numTargets = 0
     private var numVehicles = 0
     private var budget = 0.0
     private var verticesInTarget = mutableListOf<List<Int>>()
     private var targetOfVertex = mutableListOf<Int>()
+    private val graph = SimpleDirectedWeightedGraph<Int, DefaultWeightedEdge>(DefaultWeightedEdge::class.java)
 
     /**
      * Logger object.
@@ -124,27 +124,16 @@ class InstanceDto(
             }
         }
 
-        pseudoSource = numTargets
-        pseudoDestination = numTargets + 1
-        numTargets += 2
-
-        targetOfVertex.add(pseudoSource)
-        targetOfVertex.add(pseudoDestination)
-
-        verticesInTarget.add(listOf(numVertices))
-        verticesInTarget.add(listOf(numVertices + 1))
-        numVertices += 2
-
+        buildGraph(vertices)
 
         instance = Instance(
+            graph = graph,
             budget = budget,
-            sourceTarget = pseudoSource,
-            destinationTarget = pseudoDestination,
+            sourceTarget = source,
+            destinationTarget = destination,
             numVehicles = numVehicles,
             numTargets = numTargets,
-            numVertices = numVertices,
             vertexScores = buildScoreMap(),
-            edges = getEdges(vertices, budget),
             targetOfVertex = targetOfVertex,
             verticesInTarget = verticesInTarget
         )
@@ -157,33 +146,25 @@ class InstanceDto(
      *
      * @return built instance
      */
-    fun getInstance(): Instance {
-        return instance
-    }
+    fun getInstance(): Instance = instance
 
     /**
      * Collects lines from problem data file and update some variables for further parsing.
      */
-    private fun collectLinesFromFile() {
-        lines = File(path + name).readLines()
-    }
+    private fun collectLinesFromFile() { lines = File(path + name).readLines() }
 
     /**
      * Builds and returns a map of each target to its score (reward).
-     *
      * The score of a vertex is calculated as a function of the target score
-     *
      * @return scores indexed by vertex id.
      */
     private fun buildScoreMap(): MutableList<Double> {
         val targetScore: List<Double> = lines.subList(3, lines.size).map(::parseScore)
         val vertexScore: MutableList<Double> = MutableList(numVertices) { -1.0 }
-        for (i in 0 until numTargets - 2)
+        for (i in 0 until numTargets)
             for (j in 0 until numDiscretizations)
                 vertexScore[i * numDiscretizations + j] = targetScore[i]
 
-        vertexScore[numVertices - 2] = 0.0
-        vertexScore[numVertices - 1] = 0.0
         return vertexScore
     }
 
@@ -219,62 +200,47 @@ class InstanceDto(
     }
 
     /**
-     * Function to get the edges map
-     *
-     *  @param vertices list of Dubins coordinate object for each vertex
-     * @param budget orienteering problem budget
-     * @return edges as a map of map
+     * Function to build a simple directed graph and store all the edges
+     * populates the variable graph
+     * @param vertices list of Dubins coordinates of the vertices
      */
-    private fun getEdges(
-        vertices: MutableList<DubinsCoords>,
-        budget: Double
-    ): MutableMap<Int, MutableMap<Int, Double>> {
-        val edges = mutableMapOf<Int, MutableMap<Int, Double>>()
-        /* add all the edges that do not correspond to pseudoSource or pseudoDestination */
-        for (i in 0 until numVertices - 2) {
-            edges[i] = mutableMapOf()
-            val iTargetId = targetOfVertex[i]
-            if (iTargetId == destination) continue
-            val otherVertices = verticesInTarget[iTargetId]
-            for (j in 0 until numVertices - 2) {
-                val jTargetId = targetOfVertex[j]
-                if (jTargetId == source) continue
-                if (j in otherVertices) continue
+    private fun buildGraph(
+        vertices: MutableList<DubinsCoords>
+    ) {
+        /* add vertices to the graph */
+        for (i in 0 until numVertices)
+            graph.addVertex(i)
+        /* add the edges to the graph */
+        for (i in 0 until numVertices) {
+            /* no edges from destination */
+            if (targetOfVertex[i] == destination)
+                continue
+            val otherVertices = verticesInTarget[targetOfVertex[i]]
+            for (j in 0 until numVertices) {
+                /* no edges to source or same target vertices */
+                if (targetOfVertex[j] == source || j in otherVertices)
+                    continue
 
+                /* if number of discretizations is 1 then euclidean distance, else Dubins length */
                 if (numDiscretizations == 1) {
                     val edgeLength: Double = getEdgeLength(
                         Coords(vertices[i].x, vertices[i].y),
                         Coords(vertices[j].x, vertices[j].y)
                     )
                     if (edgeLength > budget) continue
-                    edges.getValue(i)[j] = edgeLength
+                    val edge = DefaultWeightedEdge()
+                    graph.addEdge(i, j, edge)
+                    graph.setEdgeWeight(edge, edgeLength)
                 } else {
                     val edgeLength: Double = getEdgeLength(vertices[i], vertices[j])
                     if (edgeLength > budget) continue
-                    edges.getValue(i)[j] = edgeLength
+                    val edge = DefaultWeightedEdge()
+                    graph.addEdge(i, j, edge)
+                    graph.setEdgeWeight(edge, edgeLength)
                 }
             }
-
-            if (edges[i]!!.isEmpty())
-                edges.remove(i)
-
-        }
-        /* add pseudoSource and pseudoDestination edges*/
-        for (i in verticesInTarget[pseudoSource]) {
-            edges[i] = mutableMapOf()
-            for (j in verticesInTarget[source]) {
-                edges.getValue(i)[j] = 0.0
-            }
         }
 
-        for (i in verticesInTarget[destination]) {
-            edges[i] = mutableMapOf()
-            for (j in verticesInTarget[pseudoDestination])
-                edges.getValue(i)[j] = 0.0
-        }
-
-        return edges
     }
-
 
 }
