@@ -90,7 +90,7 @@ class Controller {
     private fun runColumnGenAlgorithm() {
         logger.info("starting the branch-and-price algorithm")
         initCPLEX()
-        val bps = BranchAndPriceSolver()
+        val bps = BranchAndPriceSolver(instance, parameters.numReducedCostColumns, cplex)
         bps.solve()
         clearCPLEX()
         /*

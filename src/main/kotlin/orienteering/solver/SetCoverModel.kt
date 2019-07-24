@@ -118,6 +118,12 @@ class SetCoverModel(private var cplex: IloCplex) {
         }
     }
 
+    fun getSolution(): List<Double> {
+        return (0 until routeVariable.size).map {
+            cplex.getValue(routeVariable[it])
+        }
+    }
+
     /**
      * Function to get the route dual
      * @return Dual value

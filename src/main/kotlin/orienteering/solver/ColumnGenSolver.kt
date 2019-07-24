@@ -3,6 +3,7 @@ package orienteering.solver
 import ilog.cplex.IloCplex
 import mu.KLogging
 import orienteering.Constants
+import orienteering.OrienteeringException
 import orienteering.data.Instance
 import orienteering.data.Route
 import kotlin.math.absoluteValue
@@ -30,7 +31,7 @@ class ColumnGenSolver(
     /**
      * Final solution
      */
-    private lateinit var solution: List<Route>
+    private var solution = mutableListOf<Pair<Route, Double>>()
 
     /**
      * Runs the column generation algorithm.
@@ -40,7 +41,7 @@ class ColumnGenSolver(
      * pre-specified number of reduced cost columns. Optimality is reached with the pricing problem
      * solver fails to find any negative reduced cost columns.
      */
-    fun solve(): List<Route> {
+    fun solve(): List<Pair<Route, Double>> {
         // Both the route cover and target cover constraints are of the <= form. So, for a primal
         // solution of zero, all primal slacks are non-zero. So, the dual solution is also zero.
         // For this dual solution, the reduced cost of each target is simply the negative of the
@@ -62,7 +63,7 @@ class ColumnGenSolver(
             columnGenIteration++
         }
 
-        solveRestrictedMasterProblem(asMip = true)
+        // solveRestrictedMasterProblem(asMip = true)
         return solution
     }
 
@@ -100,11 +101,9 @@ class ColumnGenSolver(
         setCoverModel.createModel(instance, columns, asMip)
         setCoverModel.solve()
         if (asMip) {
-            solution = setCoverModel.getOptimalRouteIndices().map {
-                columns[it]
-            }
-            logger.info("solved restricted master MIP and stored solution")
+            throw OrienteeringException("do not solve set cover as MIP!!")
         } else {
+            // collect duals
             vehicleCoverDual = setCoverModel.getRouteDual()
             targetDuals = setCoverModel.getTargetDuals()
             for (i in 0 until targetDuals.size) {
@@ -112,7 +111,16 @@ class ColumnGenSolver(
                     logger.debug("dual of target $i: ${targetDuals[i]}")
                 }
             }
-            logger.info("solved restricted master LP and stored duals")
+
+            // collect solution
+            solution.clear()
+            val setCoverSolution = setCoverModel.getSolution()
+            for (i in 0 until setCoverSolution.size) {
+                if (setCoverSolution[i] >= Constants.EPS) {
+                    solution.add(Pair(columns[i], setCoverSolution[i]))
+                }
+            }
+            logger.info("solved restricted master LP")
         }
         setCoverModel.clearModel()
         logger.info("cleared model")
