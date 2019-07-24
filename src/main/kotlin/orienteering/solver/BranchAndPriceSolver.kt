@@ -4,7 +4,7 @@ import mu.KLogging
 import java.util.PriorityQueue
 
 class BranchAndPriceSolver {
-    private val openNodes = PriorityQueue<BranchNode>()
+    private val openNodes = PriorityQueue<Node>()
 
     fun solve() {
         logger.info("starting branch and price...")
