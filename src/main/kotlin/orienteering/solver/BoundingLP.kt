@@ -261,7 +261,7 @@ class BoundingLP(
         cplex.setParam(IloCplex.Param.MIP.Display, 2)
         cplex.setParam(IloCplex.Param.MIP.Limits.Nodes, 0)
         if (!cplex.solve())
-            throw RuntimeException("No feasible solution found")
+            throw RuntimeException("No feasible lpSolution found")
         logger.info("LP obj. value: ${cplex.bestObjValue}")
         logger.info("best MIP obj. value: ${cplex.objValue}")
     }

@@ -12,7 +12,7 @@ import orienteering.solver.BoundingLP
 import orienteering.solver.BranchAndPriceSolver
 
 /**
- * Manages the entire solution process.
+ * Manages the entire lpSolution process.
  */
 class Controller {
     private lateinit var instance: Instance
@@ -91,18 +91,14 @@ class Controller {
         logger.info("starting the branch-and-price algorithm")
         initCPLEX()
         val bps = BranchAndPriceSolver(instance, parameters.numReducedCostColumns, cplex)
-        bps.solve()
-        clearCPLEX()
-        /*
-        val bp = ColumnGenSolver(instance, parameters.numReducedCostColumns, cplex)
-        val solution = bp.solve()
+        val solution = bps.solve()
         logger.info("final solution:")
         for (route in solution) {
             logger.info(route.toString())
         }
         val totalScore = solution.sumByDouble { it.score }
         logger.info("final score: $totalScore")
-         */
+        clearCPLEX()
     }
 
     /**

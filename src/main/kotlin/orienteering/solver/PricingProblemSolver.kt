@@ -2,6 +2,8 @@ package orienteering.solver
 
 import mu.KLogging
 import org.jgrapht.Graphs
+import org.jgrapht.graph.DefaultWeightedEdge
+import org.jgrapht.graph.SimpleDirectedWeightedGraph
 import orienteering.Constants
 import orienteering.OrienteeringException
 import orienteering.data.Instance
@@ -30,12 +32,11 @@ class PricingProblemSolver(
     private val instance: Instance,
     private val routeDual: Double,
     private val targetReducedCosts: List<Double>,
-    private val numReducedCostColumns: Int
+    private val numReducedCostColumns: Int,
+    private val graph: SimpleDirectedWeightedGraph<Int, DefaultWeightedEdge>,
+    private val mustVisitTargets: List<Boolean>,
+    private val mustVisitEdges: List<Pair<Int, Int>>
 ) {
-    /**
-     * directed graph weighted with edge lengths
-     */
-    private val graph = instance.graph
     /**
      * Number of targets (i.e. vertex clusters) in given instance.
      */
@@ -388,6 +389,27 @@ class PricingProblemSolver(
         val joinedPath = mutableListOf<Int>()
         joinedPath.addAll(forwardState.getPartialPathVertices().asReversed())
         joinedPath.addAll(backwardState.getPartialPathVertices())
+
+        val visitedTargets = mutableSetOf<Int>()
+        val visitedEdges = mutableSetOf<Pair<Int, Int>>()
+        for (i in 0 until joinedPath.size) {
+            visitedTargets.add(instance.whichTarget(joinedPath[i]))
+            if (i != joinedPath.size - 1) {
+                visitedEdges.add(Pair(joinedPath[i], joinedPath[i+1]))
+            }
+        }
+
+        for (i in 0 until instance.numTargets) {
+            if (mustVisitTargets[i] && i !in visitedTargets) {
+                return false
+            }
+        }
+
+        for (edge in mustVisitEdges) {
+            if (edge !in visitedEdges) {
+                return false
+            }
+        }
 
         val routeLength = getJoinedPathLength(forwardState, backwardState)
         val route = Route(
