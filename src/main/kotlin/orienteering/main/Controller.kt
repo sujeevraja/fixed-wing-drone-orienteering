@@ -9,6 +9,7 @@ import orienteering.data.Parameters
 import orienteering.solver.ColumnGenSolver
 import kotlin.system.measureTimeMillis
 import orienteering.solver.BoundingLP
+import orienteering.solver.BranchAndPriceSolver
 
 /**
  * Manages the entire solution process.
@@ -70,7 +71,6 @@ class Controller {
             when (parameters.algorithm) {
                 1 -> runBranchAndCutAlgorithm()
                 2 -> runColumnGenAlgorithm()
-                3 -> TODO("runBranchAndPrice()")
                 else -> throw OrienteeringException("unknown algorithm type")
             }
         }
@@ -90,6 +90,10 @@ class Controller {
     private fun runColumnGenAlgorithm() {
         logger.info("starting the branch-and-price algorithm")
         initCPLEX()
+        val bps = BranchAndPriceSolver()
+        bps.solve()
+        clearCPLEX()
+        /*
         val bp = ColumnGenSolver(instance, parameters.numReducedCostColumns, cplex)
         val solution = bp.solve()
         logger.info("final solution:")
@@ -98,7 +102,7 @@ class Controller {
         }
         val totalScore = solution.sumByDouble { it.score }
         logger.info("final score: $totalScore")
-        clearCPLEX()
+         */
     }
 
     /**
