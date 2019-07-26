@@ -5,8 +5,8 @@ package orienteering
 
 import org.junit.jupiter.api.Test
 import orienteering.data.InstanceDto
+import orienteering.data.numVertices
 import kotlin.test.assertEquals
-import kotlin.test.assertNull
 
 class InstanceTests {
     @Test fun `instance reading`() {
@@ -15,13 +15,10 @@ class InstanceTests {
                 "./data/Set_21_234/",
                 2, 1.0).getInstance()
         assertEquals(instance.budget, 7.5)
-        assertEquals(instance.numTargets, 23)
-        assertEquals(instance.numVertices, 44)
-        assertEquals(instance.sourceTarget, 21)
-        assertEquals(instance.destinationTarget, 22)
-        assertEquals(instance.getAdjacentVertices(40)!!.size, 1)
-        assertEquals(instance.getAdjacentVertices(42)!!.size, 2)
-        assertNull(instance.getAdjacentVertices(43))
+        assertEquals(instance.numTargets, 21)
+        assertEquals(instance.graph.numVertices(), 42)
+        assertEquals(instance.sourceTarget, 0)
+        assertEquals(instance.destinationTarget, 20)
     }
 
 }

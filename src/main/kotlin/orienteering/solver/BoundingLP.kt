@@ -4,15 +4,12 @@ import ilog.concert.IloLinearNumExpr
 import ilog.concert.IloNumVar
 import ilog.cplex.IloCplex
 import mu.KLogging
-import org.jgrapht.GraphPath
 import org.jgrapht.Graphs
 import org.jgrapht.graph.DefaultWeightedEdge
 import org.jgrapht.graph.SimpleDirectedWeightedGraph
 
 import orienteering.data.Instance
 import orienteering.data.numVertices
-import org.jgrapht.alg.shortestpath.AllDirectedPaths
-import org.jgrapht.graph.DefaultEdge
 
 
 
