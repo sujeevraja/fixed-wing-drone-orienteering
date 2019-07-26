@@ -33,18 +33,12 @@ dependencies {
     implementation("org.apache.logging.log4j:log4j-slf4j-impl:2.9.1")
     implementation("org.apache.logging.log4j:log4j-api:2.9.1")
     implementation("org.apache.logging.log4j:log4j-core:2.9.1")
-
+ 
     // Use clikt (command line parser for kotlin) library
     implementation("com.github.ajalt:clikt:2.0.0")
 
     // use JGraphT library
     implementation("org.jgrapht:jgrapht-core:1.3.0")
-
-    // YAML serialization
-    implementation("com.charleskorn.kaml:kaml:0.11.0")
-
-    // Sqlite database
-    implementation("org.jetbrains.exposed:exposed:0.16.3")
 
     compileClasspath("org.junit.platform:junit-platform-gradle-plugin:1.0.0-M3")
 
@@ -54,10 +48,8 @@ dependencies {
     // Use the Kotlin test library.
     testImplementation("org.jetbrains.kotlin:kotlin-test")
 
-
     // Use the Kotlin JUnit integration.
     testImplementation("org.junit.jupiter:junit-jupiter:5.4.2")
-//    testImplementation("org.jetbrains.kotlin:kotlin-test-junit")
 
 }
 

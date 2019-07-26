@@ -78,6 +78,13 @@ class Controller {
     }
 
     /**
+     * Function to dump the results in a YAML file
+     */
+    fun populateRunStatistics() {
+
+    }
+
+    /**
      * Function to run branch-and-price algorithm
      */
     private fun runColumnGenAlgorithm() {
