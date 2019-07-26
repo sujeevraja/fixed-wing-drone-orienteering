@@ -43,6 +43,9 @@ dependencies {
     // YAML serialization
     implementation("com.charleskorn.kaml:kaml:0.11.0")
 
+    // Sqlite database
+    implementation("org.jetbrains.exposed:exposed:0.16.3")
+
     compileClasspath("org.junit.platform:junit-platform-gradle-plugin:1.0.0-M3")
 
     val cplexJarPath: String by project
