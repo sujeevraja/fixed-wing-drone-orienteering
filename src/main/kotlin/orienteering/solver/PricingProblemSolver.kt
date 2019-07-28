@@ -104,12 +104,14 @@ class PricingProblemSolver(
      * @return list of elementaryRoutes with negative reduced cost.
      */
     fun generateColumns() {
+        /*
         logger.debug("vehicle cover dual: $routeDual")
         for (i in 0 until numTargets) {
             if (targetReducedCosts[i].absoluteValue >= Constants.EPS) {
                 logger.debug("reduced cost of target: $i: ${targetReducedCosts[i]}")
             }
         }
+         */
         logger.debug("starting column generation...")
 
         // Store source states.
@@ -145,8 +147,14 @@ class PricingProblemSolver(
 
             val stopSearch = search()
             if (stopSearch) {
-                logger.debug("----- STOP column search")
+                logger.debug("----- STOP column search due to #columns limit")
                 break
+            }
+
+            if (elementaryRoutes.isNotEmpty()) {
+                logger.debug("----- STOP column search due to elementary route existence")
+                break
+
             }
 
             multipleVisits()
@@ -418,17 +426,21 @@ class PricingProblemSolver(
         var printed = false
         if (optimalRoute == null || reducedCost <= optimalRoute!!.reducedCost - Constants.EPS) {
             optimalRoute = route
+            /*
             logger.debug("join at ${forwardState.vertex} -> ${backwardState.vertex}")
             printed = true
             logger.debug("opt update: $route")
+             */
         }
 
         if (!hasCycle(joinedPath) && (route !in elementaryRoutes)) {
             elementaryRoutes.add(route)
+            /*
             if (!printed) {
                 logger.debug("join at ${forwardState.vertex} -> ${backwardState.vertex}")
             }
             logger.debug("ele update: $route")
+             */
             if (elementaryRoutes.size >= numReducedCostColumns) {
                 return true
             }

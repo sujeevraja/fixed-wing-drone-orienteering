@@ -117,6 +117,7 @@ class ColumnGenSolver(
      */
     private fun solveRestrictedMasterProblem(asMip: Boolean = false) {
         logger.info("starting to solve restricted master problem...")
+        logger.debug("number of columns: ${columns.size}")
         val setCoverModel = SetCoverModel(cplex)
         setCoverModel.createModel(instance, columns, asMip)
         setCoverModel.solve()

@@ -99,12 +99,13 @@ class SetCoverModel(private var cplex: IloCplex) {
      */
     fun solve() {
         cplex.setOut(null)
-        cplex.exportModel("logs/set_cover.lp")
+        // cplex.exportModel("logs/set_cover.lp")
         if (!cplex.solve()) {
             throw OrienteeringException("Set covering problem infeasible")
         }
         objective = cplex.objValue
         logger.debug("set cover objective: $objective")
+        /*
         logger.debug("----- lpSolution print start")
         for (i in 0 until routeVariable.size) {
             val solutionValue = cplex.getValue(routeVariable[i])
@@ -113,6 +114,7 @@ class SetCoverModel(private var cplex: IloCplex) {
             }
         }
         logger.debug("----- lpSolution print end")
+         */
     }
 
     fun getSolution(): List<Double> {

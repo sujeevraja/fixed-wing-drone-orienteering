@@ -24,6 +24,8 @@ class BranchAndPriceSolver(
         initialize()
         while (openNodes.isNotEmpty()) {
             val node = openNodes.remove()
+            logger.debug("checking node ${node.index} status")
+            node.logInfo()
 
             // If solution is integral, prune node by optimality.
             if (isIntegral(node.lpSolution)) {
@@ -56,11 +58,16 @@ class BranchAndPriceSolver(
             var bestTarget: Int? = null
             var leastReducedCost: Double? = null
             for (i in 0 until targetFlows.size) {
-                if (isInteger(targetFlows[i])) {
+                if (i == instance.sourceTarget ||
+                    i == instance.destinationTarget ||
+                    isInteger(targetFlows[i])
+                ) {
                     continue
                 }
 
-                if (bestTarget == null || node.targetReducedCosts[i] <= leastReducedCost!! - Constants.EPS) {
+                if (bestTarget == null ||
+                    node.targetReducedCosts[i] <= leastReducedCost!! - Constants.EPS
+                ) {
                     bestTarget = i
                     leastReducedCost = node.targetReducedCosts[i]
                 }
@@ -70,6 +77,8 @@ class BranchAndPriceSolver(
             if (bestTarget != null) {
                 val childNodes = node.branchOnTarget(bestTarget, instance.getVertices(bestTarget))
                 for (childNode in childNodes) {
+                    logger.debug("solving LP for child node $childNode")
+                    childNode.logInfo()
                     childNode.solve(instance, numReducedCostColumns, cplex)
                     openNodes.add(childNode)
                 }
@@ -97,6 +106,8 @@ class BranchAndPriceSolver(
             val bestToVertex = bestEdge.second
             val childNodes = node.branchOnEdge(bestFromVertex, bestToVertex, instance)
             for (childNode in childNodes) {
+                logger.debug("solving LP for child node $childNode")
+                childNode.logInfo()
                 childNode.solve(instance, numReducedCostColumns, cplex)
                 openNodes.add(childNode)
             }

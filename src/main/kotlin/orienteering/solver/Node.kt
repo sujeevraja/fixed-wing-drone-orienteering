@@ -15,6 +15,8 @@ class Node private constructor(
     private val mustVisitTargets: List<Boolean>,
     private val mustVisitEdges: List<Pair<Int, Int>>
 ) : Comparable<Node> {
+    val index = getNodeIndex()
+
     var lpObjective = -Double.MAX_VALUE
         private set
 
@@ -30,8 +32,29 @@ class Node private constructor(
     lateinit var targetReducedCosts: List<Double>
         private set
 
+    override fun toString(): String {
+        return "Node($index)"
+    }
+
+    fun logInfo() {
+        logger.debug("index: $index")
+        logger.debug("vertices: ${graph.vertexSet()}")
+        val enforcedTargets =
+            (0 until mustVisitTargets.size).filter { mustVisitTargets[it] }.toList()
+        logger.debug("must visit targets: $enforcedTargets")
+        logger.debug("must visit edges: $mustVisitEdges")
+    }
+
     fun solve(instance: Instance, numReducedCostColumns: Int, cplex: IloCplex) {
-        val cgSolver = ColumnGenSolver(instance, numReducedCostColumns, cplex, graph, mustVisitTargets, mustVisitEdges)
+        logger.debug("solving node number $index")
+        val cgSolver = ColumnGenSolver(
+            instance,
+            numReducedCostColumns,
+            cplex,
+            graph,
+            mustVisitTargets,
+            mustVisitEdges
+        )
         cgSolver.solve()
 
         lpObjective = cgSolver.lpObjective
@@ -48,11 +71,13 @@ class Node private constructor(
             reducedGraph.removeVertex(vertex)
         }
         val noVisitNode = Node(reducedGraph, mustVisitTargets, mustVisitEdges)
+        logger.debug("$this target-child without target $target: $noVisitNode")
 
         // create a node by enforcing a visit to the target.
         val newMustVisitTargets = mustVisitTargets.toMutableList()
         newMustVisitTargets[target] = true
         val mustVisitNode = Node(graph, newMustVisitTargets, mustVisitEdges)
+        logger.debug("$this target-child with target $target: $mustVisitNode")
 
         return listOf(noVisitNode, mustVisitNode)
     }
@@ -66,11 +91,13 @@ class Node private constructor(
             val reducedGraph = graph.getCopy()
             reducedGraph.removeEdge(reducedGraph.getEdge(fromVertex, toVertex))
             val noVisitNode = Node(reducedGraph, mustVisitTargets, mustVisitEdges)
+            logger.debug("$this edge-child without edge ($fromVertex -> $toVertex): $noVisitNode")
 
             // Create a node by enforcing a visit to "toVertex".
             val newMustVisitEdges = mustVisitEdges.toMutableList()
             newMustVisitEdges.add(Pair(fromVertex, toVertex))
             val mustVisitNode = Node(graph, mustVisitTargets, newMustVisitEdges)
+            logger.debug("$this edge-child with edge ($fromVertex -> $toVertex): $noVisitNode")
 
             return listOf(noVisitNode, mustVisitNode)
         } else {
@@ -82,6 +109,7 @@ class Node private constructor(
                 reducedGraph.removeVertex(vertex)
             }
             childNodes.add(Node(reducedGraph, mustVisitTargets, mustVisitEdges))
+            logger.debug("$this edge-child without target $fromVertex: ${childNodes.last()}")
 
             // Create a node by enforcing a visit to fromTarget and prohibiting visit to the edge.
             val newMustVisitTargets = mustVisitTargets.toMutableList()
@@ -89,11 +117,13 @@ class Node private constructor(
             val edgeReducedGraph = graph.getCopy()
             edgeReducedGraph.removeEdge(edgeReducedGraph.getEdge(fromVertex, toVertex))
             childNodes.add(Node(edgeReducedGraph, newMustVisitTargets, mustVisitEdges))
+            logger.debug("$this edge-child with target $fromVertex, without edge ($fromVertex -> $toVertex): ${childNodes.last()}")
 
             // Create a node by enforcing a visit to fromTarget and the edge.
             val newMustVisitEdges = mustVisitEdges.toMutableList()
             newMustVisitEdges.add(Pair(fromVertex, toVertex))
             childNodes.add(Node(graph, newMustVisitTargets, newMustVisitEdges))
+            logger.debug("$this edge-child with target $fromVertex, with edge ($fromVertex -> $toVertex): ${childNodes.last()}")
 
             return childNodes
         }
@@ -108,8 +138,18 @@ class Node private constructor(
     }
 
     companion object : KLogging() {
-        fun buildRootNode(graph: SimpleDirectedWeightedGraph<Int, DefaultWeightedEdge>, numTargets: Int): Node {
+        fun buildRootNode(
+            graph: SimpleDirectedWeightedGraph<Int, DefaultWeightedEdge>,
+            numTargets: Int
+        ): Node {
             return Node(graph, List(numTargets) { false }, listOf())
+        }
+
+        private var nodeCount = 0
+
+        fun getNodeIndex(): Int {
+            nodeCount++
+            return nodeCount -1
         }
     }
 }
