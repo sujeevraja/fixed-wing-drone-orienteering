@@ -15,7 +15,9 @@ class BoundingLP(
     private val instance: Instance,
     private var cplex: IloCplex,
     private val targetDuals: List<Double> = listOf(),
-    private val updatedGraph: SimpleDirectedWeightedGraph<Int, DefaultWeightedEdge> = instance.graph
+    private val updatedGraph: SimpleDirectedWeightedGraph<Int, DefaultWeightedEdge> = instance.graph,
+    private val mustVisitTargets: List<Int> = listOf(),
+    private val mustVisitEdges: List<Pair<Int, Int>> = listOf()
 ) {
     /**
      * Binary decision variables for each edge
@@ -28,11 +30,11 @@ class BoundingLP(
     /**
      * vertexVariable indicator variable for each vertex
      */
-    private lateinit var vertexVariable: ArrayList<IloNumVar>
+    private lateinit var vertexVariable: MutableMap<Int, IloNumVar>
     /**
-     * profit (reduced costs)
+     * profit
      */
-    private lateinit var profit: ArrayList<Double>
+    private lateinit var profit: MutableMap<Int, Double>
 
     /**
      * Companion object.
@@ -62,12 +64,12 @@ class BoundingLP(
      */
     private fun addEdgeVariables() {
         edgeVariable = mutableMapOf()
-        for (i in 0 until updatedGraph.numVertices()) {
-            val adjacentVertices: MutableList<Int> = Graphs.successorListOf(updatedGraph, i)
+        updatedGraph.vertexSet().iterator().forEach {
+            val adjacentVertices: MutableList<Int> = Graphs.successorListOf(updatedGraph, it)
             if (!adjacentVertices.isEmpty()) {
-                edgeVariable[i] = mutableMapOf()
+                edgeVariable[it] = mutableMapOf()
                 for (j in adjacentVertices)
-                    edgeVariable.getValue(i)[j] = cplex.boolVar("x_${i}_$j")
+                    edgeVariable.getValue(it)[j] = cplex.boolVar("x_${it}_$j")
             }
         }
     }
@@ -76,13 +78,11 @@ class BoundingLP(
      * Function to add the indicator variable for each vertex
      */
     private fun addVertexVariables() {
-        vertexVariable = arrayListOf()
-        profit = arrayListOf()
-        for (i in 0 until updatedGraph.numVertices()) {
-            vertexVariable.add(cplex.boolVar("y_$i"))
-            val score = instance.getScore(i)
-            val dual = targetDuals[instance.whichTarget(i)]
-            profit.add(dual - score)
+        vertexVariable = mutableMapOf()
+        profit = mutableMapOf()
+        updatedGraph.vertexSet().iterator().forEach {
+            vertexVariable[it] = cplex.boolVar("y_$it")
+            profit[it] = instance.getScore(it)
         }
     }
 
@@ -91,12 +91,12 @@ class BoundingLP(
      */
     private fun addLengthVariables() {
         lengthVariable = mutableMapOf()
-        for (i in 0 until updatedGraph.numVertices()) {
-            val adjacentVertices: MutableList<Int> = Graphs.successorListOf(updatedGraph, i)
+        updatedGraph.vertexSet().iterator().forEach {
+            val adjacentVertices: MutableList<Int> = Graphs.successorListOf(updatedGraph, it)
             if (!adjacentVertices.isEmpty()) {
-                lengthVariable[i] = mutableMapOf()
+                lengthVariable[it] = mutableMapOf()
                 for (j in adjacentVertices)
-                    lengthVariable.getValue(i)[j] = cplex.numVar(0.0, Double.MAX_VALUE, "z_${i}_$j")
+                    lengthVariable.getValue(it)[j] = cplex.numVar(0.0, Double.MAX_VALUE, "z_${it}_$j")
             }
         }
     }
@@ -108,7 +108,7 @@ class BoundingLP(
         addDegreeConstraints()
         addAssignmentConstraints()
         addLengthConstraints()
-        addVertexVisitConstraints()
+        addEdgeVisitConstraints()
     }
 
     /**
@@ -118,24 +118,25 @@ class BoundingLP(
      * for destination target (in degree (t) = m)
      */
     private fun addDegreeConstraints() {
-        for (i in 0 until updatedGraph.numVertices()) {
-            if (instance.whichTarget(i) == instance.sourceTarget || i == instance.destinationTarget)
-                continue
+        updatedGraph.vertexSet().iterator().forEach {
+            if (instance.whichTarget(it) == instance.sourceTarget ||
+                instance.whichTarget(it) == instance.destinationTarget)
+                return@forEach
 
             val inExpression: IloLinearNumExpr = cplex.linearNumExpr()
-            val predecessors: List<Int> = Graphs.predecessorListOf(updatedGraph, i)
+            val predecessors: List<Int> = Graphs.predecessorListOf(updatedGraph, it)
             for (j in predecessors)
-                inExpression.addTerm(1.0, edgeVariable[j]?.get(i))
-            inExpression.addTerm(-1.0, vertexVariable[i])
-            cplex.addEq(inExpression, 0.0, "in_degree_$i")
+                inExpression.addTerm(1.0, edgeVariable[j]?.get(it))
+            inExpression.addTerm(-1.0, vertexVariable[it])
+            cplex.addEq(inExpression, 0.0, "in_degree_$it")
             inExpression.clear()
 
             val outExpression: IloLinearNumExpr = cplex.linearNumExpr()
-            val successors: List<Int> = Graphs.successorListOf(updatedGraph, i)
+            val successors: List<Int> = Graphs.successorListOf(updatedGraph, it)
             for (j in successors)
-                outExpression.addTerm(1.0, edgeVariable[i]?.get(j))
-            outExpression.addTerm(-1.0, vertexVariable[i])
-            cplex.addEq(outExpression, 0.0, "out_degree_$i")
+                outExpression.addTerm(1.0, edgeVariable[it]?.get(j))
+            outExpression.addTerm(-1.0, vertexVariable[it])
+            cplex.addEq(outExpression, 0.0, "out_degree_$it")
             outExpression.clear()
         }
 
@@ -167,10 +168,21 @@ class BoundingLP(
         for (i in 0 until instance.numTargets) {
             if (i == instance.sourceTarget || i == instance.destinationTarget) continue
             val vertices = instance.getVertices(i)
+            val updatedVertices: MutableList<Int> = mutableListOf()
+            for (vertex in vertices) {
+                if (updatedGraph.containsVertex(vertex))
+                    updatedVertices.add(vertex)
+            }
+            if (updatedVertices.isEmpty()) continue
             val targetExpression: IloLinearNumExpr = cplex.linearNumExpr()
-            for (vertex in vertices)
-                targetExpression.addTerm(1.0, vertexVariable[vertex])
-            cplex.addLe(targetExpression, 1.0, "assignment_$i")
+            for (vertex in updatedVertices) {
+                if (updatedGraph.containsVertex(vertex))
+                    targetExpression.addTerm(1.0, vertexVariable[vertex])
+            }
+            if (i in mustVisitTargets)
+                cplex.addEq(targetExpression, 1.0, "assignment_$i")
+            else
+                cplex.addLe(targetExpression, 1.0, "assignment_$i")
             targetExpression.clear()
         }
     }
@@ -195,40 +207,40 @@ class BoundingLP(
             }
         }
 
-        for (i in 0 until updatedGraph.numVertices()) {
-            if (instance.whichTarget(i) == instance.sourceTarget) continue
-            val adjacentVertices: MutableList<Int> = Graphs.successorListOf(updatedGraph, i)
+        updatedGraph.vertexSet().iterator().forEach {
+            if (instance.whichTarget(it) == instance.sourceTarget) return@forEach
+            val adjacentVertices: MutableList<Int> = Graphs.successorListOf(updatedGraph, it)
             if (!adjacentVertices.isEmpty()) {
                 for (j in adjacentVertices) {
                     val constraintExpression: IloLinearNumExpr = cplex.linearNumExpr()
-                    constraintExpression.addTerm(1.0, lengthVariable[i]?.get(j))
+                    constraintExpression.addTerm(1.0, lengthVariable[it]?.get(j))
                     constraintExpression.addTerm(
                         -instance.budget,
-                        edgeVariable[i]?.get(j)
+                        edgeVariable[it]?.get(j)
                     )
-                    cplex.addLe(constraintExpression, 0.0, "fuel_bound_${i}_$j")
+                    cplex.addLe(constraintExpression, 0.0, "fuel_bound_${it}_$j")
                 }
             }
         }
 
-        for (i in 0 until updatedGraph.numVertices()) {
-            val target = instance.whichTarget(i)
+        updatedGraph.vertexSet().iterator().forEach {
+            val target = instance.whichTarget(it)
             if (target == instance.sourceTarget || target == instance.destinationTarget)
-                continue
-            val successors: List<Int> = Graphs.successorListOf(updatedGraph, i)
-            val predecessors: List<Int> = Graphs.predecessorListOf(updatedGraph, i)
+                return@forEach
+            val successors: List<Int> = Graphs.successorListOf(updatedGraph, it)
+            val predecessors: List<Int> = Graphs.predecessorListOf(updatedGraph, it)
             val constraintExpression: IloLinearNumExpr = cplex.linearNumExpr()
             for (j in successors) {
-                val edge = updatedGraph.getEdge(i, j)
-                constraintExpression.addTerm(1.0, lengthVariable[i]?.get(j))
+                val edge = updatedGraph.getEdge(it, j)
+                constraintExpression.addTerm(1.0, lengthVariable[it]?.get(j))
                 constraintExpression.addTerm(
                     -updatedGraph.getEdgeWeight(edge),
-                    edgeVariable[i]?.get(j)
+                    edgeVariable[it]?.get(j)
                 )
             }
             for (j in predecessors)
-                constraintExpression.addTerm(-1.0, lengthVariable[j]?.get(i))
-            cplex.addEq(constraintExpression, 0.0, "length_$i")
+                constraintExpression.addTerm(-1.0, lengthVariable[j]?.get(it))
+            cplex.addEq(constraintExpression, 0.0, "length_$it")
         }
 
     }
@@ -236,7 +248,8 @@ class BoundingLP(
     /** Function to visit mandatory vertices
      *
      */
-    private fun addVertexVisitConstraints() {
+    private fun addEdgeVisitConstraints() {
+        mustVisitEdges.forEach { cplex.addEq(edgeVariable[it.first]!![it.second], 1.0) }
         return
     }
 
@@ -245,9 +258,10 @@ class BoundingLP(
      */
     private fun addObjective() {
         val objective: IloLinearNumExpr = cplex.linearNumExpr()
-        for (i in 0 until updatedGraph.numVertices())
-            objective.addTerm(profit[i], vertexVariable[i])
-        cplex.addMinimize(objective)
+        updatedGraph.vertexSet().iterator().forEach {
+            objective.addTerm(profit[it]!!, vertexVariable[it])
+        }
+        cplex.addMaximize(objective)
     }
 
     /**
