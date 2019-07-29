@@ -24,7 +24,9 @@ class BranchAndPriceSolver(
         initialize()
         while (openNodes.isNotEmpty()) {
             val node = openNodes.remove()
-            logger.debug("checking node ${node.index} status")
+            logger.debug("processing $node")
+            logger.debug("upper bound: $upperBound")
+            logger.debug("lower bound: $lowerBound")
             node.logInfo()
 
             // If solution is integral, prune node by optimality.
@@ -33,6 +35,9 @@ class BranchAndPriceSolver(
                     lowerBound = node.lpObjective
                     bestFeasibleSolution = node.lpSolution.map { it.first }
                 }
+                logger.debug("$node pruned by optimality (integral LP solution)")
+                logger.debug("upper bound: $upperBound")
+                logger.debug("lower bound: $lowerBound")
                 continue
             }
 
@@ -80,13 +85,21 @@ class BranchAndPriceSolver(
                     logger.debug("solving LP for child node $childNode")
                     childNode.logInfo()
                     if (!childNode.isFeasible(instance)) {
-                        logger.debug("Node $childNode pruned by infeasibility")
+                        logger.debug("$childNode pruned by infeasibility")
                     } else {
                         childNode.solve(instance, numReducedCostColumns, cplex)
-                        openNodes.add(childNode)
+                        if (childNode.lpObjective <= lowerBound + Constants.EPS) {
+                            logger.debug("$childNode pruned by bound")
+                        } else {
+                            openNodes.add(childNode)
+                        }
                     }
                 }
-                upperBound = openNodes.peek().lpObjective
+                if (openNodes.isNotEmpty()) {
+                    upperBound = openNodes.peek().lpObjective
+                }
+                logger.debug("upper bound: $upperBound")
+                logger.debug("lower bound: $lowerBound")
                 continue
             }
 
@@ -113,13 +126,19 @@ class BranchAndPriceSolver(
                 logger.debug("solving LP for child node $childNode")
                 childNode.logInfo()
                 if (!childNode.isFeasible(instance)) {
-                    logger.debug("Node $childNode pruned by infeasibility")
+                    logger.debug("$childNode pruned by infeasibility")
                 } else {
                     childNode.solve(instance, numReducedCostColumns, cplex)
-                    openNodes.add(childNode)
+                    if (childNode.lpObjective <= lowerBound + Constants.EPS) {
+                        logger.debug("$childNode pruned by bound")
+                    } else {
+                        openNodes.add(childNode)
+                    }
                 }
             }
             upperBound = openNodes.peek().lpObjective
+            logger.debug("upper bound: $upperBound")
+            logger.debug("lower bound: $lowerBound")
         }
         return bestFeasibleSolution
     }

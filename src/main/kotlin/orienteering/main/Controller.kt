@@ -51,7 +51,6 @@ class Controller {
      */
     private fun initCPLEX() {
         cplex = IloCplex()
-        logger.info("initialized CPLEX")
     }
 
     /**
@@ -60,7 +59,6 @@ class Controller {
     private fun clearCPLEX() {
         cplex.clearModel()
         cplex.end()
-        logger.info("cleared CPLEX")
     }
 
     /**

@@ -104,8 +104,8 @@ class ColumnGenSolver(
         if (routes.isEmpty()) {
             logger.info("no reduced cost columns found")
         } else {
-            val bestRoute = routes.minBy { it.reducedCost }
-            logger.info("least reduced cost route: $bestRoute")
+            // val bestRoute = routes.minBy { it.reducedCost }
+            // logger.info("least reduced cost route: $bestRoute")
         }
         return pricingProblemSolver.elementaryRoutes
     }
@@ -124,6 +124,7 @@ class ColumnGenSolver(
         if (asMip) {
             // collect MIP solution
             mipObjective = setCoverModel.objective
+            logger.debug("MIP objective: $mipObjective")
             val setCoverSolution = setCoverModel.getSolution()
             val selectedRoutes = mutableListOf<Route>()
             for (i in 0 until setCoverSolution.size) {
@@ -132,7 +133,7 @@ class ColumnGenSolver(
                 }
             }
             mipSolution = selectedRoutes
-            logger.info("solved restricted master MIP")
+            // logger.info("solved restricted master MIP")
         } else {
             // collect duals
             vehicleCoverDual = setCoverModel.getRouteDual()
@@ -143,6 +144,7 @@ class ColumnGenSolver(
 
             // collect LP solution
             lpObjective = setCoverModel.objective
+            logger.debug("LP objective: $lpObjective")
             lpSolution.clear()
             val setCoverSolution = setCoverModel.getSolution()
             for (i in 0 until setCoverSolution.size) {
@@ -150,10 +152,9 @@ class ColumnGenSolver(
                     lpSolution.add(Pair(columns[i], setCoverSolution[i]))
                 }
             }
-            logger.info("solved restricted master LP")
+            // logger.info("solved restricted master LP")
         }
         cplex.clearModel()
-        logger.info("cleared CPLEX")
     }
 
     /**

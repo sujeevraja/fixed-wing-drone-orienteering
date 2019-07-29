@@ -111,8 +111,8 @@ class PricingProblemSolver(
                 logger.debug("reduced cost of target: $i: ${targetReducedCosts[i]}")
             }
         }
-         */
         logger.debug("starting column generation...")
+         */
 
         // Store source states.
         for (srcVertex in srcVertices) {
@@ -154,7 +154,6 @@ class PricingProblemSolver(
             if (elementaryRoutes.isNotEmpty()) {
                 logger.debug("----- STOP column search due to elementary route existence")
                 break
-
             }
 
             multipleVisits()
@@ -162,7 +161,7 @@ class PricingProblemSolver(
             searchIteration++
         } while (isVisitedMultipleTimes.any { it })
 
-        logger.debug("completed column generation.")
+        // logger.debug("completed column generation.")
     }
 
     private fun initializeIteration() {

@@ -104,8 +104,8 @@ class SetCoverModel(private var cplex: IloCplex) {
             throw OrienteeringException("Set covering problem infeasible")
         }
         objective = cplex.objValue
-        logger.debug("set cover objective: $objective")
         /*
+        logger.debug("set cover objective: $objective")
         logger.debug("----- lpSolution print start")
         for (i in 0 until routeVariable.size) {
             val solutionValue = cplex.getValue(routeVariable[i])

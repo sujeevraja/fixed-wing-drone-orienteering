@@ -62,7 +62,7 @@ class State private constructor(
     /**
      * Assumes that this and other have the same incident vertex.
      */
-    fun dominates(other: State): Boolean {
+    fun dominates(other: State, relaxVisitCheck: Boolean = true): Boolean {
         var strict = false
         if (reducedCost >= other.reducedCost + Constants.EPS) {
             return false
@@ -77,17 +77,19 @@ class State private constructor(
             strict = true
         }
 
-        for (i in 0 until visitedBits.size) {
-            // Following condition is satisfied when "this" visits a critical target and "other"
-            // does not. So, "this" does not dominate the "other".
-            if (visitedBits[i] and other.visitedBits[i].inv() != 0L) {
-                return false
-            }
+        if (relaxVisitCheck) {
+            for (i in 0 until visitedBits.size) {
+                // Following condition is satisfied when "this" visits a critical target and "other"
+                // does not. So, "this" does not dominate the "other".
+                if (visitedBits[i] and other.visitedBits[i].inv() != 0L) {
+                    return false
+                }
 
-            // Following condition is satisfied when "this" does not visit a critical target and
-            // "other" does. So, "this" strictly dominates "other".
-            if (!strict && (visitedBits[i].inv() and other.visitedBits[i] != 0L)) {
-                strict = true
+                // Following condition is satisfied when "this" does not visit a critical target and
+                // "other" does. So, "this" strictly dominates "other".
+                if (!strict && (visitedBits[i].inv() and other.visitedBits[i] != 0L)) {
+                    strict = true
+                }
             }
         }
 
