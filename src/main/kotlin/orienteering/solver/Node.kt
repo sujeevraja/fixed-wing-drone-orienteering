@@ -45,6 +45,26 @@ class Node private constructor(
         logger.debug("must visit edges: $mustVisitEdges")
     }
 
+    fun isFeasible(instance: Instance): Boolean {
+        // Check if source target has at least 1 outgoing edge.
+        val sourceEdgeExists = instance.getVertices(instance.sourceTarget).any {
+            graph.containsVertex(it) && Graphs.vertexHasSuccessors(graph, it)
+        }
+        if (!sourceEdgeExists) {
+            return false
+        }
+
+        // Check if destination target has at least 1 incoming edge.
+        val destinationEdgeExists = instance.getVertices(instance.destinationTarget).any {
+            graph.containsVertex(it) && Graphs.vertexHasPredecessors(graph, it)
+        }
+        if (!destinationEdgeExists) {
+            return false
+        }
+
+        return true
+    }
+
     fun solve(instance: Instance, numReducedCostColumns: Int, cplex: IloCplex) {
         logger.debug("solving node number $index")
         val cgSolver = ColumnGenSolver(

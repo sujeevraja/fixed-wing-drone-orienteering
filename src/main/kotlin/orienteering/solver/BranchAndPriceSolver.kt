@@ -6,7 +6,7 @@ import orienteering.Constants
 import orienteering.OrienteeringException
 import orienteering.data.Instance
 import orienteering.data.Route
-import java.util.PriorityQueue
+import java.util.*
 import kotlin.math.absoluteValue
 import kotlin.math.round
 
@@ -79,8 +79,12 @@ class BranchAndPriceSolver(
                 for (childNode in childNodes) {
                     logger.debug("solving LP for child node $childNode")
                     childNode.logInfo()
-                    childNode.solve(instance, numReducedCostColumns, cplex)
-                    openNodes.add(childNode)
+                    if (!childNode.isFeasible(instance)) {
+                        logger.debug("Node $childNode pruned by infeasibility")
+                    } else {
+                        childNode.solve(instance, numReducedCostColumns, cplex)
+                        openNodes.add(childNode)
+                    }
                 }
                 upperBound = openNodes.peek().lpObjective
                 continue
@@ -108,8 +112,12 @@ class BranchAndPriceSolver(
             for (childNode in childNodes) {
                 logger.debug("solving LP for child node $childNode")
                 childNode.logInfo()
-                childNode.solve(instance, numReducedCostColumns, cplex)
-                openNodes.add(childNode)
+                if (!childNode.isFeasible(instance)) {
+                    logger.debug("Node $childNode pruned by infeasibility")
+                } else {
+                    childNode.solve(instance, numReducedCostColumns, cplex)
+                    openNodes.add(childNode)
+                }
             }
             upperBound = openNodes.peek().lpObjective
         }
