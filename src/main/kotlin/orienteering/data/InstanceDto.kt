@@ -7,6 +7,7 @@ import org.jgrapht.graph.SimpleDirectedWeightedGraph
 import java.io.File
 import kotlin.math.PI
 import kotlin.math.sqrt
+import kotlin.system.exitProcess
 
 /**
  * Class that holds team orienteering problem data.
@@ -125,6 +126,8 @@ class InstanceDto(
         }
 
         buildGraph(vertices)
+        preProcess(graph, budget, verticesInTarget[source], verticesInTarget[destination])
+
 
         instance = Instance(
             graph = graph,
@@ -138,6 +141,7 @@ class InstanceDto(
             verticesInTarget = verticesInTarget
         )
 
+        logger.info("number of vertices: ${graph.numVertices()}")
         logger.info("completed instance initialization.")
     }
 
@@ -240,7 +244,6 @@ class InstanceDto(
                 }
             }
         }
-
     }
 
 }
