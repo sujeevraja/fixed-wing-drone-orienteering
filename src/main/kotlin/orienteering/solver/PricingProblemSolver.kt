@@ -6,7 +6,8 @@ import orienteering.Constants
 import orienteering.OrienteeringException
 import orienteering.data.Instance
 import orienteering.data.Route
-import java.util.*
+import orienteering.getEdgeWeight
+import java.util.PriorityQueue
 import kotlin.math.absoluteValue
 
 /**
@@ -42,15 +43,17 @@ class PricingProblemSolver(
     /**
      * Number of vertices in given instance.
      */
-    private val numVertices = graph.vertexSet().size
+    private val numVertices = graph.vertexSet().max()!! + 1
     /**
      * source vertices
      */
-    private val srcVertices = instance.getVertices(instance.sourceTarget)
+    private val srcVertices =
+        instance.getVertices(instance.sourceTarget).filter { it in graph.vertexSet() }
     /**
      * destination vertices
      */
-    private val dstVertices = instance.getVertices(instance.destinationTarget)
+    private val dstVertices =
+        instance.getVertices(instance.destinationTarget).filter { it in graph.vertexSet() }
     /**
      * maximum length of a vehicle's path
      */
@@ -295,7 +298,7 @@ class PricingProblemSolver(
 
         val vertex = state.vertex
         for (nextVertex in Graphs.successorListOf(graph, vertex)) {
-            val edgeLength = graph.getEdgeWeight(graph.getEdge(vertex, nextVertex))
+            val edgeLength = graph.getEdgeWeight(vertex, nextVertex)
             val extension = extendIfFeasible(state, nextVertex, edgeLength) ?: continue
             updateNonDominatedStates(forwardStates[nextVertex], extension)
         }
@@ -313,7 +316,7 @@ class PricingProblemSolver(
 
         val vertex = state.vertex
         for (prevVertex in Graphs.predecessorListOf(graph, vertex)) {
-            val edgeLength = graph.getEdgeWeight(graph.getEdge(prevVertex, vertex))
+            val edgeLength = graph.getEdgeWeight(prevVertex, vertex)
             val extension = extendIfFeasible(state, prevVertex, edgeLength) ?: continue
             updateNonDominatedStates(backwardStates[prevVertex], extension)
         }
@@ -429,7 +432,12 @@ class PricingProblemSolver(
      * @return computed path cost (i.e. total edge length)
      */
     private fun getJoinedPathLength(fs: State, bs: State): Double {
-        return fs.pathLength + bs.pathLength + graph.getEdgeWeight(graph.getEdge(fs.vertex, bs.vertex))
+        return fs.pathLength + bs.pathLength + graph.getEdgeWeight(
+            graph.getEdge(
+                fs.vertex,
+                bs.vertex
+            )
+        )
     }
 
     /**

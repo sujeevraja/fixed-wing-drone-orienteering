@@ -54,5 +54,3 @@ class Instance(
      */
     fun getScore(i: Int): Double = vertexScores[i]
 }
-
-fun SimpleDirectedWeightedGraph<Int, DefaultWeightedEdge>.numVertices() = this.vertexSet().size

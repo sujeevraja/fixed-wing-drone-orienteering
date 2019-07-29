@@ -9,31 +9,35 @@ import org.jgrapht.graph.DefaultWeightedEdge
 import org.jgrapht.graph.SimpleDirectedWeightedGraph
 
 import orienteering.data.Instance
-import orienteering.data.numVertices
+import orienteering.numVertices
 
-
-
-class BoundingLP(private val instance: Instance,
-                 private var cplex: IloCplex,
-                 private val targetDuals: List<Double> = listOf(),
-                 private val updatedGraph: SimpleDirectedWeightedGraph<Int, DefaultWeightedEdge> = instance.graph)
-{
-
+class BoundingLP(
+    private val instance: Instance,
+    private var cplex: IloCplex,
+    private val targetDuals: List<Double> = listOf(),
+    private val updatedGraph: SimpleDirectedWeightedGraph<Int, DefaultWeightedEdge> = instance.graph
+) {
     /**
-     * @property edgeVariable Binary decision variables for each edge
-     * @property lengthVariable Path length variables for each edge
-     * @property vertexVariable indicator variable for each vertex
-     * @property profit (reduced costs)
+     * Binary decision variables for each edge
      */
     private lateinit var edgeVariable: MutableMap<Int, MutableMap<Int, IloNumVar>>
+    /**
+     * lengthVariable Path length variables for each edge
+     */
     private lateinit var lengthVariable: MutableMap<Int, MutableMap<Int, IloNumVar>>
+    /**
+     * vertexVariable indicator variable for each vertex
+     */
     private lateinit var vertexVariable: ArrayList<IloNumVar>
+    /**
+     * profit (reduced costs)
+     */
     private lateinit var profit: ArrayList<Double>
 
     /**
      * Companion object.
      */
-    companion object: KLogging()
+    companion object : KLogging()
 
     /**
      * Function to create the MILP model for orienteering problem
@@ -51,7 +55,6 @@ class BoundingLP(private val instance: Instance,
         addEdgeVariables()
         addVertexVariables()
         addLengthVariables()
-
     }
 
     /**
@@ -183,8 +186,10 @@ class BoundingLP(private val instance: Instance,
                 val edge = updatedGraph.getEdge(i, j)
                 val constraintExpression: IloLinearNumExpr = cplex.linearNumExpr()
                 constraintExpression.addTerm(1.0, lengthVariable[i]?.get(j))
-                constraintExpression.addTerm(-updatedGraph.getEdgeWeight(edge),
-                    edgeVariable[i]?.get(j))
+                constraintExpression.addTerm(
+                    -updatedGraph.getEdgeWeight(edge),
+                    edgeVariable[i]?.get(j)
+                )
                 cplex.addEq(constraintExpression, 0.0, "source_fuel_${i}_$j")
                 constraintExpression.clear()
             }
@@ -197,8 +202,10 @@ class BoundingLP(private val instance: Instance,
                 for (j in adjacentVertices) {
                     val constraintExpression: IloLinearNumExpr = cplex.linearNumExpr()
                     constraintExpression.addTerm(1.0, lengthVariable[i]?.get(j))
-                    constraintExpression.addTerm(-instance.budget,
-                        edgeVariable[i]?.get(j))
+                    constraintExpression.addTerm(
+                        -instance.budget,
+                        edgeVariable[i]?.get(j)
+                    )
                     cplex.addLe(constraintExpression, 0.0, "fuel_bound_${i}_$j")
                 }
             }
@@ -214,8 +221,10 @@ class BoundingLP(private val instance: Instance,
             for (j in successors) {
                 val edge = updatedGraph.getEdge(i, j)
                 constraintExpression.addTerm(1.0, lengthVariable[i]?.get(j))
-                constraintExpression.addTerm(-updatedGraph.getEdgeWeight(edge),
-                    edgeVariable[i]?.get(j))
+                constraintExpression.addTerm(
+                    -updatedGraph.getEdgeWeight(edge),
+                    edgeVariable[i]?.get(j)
+                )
             }
             for (j in predecessors)
                 constraintExpression.addTerm(-1.0, lengthVariable[j]?.get(i))
@@ -248,13 +257,12 @@ class BoundingLP(private val instance: Instance,
         cplex.exportModel("temp.lp")
     }
 
-    fun solve(){
+    fun solve() {
         cplex.setParam(IloCplex.Param.MIP.Display, 2)
         cplex.setParam(IloCplex.Param.MIP.Limits.Nodes, 0)
-        if ( !cplex.solve() )
+        if (!cplex.solve())
             throw RuntimeException("No feasible solution found")
         logger.info("LP obj. value: ${cplex.bestObjValue}")
         logger.info("best MIP obj. value: ${cplex.objValue}")
     }
-
 }
