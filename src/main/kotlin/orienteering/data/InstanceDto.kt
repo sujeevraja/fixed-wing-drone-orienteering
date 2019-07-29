@@ -2,12 +2,12 @@ package orienteering.data
 
 import dubins.DubinsCurve
 import mu.KLogging
-import org.jgrapht.alg.shortestpath.DijkstraShortestPath
 import org.jgrapht.graph.DefaultWeightedEdge
 import org.jgrapht.graph.SimpleDirectedWeightedGraph
 import java.io.File
 import kotlin.math.PI
 import kotlin.math.sqrt
+import kotlin.system.exitProcess
 
 /**
  * Class that holds team orienteering problem data.
@@ -126,7 +126,8 @@ class InstanceDto(
         }
 
         buildGraph(vertices)
-        preProcess()
+        preProcess(graph, budget, verticesInTarget[source], verticesInTarget[destination])
+
 
         instance = Instance(
             graph = graph,
@@ -140,6 +141,7 @@ class InstanceDto(
             verticesInTarget = verticesInTarget
         )
 
+        logger.info("number of vertices: ${graph.numVertices()}")
         logger.info("completed instance initialization.")
     }
 
@@ -242,54 +244,6 @@ class InstanceDto(
                 }
             }
         }
-
-    }
-
-    /**
-     * Function to pre-process out vertices and targets using shortest path computation.
-     * The pre-processing algorithm is O(|V|^2 + |V|.|E|)
-     */
-    private fun preProcess() {
-        val vertices: MutableList<Int> = mutableListOf()
-        for (i in 0 until graph.numVertices()) {
-            if (i in verticesInTarget[source] || i in verticesInTarget[destination])
-                continue
-            val shortestPathGraph =
-                SimpleDirectedWeightedGraph<Int, DefaultWeightedEdge>(DefaultWeightedEdge::class.java)
-            val pseudoSource = 1000
-            val pseudoDestination = 1001
-            shortestPathGraph.addVertex(pseudoSource)
-            shortestPathGraph.addVertex(pseudoDestination)
-            shortestPathGraph.addVertex(i)
-            for (vertex in verticesInTarget[source]) {
-                shortestPathGraph.addVertex(vertex)
-                val edge = DefaultWeightedEdge()
-                shortestPathGraph.addEdge(pseudoSource, vertex, edge)
-                shortestPathGraph.setEdgeWeight(edge, 0.0)
-                if (graph.containsEdge(vertex, i)) {
-                    val graphEdge = graph.getEdge(vertex, i)
-                    shortestPathGraph.addEdge(vertex, i, edge)
-                    shortestPathGraph.setEdgeWeight(edge, graph.getEdgeWeight(graphEdge))
-                }
-            }
-            for (vertex in verticesInTarget[destination]) {
-                shortestPathGraph.addVertex(vertex)
-                val edge = DefaultWeightedEdge()
-                shortestPathGraph.addEdge(vertex, pseudoDestination, edge)
-                shortestPathGraph.setEdgeWeight(edge, 0.0)
-                if (graph.containsEdge(i, vertex)) {
-                    val graphEdge = graph.getEdge(i, vertex)
-                    shortestPathGraph.addEdge(i, vertex, edge)
-                    shortestPathGraph.setEdgeWeight(edge, graph.getEdgeWeight(graphEdge))
-                }
-            }
-
-            val shortestPath = DijkstraShortestPath(shortestPathGraph)
-            val distance = shortestPath.getPathWeight(pseudoSource, pseudoDestination)
-            if (distance <= budget)
-                vertices.add(i)
-        }
-        logger.info("vertices: $vertices")
     }
 
 }
