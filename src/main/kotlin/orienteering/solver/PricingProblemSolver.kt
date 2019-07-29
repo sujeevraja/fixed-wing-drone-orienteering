@@ -9,7 +9,7 @@ import orienteering.OrienteeringException
 import orienteering.data.Instance
 import orienteering.data.Route
 import orienteering.getEdgeWeight
-import java.util.PriorityQueue
+import java.util.*
 import kotlin.math.absoluteValue
 
 /**
@@ -159,7 +159,7 @@ class PricingProblemSolver(
                 break
             }
 
-            if (elementaryRoutes.isNotEmpty()) {
+            if (elementaryRoutes.size >= 10) {
                 logger.debug("----- STOP column search due to elementary route existence")
                 break
             }
@@ -418,7 +418,7 @@ class PricingProblemSolver(
         for (i in 0 until joinedPath.size) {
             visitedTargets.add(instance.whichTarget(joinedPath[i]))
             if (i != joinedPath.size - 1) {
-                visitedEdges.add(Pair(joinedPath[i], joinedPath[i+1]))
+                visitedEdges.add(Pair(joinedPath[i], joinedPath[i + 1]))
             }
         }
 
@@ -481,12 +481,7 @@ class PricingProblemSolver(
      * @return computed path cost (i.e. total edge length)
      */
     private fun getJoinedPathLength(fs: State, bs: State): Double {
-        return fs.pathLength + bs.pathLength + graph.getEdgeWeight(
-            graph.getEdge(
-                fs.vertex,
-                bs.vertex
-            )
-        )
+        return fs.pathLength + bs.pathLength + graph.getEdgeWeight(fs.vertex, bs.vertex)
     }
 
     /**
