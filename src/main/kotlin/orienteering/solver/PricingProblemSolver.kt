@@ -99,6 +99,13 @@ class PricingProblemSolver(
         private set
 
     /**
+     * If true, state dominance check uses the following additional condition:
+     *
+     * State s1 dominates s2 iff critical targets visited by s1 is a subset of those visited by s2.
+     */
+    private var useVisitCondition = false
+
+    /**
      * Generates negative reduced cost elementaryRoutes.
      *
      * @return list of elementaryRoutes with negative reduced cost.
@@ -125,6 +132,7 @@ class PricingProblemSolver(
         }
 
         var searchIteration = 0
+        var stop = false
         do {
             logger.debug("----- START search iteration $searchIteration")
             initializeIteration()
@@ -157,9 +165,17 @@ class PricingProblemSolver(
             }
 
             multipleVisits()
-            logger.debug("----- END search iteration $searchIteration")
+            if (optimalRoute == null && !useVisitCondition) {
+                useVisitCondition = true
+                logger.debug("----- REPEAT column search with stricter dominance check")
+                searchIteration++
+                continue
+            }
+
+            stop = isVisitedMultipleTimes.none { it }
+            logger.debug("----- END search iteration $searchIteration, stop: $stop")
             searchIteration++
-        } while (isVisitedMultipleTimes.any { it })
+        } while (!stop)
 
         // logger.debug("completed column generation.")
     }
@@ -422,7 +438,7 @@ class PricingProblemSolver(
         val route = Route(
             joinedPath, forwardState.score + backwardState.score, routeLength, reducedCost
         )
-        var printed = false
+        // var printed = false
         if (optimalRoute == null || reducedCost <= optimalRoute!!.reducedCost - Constants.EPS) {
             optimalRoute = route
             /*
@@ -527,11 +543,11 @@ class PricingProblemSolver(
         var i = 0
         while (i < existingStates.size) {
             val state = existingStates[i]
-            if (state.dominates(newState)) {
+            if (state.dominates(newState, useVisitCondition)) {
                 newState.dominated = true
                 return
             }
-            if (newState.dominates(state)) {
+            if (newState.dominates(state, useVisitCondition)) {
                 state.dominated = true
                 existingStates.removeAt(i)
             } else {

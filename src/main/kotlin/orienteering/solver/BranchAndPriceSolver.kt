@@ -82,7 +82,7 @@ class BranchAndPriceSolver(
             if (bestTarget != null) {
                 val childNodes = node.branchOnTarget(bestTarget, instance.getVertices(bestTarget))
                 for (childNode in childNodes) {
-                    logger.debug("solving LP for child node $childNode")
+                    logger.debug("solving LP for child $childNode")
                     childNode.logInfo()
                     if (!childNode.isFeasible(instance)) {
                         logger.debug("$childNode pruned by infeasibility")
@@ -91,6 +91,11 @@ class BranchAndPriceSolver(
                         if (childNode.lpObjective <= lowerBound + Constants.EPS) {
                             logger.debug("$childNode pruned by bound")
                         } else {
+                            if (childNode.mipObjective >= lowerBound + Constants.EPS) {
+                                lowerBound = childNode.mipObjective
+                                bestFeasibleSolution = childNode.mipSolution
+                                logger.debug("updated lower bound: $lowerBound")
+                            }
                             openNodes.add(childNode)
                         }
                     }
@@ -123,7 +128,7 @@ class BranchAndPriceSolver(
             val bestToVertex = bestEdge.second
             val childNodes = node.branchOnEdge(bestFromVertex, bestToVertex, instance)
             for (childNode in childNodes) {
-                logger.debug("solving LP for child node $childNode")
+                logger.debug("solving LP for node $childNode")
                 childNode.logInfo()
                 if (!childNode.isFeasible(instance)) {
                     logger.debug("$childNode pruned by infeasibility")
@@ -132,6 +137,11 @@ class BranchAndPriceSolver(
                     if (childNode.lpObjective <= lowerBound + Constants.EPS) {
                         logger.debug("$childNode pruned by bound")
                     } else {
+                        if (childNode.mipObjective >= lowerBound + Constants.EPS) {
+                            lowerBound = childNode.mipObjective
+                            bestFeasibleSolution = childNode.mipSolution
+                            logger.debug("updated lower bound: $lowerBound")
+                        }
                         openNodes.add(childNode)
                     }
                 }
