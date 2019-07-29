@@ -2,6 +2,7 @@ package orienteering.data
 
 import org.jgrapht.graph.DefaultWeightedEdge
 import org.jgrapht.graph.SimpleDirectedWeightedGraph
+import orienteering.numVertices
 
 /**
  * Class that holds the Dubins Team orienteering instance data
@@ -28,6 +29,7 @@ class Instance(
     private val targetOfVertex: List<Int>,
     private val verticesInTarget: List<List<Int>>
 ) {
+    val numVertices = graph.numVertices()
     val targetScores = (0 until numTargets).map {
         val vertices = verticesInTarget[it]
         if (vertices.isEmpty()) 0.0 else vertexScores[vertices[0]]
@@ -54,5 +56,3 @@ class Instance(
      */
     fun getScore(i: Int): Double = vertexScores[i]
 }
-
-fun SimpleDirectedWeightedGraph<Int, DefaultWeightedEdge>.numVertices() = this.vertexSet().size

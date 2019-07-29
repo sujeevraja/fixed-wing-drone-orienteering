@@ -4,10 +4,10 @@ import dubins.DubinsCurve
 import mu.KLogging
 import org.jgrapht.graph.DefaultWeightedEdge
 import org.jgrapht.graph.SimpleDirectedWeightedGraph
+import orienteering.numVertices
 import java.io.File
 import kotlin.math.PI
 import kotlin.math.sqrt
-import kotlin.system.exitProcess
 
 /**
  * Class that holds team orienteering problem data.
@@ -50,7 +50,8 @@ class InstanceDto(
     private var budget = 0.0
     private var verticesInTarget = mutableListOf<List<Int>>()
     private var targetOfVertex = mutableListOf<Int>()
-    private val graph = SimpleDirectedWeightedGraph<Int, DefaultWeightedEdge>(DefaultWeightedEdge::class.java)
+    private val graph =
+        SimpleDirectedWeightedGraph<Int, DefaultWeightedEdge>(DefaultWeightedEdge::class.java)
 
     /**
      * Logger object.
@@ -155,7 +156,9 @@ class InstanceDto(
     /**
      * Collects lines from problem data file and update some variables for further parsing.
      */
-    private fun collectLinesFromFile() { lines = File(path + name).readLines() }
+    private fun collectLinesFromFile() {
+        lines = File(path + name).readLines()
+    }
 
     /**
      * Builds and returns a map of each target to its score (reward).

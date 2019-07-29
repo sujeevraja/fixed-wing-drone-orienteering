@@ -9,9 +9,10 @@ import orienteering.data.Parameters
 import orienteering.solver.ColumnGenSolver
 import kotlin.system.measureTimeMillis
 import orienteering.solver.BoundingLP
+import orienteering.solver.BranchAndPriceSolver
 
 /**
- * Manages the entire solution process.
+ * Manages the entire lpSolution process.
  */
 class Controller {
     private lateinit var instance: Instance
@@ -50,7 +51,6 @@ class Controller {
      */
     private fun initCPLEX() {
         cplex = IloCplex()
-        logger.info("initialized CPLEX")
     }
 
     /**
@@ -59,7 +59,6 @@ class Controller {
     private fun clearCPLEX() {
         cplex.clearModel()
         cplex.end()
-        logger.info("cleared CPLEX")
     }
 
     /**
@@ -70,7 +69,6 @@ class Controller {
             when (parameters.algorithm) {
                 1 -> runBranchAndCutAlgorithm()
                 2 -> runColumnGenAlgorithm()
-                3 -> TODO("runBranchAndPrice()")
                 else -> throw OrienteeringException("unknown algorithm type")
             }
         }
@@ -90,8 +88,8 @@ class Controller {
     private fun runColumnGenAlgorithm() {
         logger.info("starting the branch-and-price algorithm")
         initCPLEX()
-        val bp = ColumnGenSolver(instance, parameters.numReducedCostColumns, cplex)
-        val solution = bp.solve()
+        val bps = BranchAndPriceSolver(instance, parameters.numReducedCostColumns, cplex)
+        val solution = bps.solve()
         logger.info("final solution:")
         for (route in solution) {
             logger.info(route.toString())

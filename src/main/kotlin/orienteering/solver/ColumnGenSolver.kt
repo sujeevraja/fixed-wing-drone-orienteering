@@ -2,7 +2,10 @@ package orienteering.solver
 
 import ilog.cplex.IloCplex
 import mu.KLogging
+import org.jgrapht.graph.DefaultWeightedEdge
+import org.jgrapht.graph.SimpleDirectedWeightedGraph
 import orienteering.Constants
+import orienteering.OrienteeringException
 import orienteering.data.Instance
 import orienteering.data.Route
 import kotlin.math.absoluteValue
@@ -13,7 +16,10 @@ import kotlin.math.absoluteValue
 class ColumnGenSolver(
     private val instance: Instance,
     private val numReducedCostColumns: Int,
-    private val cplex: IloCplex
+    private val cplex: IloCplex,
+    private val graph: SimpleDirectedWeightedGraph<Int, DefaultWeightedEdge>,
+    private val mustVisitTargets: List<Boolean>,
+    private val mustVisitEdges: List<Pair<Int, Int>>
 ) {
     /**
      * Column pool (updated every time a pricing problem is solved).
@@ -24,13 +30,32 @@ class ColumnGenSolver(
      */
     private var vehicleCoverDual = 0.0
     /**
-     * Duals of target coverage constraints indexed by target id.
+     * Reduced costs indexed by target id.
      */
-    private var targetDuals = List(instance.numTargets) { 0.0 }
+    var targetReducedCosts = (0 until instance.numTargets).map {
+        -instance.targetScores[it]
+    }.toMutableList()
+        private set
     /**
-     * Final solution
+     * Final LP objective value
      */
-    private lateinit var solution: List<Route>
+    var lpObjective = 0.0
+        private set
+    /**
+     * Final LP lpSolution
+     */
+    var lpSolution = mutableListOf<Pair<Route, Double>>()
+        private set
+    /**
+     * Final MIP objective value
+     */
+    var mipObjective = 0.0
+        private set
+    /**
+     * Final MIP solution
+     */
+    var mipSolution = listOf<Route>()
+        private set
 
     /**
      * Runs the column generation algorithm.
@@ -40,10 +65,10 @@ class ColumnGenSolver(
      * pre-specified number of reduced cost columns. Optimality is reached with the pricing problem
      * solver fails to find any negative reduced cost columns.
      */
-    fun solve(): List<Route> {
+    fun solve() {
         // Both the route cover and target cover constraints are of the <= form. So, for a primal
-        // solution of zero, all primal slacks are non-zero. So, the dual solution is also zero.
-        // For this dual solution, the reduced cost of each target is simply the negative of the
+        // lpSolution of zero, all primal slacks are non-zero. So, the dual lpSolution is also zero.
+        // For this dual lpSolution, the reduced cost of each target is simply the negative of the
         // target score. We use these reduced costs to run the pricing problem and generate some
         // negative reduced cost columns.
         columns.addAll(generateColumns())
@@ -63,7 +88,6 @@ class ColumnGenSolver(
         }
 
         solveRestrictedMasterProblem(asMip = true)
-        return solution
     }
 
     /**
@@ -73,20 +97,17 @@ class ColumnGenSolver(
      * @return generated list of negative reduced cost elementary paths.
      */
     private fun generateColumns(): List<Route> {
-        val reducedCosts = (0 until instance.numTargets).map {
-            targetDuals[it] - instance.targetScores[it]
-        }
-        val pricer =
-            PricingProblemSolver(instance, vehicleCoverDual, reducedCosts, numReducedCostColumns)
-        pricer.generateColumns()
-        val routes = pricer.elementaryRoutes
+        val pricingProblemSolver =
+            PricingProblemSolver(instance, vehicleCoverDual, targetReducedCosts, numReducedCostColumns, graph, mustVisitTargets, mustVisitEdges)
+        pricingProblemSolver.generateColumns()
+        val routes = pricingProblemSolver.elementaryRoutes
         if (routes.isEmpty()) {
             logger.info("no reduced cost columns found")
         } else {
-            val bestRoute = routes.minBy { it.reducedCost }
-            logger.info("least reduced cost route: $bestRoute")
+            // val bestRoute = routes.minBy { it.reducedCost }
+            // logger.info("least reduced cost route: $bestRoute")
         }
-        return pricer.elementaryRoutes
+        return pricingProblemSolver.elementaryRoutes
     }
 
     /**
@@ -96,26 +117,44 @@ class ColumnGenSolver(
      */
     private fun solveRestrictedMasterProblem(asMip: Boolean = false) {
         logger.info("starting to solve restricted master problem...")
+        logger.debug("number of columns: ${columns.size}")
         val setCoverModel = SetCoverModel(cplex)
         setCoverModel.createModel(instance, columns, asMip)
         setCoverModel.solve()
         if (asMip) {
-            solution = setCoverModel.getOptimalRouteIndices().map {
-                columns[it]
-            }
-            logger.info("solved restricted master MIP and stored solution")
-        } else {
-            vehicleCoverDual = setCoverModel.getRouteDual()
-            targetDuals = setCoverModel.getTargetDuals()
-            for (i in 0 until targetDuals.size) {
-                if (targetDuals[i].absoluteValue >= Constants.EPS) {
-                    logger.debug("dual of target $i: ${targetDuals[i]}")
+            // collect MIP solution
+            mipObjective = setCoverModel.objective
+            logger.debug("MIP objective: $mipObjective")
+            val setCoverSolution = setCoverModel.getSolution()
+            val selectedRoutes = mutableListOf<Route>()
+            for (i in 0 until setCoverSolution.size) {
+                if (setCoverSolution[i] >= Constants.EPS) {
+                    selectedRoutes.add(columns[i])
                 }
             }
-            logger.info("solved restricted master LP and stored duals")
+            mipSolution = selectedRoutes
+            // logger.info("solved restricted master MIP")
+        } else {
+            // collect duals
+            vehicleCoverDual = setCoverModel.getRouteDual()
+            val targetDuals = setCoverModel.getTargetDuals()
+            for (i in 0 until targetDuals.size) {
+                targetReducedCosts[i] = targetDuals[i] - instance.targetScores[i]
+            }
+
+            // collect LP solution
+            lpObjective = setCoverModel.objective
+            logger.debug("LP objective: $lpObjective")
+            lpSolution.clear()
+            val setCoverSolution = setCoverModel.getSolution()
+            for (i in 0 until setCoverSolution.size) {
+                if (setCoverSolution[i] >= Constants.EPS) {
+                    lpSolution.add(Pair(columns[i], setCoverSolution[i]))
+                }
+            }
+            // logger.info("solved restricted master LP")
         }
-        setCoverModel.clearModel()
-        logger.info("cleared model")
+        cplex.clearModel()
     }
 
     /**

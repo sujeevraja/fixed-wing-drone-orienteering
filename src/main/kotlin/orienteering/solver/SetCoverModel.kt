@@ -37,6 +37,11 @@ class SetCoverModel(private var cplex: IloCplex) {
      * array of constraints
      */
     private lateinit var constraints: ArrayList<IloRange>
+    /**
+     * CPLEX objective value
+     */
+    var objective = 0.0
+        private set
 
     /**
      * Function to create the Set-Covering model
@@ -53,16 +58,17 @@ class SetCoverModel(private var cplex: IloCplex) {
         val objExpr: IloLinearNumExpr = cplex.linearNumExpr()
 
         for (i in 0 until routes.size) {
-            if (binary)
+            if (binary) {
                 routeVariable.add(cplex.numVar(0.0, 1.0, IloNumVarType.Bool, "z_$i"))
-            else
+            } else {
                 routeVariable.add(cplex.numVar(0.0, Double.MAX_VALUE, IloNumVarType.Float, "z_$i"))
+            }
             for (vertex in routes[i].path) {
                 val target = instance.whichTarget(vertex)
-                whichRoutes[target].add(i)
                 if (target == instance.sourceTarget || target == instance.destinationTarget) {
                     continue
                 }
+                whichRoutes[target].add(i)
                 hasTargetConstraint[target] = true
             }
             routeExpr.addTerm(1.0, routeVariable[i])
@@ -76,10 +82,7 @@ class SetCoverModel(private var cplex: IloCplex) {
         routeConstraintId = 0
 
         for (i in 0 until instance.numTargets) {
-            if (i == instance.sourceTarget || i == instance.destinationTarget) {
-                continue
-            }
-            if (whichRoutes[i].size == 0) {
+            if (i == instance.sourceTarget || i == instance.destinationTarget || whichRoutes[i].isEmpty()) {
                 continue
             }
             val expr: IloLinearNumExpr = cplex.linearNumExpr()
@@ -92,8 +95,7 @@ class SetCoverModel(private var cplex: IloCplex) {
     }
 
     /**
-     * Function to solve the model
-     * @return optimal route index
+     * Solves model built with [createModel].
      */
     fun solve() {
         cplex.setOut(null)
@@ -101,20 +103,23 @@ class SetCoverModel(private var cplex: IloCplex) {
         if (!cplex.solve()) {
             throw OrienteeringException("Set covering problem infeasible")
         }
-        logger.debug("set cover objective: ${cplex.objValue}")
-        logger.debug("----- solution print start")
+        objective = cplex.objValue
+        /*
+        logger.debug("set cover objective: $objective")
+        logger.debug("----- lpSolution print start")
         for (i in 0 until routeVariable.size) {
             val solutionValue = cplex.getValue(routeVariable[i])
             if (solutionValue >= Constants.EPS) {
                 logger.debug("column $i: $solutionValue")
             }
         }
-        logger.debug("----- solution print end")
+        logger.debug("----- lpSolution print end")
+         */
     }
 
-    fun getOptimalRouteIndices(): List<Int> {
-        return (0 until routeVariable.size).filter {
-            cplex.getValue(routeVariable[it]) >= Constants.EPS
+    fun getSolution(): List<Double> {
+        return (0 until routeVariable.size).map {
+            cplex.getValue(routeVariable[it])
         }
     }
 
@@ -135,13 +140,6 @@ class SetCoverModel(private var cplex: IloCplex) {
             if (hasTargetConstraint[it])
                 cplex.getDual(constraints[targetConstraintId[it]!!]) else 0.0
         }
-    }
-
-    /**
-     * Function to clear cplex object
-     */
-    fun clearModel() {
-        cplex.clearModel()
     }
 
     /**

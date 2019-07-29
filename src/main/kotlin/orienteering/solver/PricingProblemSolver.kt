@@ -2,10 +2,13 @@ package orienteering.solver
 
 import mu.KLogging
 import org.jgrapht.Graphs
+import org.jgrapht.graph.DefaultWeightedEdge
+import org.jgrapht.graph.SimpleDirectedWeightedGraph
 import orienteering.Constants
 import orienteering.OrienteeringException
 import orienteering.data.Instance
 import orienteering.data.Route
+import orienteering.getEdgeWeight
 import java.util.*
 import kotlin.math.absoluteValue
 
@@ -29,12 +32,11 @@ class PricingProblemSolver(
     private val instance: Instance,
     private val routeDual: Double,
     private val targetReducedCosts: List<Double>,
-    private val numReducedCostColumns: Int
+    private val numReducedCostColumns: Int,
+    private val graph: SimpleDirectedWeightedGraph<Int, DefaultWeightedEdge>,
+    private val mustVisitTargets: List<Boolean>,
+    private val mustVisitEdges: List<Pair<Int, Int>>
 ) {
-    /**
-     * directed graph weighted with edge lengths
-     */
-    private val graph = instance.graph
     /**
      * Number of targets (i.e. vertex clusters) in given instance.
      */
@@ -42,15 +44,17 @@ class PricingProblemSolver(
     /**
      * Number of vertices in given instance.
      */
-    private val numVertices = graph.vertexSet().size
+    private val numVertices = graph.vertexSet().max()!! + 1
     /**
      * source vertices
      */
-    private val srcVertices = instance.getVertices(instance.sourceTarget)
+    private val srcVertices =
+        instance.getVertices(instance.sourceTarget).filter { it in graph.vertexSet() }
     /**
      * destination vertices
      */
-    private val dstVertices = instance.getVertices(instance.destinationTarget)
+    private val dstVertices =
+        instance.getVertices(instance.destinationTarget).filter { it in graph.vertexSet() }
     /**
      * maximum length of a vehicle's path
      */
@@ -95,11 +99,19 @@ class PricingProblemSolver(
         private set
 
     /**
+     * If true, state dominance check uses the following additional condition:
+     *
+     * State s1 dominates s2 iff critical targets visited by s1 is a subset of those visited by s2.
+     */
+    private var useVisitCondition = false
+
+    /**
      * Generates negative reduced cost elementaryRoutes.
      *
      * @return list of elementaryRoutes with negative reduced cost.
      */
     fun generateColumns() {
+        /*
         logger.debug("vehicle cover dual: $routeDual")
         for (i in 0 until numTargets) {
             if (targetReducedCosts[i].absoluteValue >= Constants.EPS) {
@@ -107,6 +119,7 @@ class PricingProblemSolver(
             }
         }
         logger.debug("starting column generation...")
+         */
 
         // Store source states.
         for (srcVertex in srcVertices) {
@@ -119,6 +132,7 @@ class PricingProblemSolver(
         }
 
         var searchIteration = 0
+        var stop = false
         do {
             logger.debug("----- START search iteration $searchIteration")
             initializeIteration()
@@ -141,16 +155,29 @@ class PricingProblemSolver(
 
             val stopSearch = search()
             if (stopSearch) {
-                logger.debug("----- STOP column search")
+                logger.debug("----- STOP column search due to #columns limit")
+                break
+            }
+
+            if (elementaryRoutes.size >= 10) {
+                logger.debug("----- STOP column search due to elementary route existence")
                 break
             }
 
             multipleVisits()
-            logger.debug("----- END search iteration $searchIteration")
-            searchIteration++
-        } while (isVisitedMultipleTimes.any { it })
+            if (optimalRoute == null && !useVisitCondition) {
+                useVisitCondition = true
+                logger.debug("----- REPEAT column search with stricter dominance check")
+                searchIteration++
+                continue
+            }
 
-        logger.debug("completed column generation.")
+            stop = isVisitedMultipleTimes.none { it }
+            logger.debug("----- END search iteration $searchIteration, stop: $stop")
+            searchIteration++
+        } while (!stop)
+
+        // logger.debug("completed column generation.")
     }
 
     private fun initializeIteration() {
@@ -295,7 +322,7 @@ class PricingProblemSolver(
 
         val vertex = state.vertex
         for (nextVertex in Graphs.successorListOf(graph, vertex)) {
-            val edgeLength = graph.getEdgeWeight(graph.getEdge(vertex, nextVertex))
+            val edgeLength = graph.getEdgeWeight(vertex, nextVertex)
             val extension = extendIfFeasible(state, nextVertex, edgeLength) ?: continue
             updateNonDominatedStates(forwardStates[nextVertex], extension)
         }
@@ -313,7 +340,7 @@ class PricingProblemSolver(
 
         val vertex = state.vertex
         for (prevVertex in Graphs.predecessorListOf(graph, vertex)) {
-            val edgeLength = graph.getEdgeWeight(graph.getEdge(prevVertex, vertex))
+            val edgeLength = graph.getEdgeWeight(prevVertex, vertex)
             val extension = extendIfFeasible(state, prevVertex, edgeLength) ?: continue
             updateNonDominatedStates(backwardStates[prevVertex], extension)
         }
@@ -386,24 +413,49 @@ class PricingProblemSolver(
         joinedPath.addAll(forwardState.getPartialPathVertices().asReversed())
         joinedPath.addAll(backwardState.getPartialPathVertices())
 
+        val visitedTargets = mutableSetOf<Int>()
+        val visitedEdges = mutableSetOf<Pair<Int, Int>>()
+        for (i in 0 until joinedPath.size) {
+            visitedTargets.add(instance.whichTarget(joinedPath[i]))
+            if (i != joinedPath.size - 1) {
+                visitedEdges.add(Pair(joinedPath[i], joinedPath[i + 1]))
+            }
+        }
+
+        for (i in 0 until instance.numTargets) {
+            if (mustVisitTargets[i] && i !in visitedTargets) {
+                return false
+            }
+        }
+
+        for (edge in mustVisitEdges) {
+            if (edge !in visitedEdges) {
+                return false
+            }
+        }
+
         val routeLength = getJoinedPathLength(forwardState, backwardState)
         val route = Route(
             joinedPath, forwardState.score + backwardState.score, routeLength, reducedCost
         )
-        var printed = false
+        // var printed = false
         if (optimalRoute == null || reducedCost <= optimalRoute!!.reducedCost - Constants.EPS) {
             optimalRoute = route
+            /*
             logger.debug("join at ${forwardState.vertex} -> ${backwardState.vertex}")
             printed = true
             logger.debug("opt update: $route")
+             */
         }
 
         if (!hasCycle(joinedPath) && (route !in elementaryRoutes)) {
             elementaryRoutes.add(route)
+            /*
             if (!printed) {
                 logger.debug("join at ${forwardState.vertex} -> ${backwardState.vertex}")
             }
             logger.debug("ele update: $route")
+             */
             if (elementaryRoutes.size >= numReducedCostColumns) {
                 return true
             }
@@ -429,7 +481,7 @@ class PricingProblemSolver(
      * @return computed path cost (i.e. total edge length)
      */
     private fun getJoinedPathLength(fs: State, bs: State): Double {
-        return fs.pathLength + bs.pathLength + graph.getEdgeWeight(graph.getEdge(fs.vertex, bs.vertex))
+        return fs.pathLength + bs.pathLength + graph.getEdgeWeight(fs.vertex, bs.vertex)
     }
 
     /**
@@ -486,11 +538,11 @@ class PricingProblemSolver(
         var i = 0
         while (i < existingStates.size) {
             val state = existingStates[i]
-            if (state.dominates(newState)) {
+            if (state.dominates(newState, useVisitCondition)) {
                 newState.dominated = true
                 return
             }
-            if (newState.dominates(state)) {
+            if (newState.dominates(state, useVisitCondition)) {
                 state.dominated = true
                 existingStates.removeAt(i)
             } else {
