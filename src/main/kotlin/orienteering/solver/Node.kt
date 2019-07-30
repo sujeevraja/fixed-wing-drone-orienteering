@@ -8,7 +8,6 @@ import org.jgrapht.graph.SimpleDirectedWeightedGraph
 import orienteering.Constants
 import orienteering.data.Instance
 import orienteering.data.Route
-import orienteering.data.preProcess
 import orienteering.getCopy
 
 class Node private constructor(
@@ -63,7 +62,31 @@ class Node private constructor(
             return false
         }
 
-        return true
+        // Check if all must-visit targets are connected.
+        for (target in 0 until mustVisitTargets.size) {
+            if (mustVisitTargets[target] &&
+                instance.getVertices(target).none { isVertexConnected(it) }
+            ) {
+                logger.debug("graph does not contain a must-visit target")
+                return false
+            }
+        }
+
+        // Check if all must-visit edges are present in graph.
+        val requiredEdgesExist = mustVisitEdges.all {
+            graph.containsEdge(it.first, it.second)
+        }
+
+        if (!requiredEdgesExist) {
+            logger.debug("graph does not contain a must-visit edge")
+        }
+        return requiredEdgesExist
+    }
+
+    private fun isVertexConnected(vertex: Int): Boolean {
+        return (graph.containsVertex(vertex) &&
+                Graphs.vertexHasPredecessors(graph, vertex) &&
+                Graphs.vertexHasSuccessors(graph, vertex))
     }
 
     fun solve(instance: Instance, numReducedCostColumns: Int, cplex: IloCplex) {
@@ -170,7 +193,7 @@ class Node private constructor(
 
         fun getNodeIndex(): Int {
             nodeCount++
-            return nodeCount -1
+            return nodeCount - 1
         }
     }
 }
