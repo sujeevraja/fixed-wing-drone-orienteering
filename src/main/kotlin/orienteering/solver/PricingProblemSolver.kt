@@ -322,6 +322,9 @@ class PricingProblemSolver(
 
         val vertex = state.vertex
         for (nextVertex in Graphs.successorListOf(graph, vertex)) {
+            if (state.parent != null && sameTarget(state.parent.vertex, nextVertex)) {
+                continue
+            }
             val edgeLength = graph.getEdgeWeight(vertex, nextVertex)
             val extension = extendIfFeasible(state, nextVertex, edgeLength) ?: continue
             updateNonDominatedStates(forwardStates[nextVertex], extension)
@@ -340,10 +343,17 @@ class PricingProblemSolver(
 
         val vertex = state.vertex
         for (prevVertex in Graphs.predecessorListOf(graph, vertex)) {
+            if (state.parent != null && sameTarget(state.parent.vertex, prevVertex)) {
+                continue
+            }
             val edgeLength = graph.getEdgeWeight(prevVertex, vertex)
             val extension = extendIfFeasible(state, prevVertex, edgeLength) ?: continue
             updateNonDominatedStates(backwardStates[prevVertex], extension)
         }
+    }
+
+    private fun sameTarget(v1: Int, v2: Int): Boolean {
+        return instance.whichTarget(v1) == instance.whichTarget(v2)
     }
 
     private fun canExtend(state: State): Boolean {
@@ -470,7 +480,27 @@ class PricingProblemSolver(
      * @return true if path is budget-feasible, false otherwise.
      */
     private fun feasible(fs: State, bs: State): Boolean {
-        return !fs.hasCommonVisits(bs) && getJoinedPathLength(fs, bs) <= maxPathLength
+        return (!fs.hasCommonVisits(bs) && getJoinedPathLength(fs, bs) <= maxPathLength &&
+                !has2Or3Cycle(fs, bs))
+    }
+
+    private fun has2Or3Cycle(fs: State, bs: State): Boolean {
+        if (fs.parent != null && sameTarget(fs.parent.vertex, bs.vertex)) {
+            return true
+        }
+
+        if (bs.parent != null && sameTarget(fs.vertex, bs.parent.vertex)) {
+            return true
+        }
+
+        if (fs.parent != null &&
+            bs.parent != null &&
+            sameTarget(fs.parent.vertex, bs.parent.vertex)
+        ) {
+            return true
+        }
+
+        return false
     }
 
     /**
