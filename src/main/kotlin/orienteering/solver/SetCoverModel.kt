@@ -16,26 +16,40 @@ import orienteering.data.Route
  * @param cplex Cplex class object
  */
 class SetCoverModel(private var cplex: IloCplex) {
+
+    /**
+     * @property routeConstraintId route constraint id
+     * @property hasTargetCoverConstraint Boolean list indicating if the model has a target cover constraint
+     * @property targetCoverConstraintId list of constraint ids for target cover constraints
+     * @property mustVisitTargetConstraintId map of target to constraint id
+     * @property mustVisitTargetEdgeConstraintId map of target-edge to constraint id
+     * @property mustVisitVertexConstraintId map of vertex to constraint id
+     * @property mustVisitVertexEdgeConstraintId map of vertex-edge constraint id
+     * @property routeVariable list of route variables
+     * @property auxiliaryVariable for infeasibility
+     * @property constraints list of constraints
+     * @property objective objective
+     */
+    private var routeConstraintId: Int = 0
+    private lateinit var hasTargetCoverConstraint: MutableList<Boolean>
+    private lateinit var targetCoverConstraintId: MutableList<Int?>
+    private var mustVisitTargetConstraintId: MutableMap<Int, Int> = mutableMapOf()
+    private var mustVisitTargetEdgeConstraintId: MutableMap<Pair<Int, Int>, Int> = mutableMapOf()
+    private var mustVisitVertexConstraintId: MutableMap<Int, Int> = mutableMapOf()
+    private var mustVisitVertexEdgeConstraintId: MutableMap<Pair<Int, Int>, Int> = mutableMapOf()
+    private var routeVariable: ArrayList<IloNumVar> = arrayListOf()
+    private lateinit var auxiliaryVariable: IloNumVar
+    private var constraints: ArrayList<IloRange> = arrayListOf()
+
     /**
      * Boolean list indicating if the model has a constraint corresponding to a target
      */
     private lateinit var hasTargetConstraint: MutableList<Boolean>
     /**
-     * constraint id for route constraint
-     */
-    private var routeConstraintId: Int = 0
-    /**
      * constraint id list for target constraint
      */
     private lateinit var targetConstraintId: MutableList<Int?>
-    /**
-     * array of decision variables
-     */
-    private lateinit var routeVariable: ArrayList<IloNumVar>
-    /**
-     * array of constraints
-     */
-    private lateinit var constraints: ArrayList<IloRange>
+
     /**
      * CPLEX objective value
      */
@@ -47,38 +61,43 @@ class SetCoverModel(private var cplex: IloCplex) {
      * @param instance object of the Instance Class
      * @param routes list of route objects
      */
-    fun createModel(instance: Instance, routes: MutableList<Route>, binary: Boolean) {
-        hasTargetConstraint = MutableList(instance.numTargets) { false }
-        targetConstraintId = MutableList(instance.numTargets) { null }
+    fun createModel(
+        instance: Instance,
+        routes: MutableList<Route>,
+        binary: Boolean = false,
+        mustVisitTargets: List<Int> = mutableListOf(),
+        mustVisitTargetEdges: List<Pair<Int, Int>> = mutableListOf(),
+        mustVisitVertices: List<Int> = mutableListOf(),
+        mustVisitVertexEdges: List<Pair<Int, Int>> = mutableListOf()
+    ) {
+        hasTargetCoverConstraint = MutableList(instance.numTargets) { false }
+        targetCoverConstraintId = MutableList(instance.numTargets) { null }
 
-        routeVariable = arrayListOf()
-        val whichRoutes = MutableList(instance.numTargets) { mutableListOf<Int>() }
         val routeExpr: IloLinearNumExpr = cplex.linearNumExpr()
         val objExpr: IloLinearNumExpr = cplex.linearNumExpr()
+        val targetRoutes = MutableList(instance.numTargets) { mutableListOf<Int>() }
 
         for (i in 0 until routes.size) {
-            if (binary) {
+            if (binary)
                 routeVariable.add(cplex.numVar(0.0, 1.0, IloNumVarType.Bool, "z_$i"))
-            } else {
+            else
                 routeVariable.add(cplex.numVar(0.0, Double.MAX_VALUE, IloNumVarType.Float, "z_$i"))
-            }
-            for (vertex in routes[i].vertexPath) {
-                val target = instance.whichTarget(vertex)
-                if (target == instance.sourceTarget || target == instance.destinationTarget) {
-                    continue
-                }
-                whichRoutes[target].add(i)
-                hasTargetConstraint[target] = true
-            }
+
             routeExpr.addTerm(1.0, routeVariable[i])
             objExpr.addTerm(routes[i].score, routeVariable[i])
+
+            routes[i].targetPath.iterator().forEach {
+                if (it == instance.sourceTarget || it == instance.destinationTarget)
+                    return@forEach
+                targetRoutes[it].add(i)
+                hasTargetCoverConstraint[it] = true
+            }
         }
 
-
         cplex.addMaximize(objExpr)
-        constraints = arrayListOf()
         constraints.add(cplex.addLe(routeExpr, instance.numVehicles.toDouble(), "route_cover"))
         routeConstraintId = 0
+
 
         for (i in 0 until instance.numTargets) {
             if (i == instance.sourceTarget || i == instance.destinationTarget || whichRoutes[i].isEmpty()) {
@@ -90,6 +109,10 @@ class SetCoverModel(private var cplex: IloCplex) {
             targetConstraintId[i] = constraints.size
             constraints.add(cplex.addLe(expr, 1.0, "target_cover_$i"))
         }
+
+        val vertexRoutes = mustVisitVertices.map { it to mutableListOf<Int>() }.toMap()
+        val targetEdgeRoutes = mustVisitTargetEdges.map { it to mutableListOf<Int>() }.toMap()
+        val vertexEdgeRoutes = mustVisitVertexEdges.map { it to mutableListOf<Int>() }.toMap()
 
     }
 
