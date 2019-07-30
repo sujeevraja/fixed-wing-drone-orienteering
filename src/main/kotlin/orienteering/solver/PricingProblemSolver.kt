@@ -199,7 +199,7 @@ class PricingProblemSolver(
         }
 
         // Update optimal route with best cached elementary route if necessary.
-        if (optimalRoute != null && hasCycle(optimalRoute!!.path)) {
+        if (optimalRoute != null && hasCycle(optimalRoute!!.vertexPath)) {
             optimalRoute = elementaryRoutes.firstOrNull()
             for (route in elementaryRoutes.drop(1)) {
                 if (route.reducedCost <= optimalRoute!!.reducedCost - Constants.EPS) {
@@ -274,7 +274,7 @@ class PricingProblemSolver(
 
     private fun multipleVisits() {
         isVisitedMultipleTimes.fill(false)
-        val optimalPath = optimalRoute?.path ?: return
+        val optimalPath = optimalRoute?.vertexPath ?: return
 
         val numVisits = IntArray(numTargets) { 0 }
         for (vertex in optimalPath) {
@@ -444,9 +444,14 @@ class PricingProblemSolver(
             }
         }
 
+        val targetPath = joinedPath.map { instance.whichTarget(it) }
         val routeLength = getJoinedPathLength(forwardState, backwardState)
         val route = Route(
-            joinedPath, forwardState.score + backwardState.score, routeLength, reducedCost
+            joinedPath,
+            targetPath,
+            forwardState.score + backwardState.score,
+            routeLength,
+            reducedCost
         )
         // var printed = false
         if (optimalRoute == null || reducedCost <= optimalRoute!!.reducedCost - Constants.EPS) {
