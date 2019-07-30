@@ -20,11 +20,14 @@ class CliParser : CliktCommand() {
     companion object : KLogging()
 
     /**
-     * @property instanceName name of the instance
-     * @property instancePath path for instance
+     * name of the instance
      */
     val instanceName: String by option("-n", help = "instance name")
         .default("p3.3.l.txt")
+
+    /**
+     * path to folder with instance file
+     */
     val instancePath: String by option("-p", help = "instance path")
         .default("./data/Set_33_234/")
         .validate {

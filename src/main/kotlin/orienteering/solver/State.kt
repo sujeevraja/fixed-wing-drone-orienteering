@@ -12,6 +12,7 @@ class State private constructor(
     val numTargetsVisited: Int,
     private val visitedBits: LongArray
 ) : Comparable<State> {
+    private val bangForBuck = if (pathLength >= Constants.EPS) reducedCost / pathLength else 0.0
     /**
      * true if all extensions have been generated, false otherwise
      */
@@ -28,10 +29,18 @@ class State private constructor(
 
     override fun compareTo(other: State): Int {
         return when {
+            bangForBuck <= other.bangForBuck - Constants.EPS -> -1
+            bangForBuck >= other.bangForBuck + Constants.EPS -> 1
+            else -> 0
+        }
+
+        /*
+        return when {
             reducedCost <= other.reducedCost - Constants.EPS -> -1
             reducedCost >= other.reducedCost + Constants.EPS -> 1
             else -> 0
         }
+         */
     }
 
     fun extend(

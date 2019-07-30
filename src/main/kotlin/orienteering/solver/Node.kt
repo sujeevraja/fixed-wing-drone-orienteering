@@ -11,11 +11,11 @@ import orienteering.data.Route
 import orienteering.getCopy
 
 class Node private constructor(
-    private val graph: SimpleDirectedWeightedGraph<Int, DefaultWeightedEdge>,
+    val graph: SimpleDirectedWeightedGraph<Int, DefaultWeightedEdge>,
     private val mustVisitTargets: List<Boolean>,
     private val mustVisitEdges: List<Pair<Int, Int>>
 ) : Comparable<Node> {
-    val index = getNodeIndex()
+    private val index = getNodeIndex()
 
     var lpObjective = -Double.MAX_VALUE
         private set
@@ -62,7 +62,31 @@ class Node private constructor(
             return false
         }
 
-        return true
+        // Check if all must-visit targets are connected.
+        for (target in 0 until mustVisitTargets.size) {
+            if (mustVisitTargets[target] &&
+                instance.getVertices(target).none { isVertexConnected(it) }
+            ) {
+                logger.debug("graph does not contain a must-visit target")
+                return false
+            }
+        }
+
+        // Check if all must-visit edges are present in graph.
+        val requiredEdgesExist = mustVisitEdges.all {
+            graph.containsEdge(it.first, it.second)
+        }
+
+        if (!requiredEdgesExist) {
+            logger.debug("graph does not contain a must-visit edge")
+        }
+        return requiredEdgesExist
+    }
+
+    private fun isVertexConnected(vertex: Int): Boolean {
+        return (graph.containsVertex(vertex) &&
+                Graphs.vertexHasPredecessors(graph, vertex) &&
+                Graphs.vertexHasSuccessors(graph, vertex))
     }
 
     fun solve(instance: Instance, numReducedCostColumns: Int, cplex: IloCplex) {
@@ -169,7 +193,7 @@ class Node private constructor(
 
         fun getNodeIndex(): Int {
             nodeCount++
-            return nodeCount -1
+            return nodeCount - 1
         }
     }
 }
