@@ -6,6 +6,8 @@ import orienteering.Constants
 import orienteering.OrienteeringException
 import orienteering.data.Instance
 import orienteering.data.Route
+import orienteering.data.preProcess
+import orienteering.numVertices
 import java.util.*
 import kotlin.math.absoluteValue
 import kotlin.math.round
@@ -37,6 +39,15 @@ class BranchAndPriceSolver(
             for (childNode in childNodes) {
                 logger.debug("solving LP for child $childNode")
                 childNode.logInfo()
+
+                logger.debug("number of vertices before pre-processing: ${childNode.graph.numVertices()}")
+                preProcess(
+                    childNode.graph,
+                    instance.budget,
+                    instance.getVertices(instance.sourceTarget),
+                    instance.getVertices(instance.destinationTarget)
+                )
+                logger.debug("number of vertices after pre-processing: ${childNode.graph.numVertices()}")
 
                 if (!childNode.isFeasible(instance)) {
                     logger.debug("$childNode pruned by infeasibility")

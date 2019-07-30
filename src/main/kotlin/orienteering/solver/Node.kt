@@ -8,14 +8,15 @@ import org.jgrapht.graph.SimpleDirectedWeightedGraph
 import orienteering.Constants
 import orienteering.data.Instance
 import orienteering.data.Route
+import orienteering.data.preProcess
 import orienteering.getCopy
 
 class Node private constructor(
-    private val graph: SimpleDirectedWeightedGraph<Int, DefaultWeightedEdge>,
+    val graph: SimpleDirectedWeightedGraph<Int, DefaultWeightedEdge>,
     private val mustVisitTargets: List<Boolean>,
     private val mustVisitEdges: List<Pair<Int, Int>>
 ) : Comparable<Node> {
-    val index = getNodeIndex()
+    private val index = getNodeIndex()
 
     var lpObjective = -Double.MAX_VALUE
         private set
