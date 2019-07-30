@@ -116,21 +116,22 @@ class BranchAndPriceSolver(
     }
 
     private fun branch(node: Node): List<Node> {
-        // Find flows to each target and vertex.
+        // Find flows to each target and on edges between targets.
         val targetFlows = MutableList(instance.numTargets) { 0.0 }
-        val edgeFlows: MutableMap<Int, MutableMap<Int, Double>> = mutableMapOf()
+        val targetEdgeFlows: MutableMap<Int, MutableMap<Int, Double>> = mutableMapOf()
 
         for ((route, slnVal) in node.lpSolution) {
-            val path = route.path
+            val path = route.vertexPath
             for (i in 0 until path.size - 1) {
-                val nextVertex = path[i + 1]
-                targetFlows[instance.whichTarget(nextVertex)] += slnVal
+                val currTarget = route.targetPath[i]
+                val nextTarget = route.targetPath[i + 1]
+                targetFlows[nextTarget] += slnVal
 
-                val currVertex = path[i]
-                edgeFlows.putIfAbsent(currVertex, hashMapOf())
+                targetEdgeFlows.putIfAbsent(currTarget, hashMapOf())
 
-                val outFlowMap = edgeFlows[currVertex]!!
-                outFlowMap[nextVertex] = slnVal + outFlowMap.getOrDefault(nextVertex, 0.0)
+                val outFlowMap = targetEdgeFlows[currTarget]!!
+                val edgeFlow = slnVal + outFlowMap.getOrDefault(nextTarget, 0.0)
+                outFlowMap[nextTarget] = edgeFlow
             }
         }
 
@@ -158,27 +159,26 @@ class BranchAndPriceSolver(
             return node.branchOnTarget(bestTarget, instance.getVertices(bestTarget))
         }
 
-        // Otherwise, find an edge to branch. Among fractional flow edges, we select the one with
-        // a starting vertex that has least reduced cost.
+        // Otherwise, find a target edge to branch. Among fractional flow edges, we select the one
+        // with a starting vertex that has least reduced cost.
         var bestEdge: Pair<Int, Int>? = null
-        for ((fromVertex, flowMap) in edgeFlows) {
-            val fromTarget = instance.whichTarget(fromVertex)
-            for ((toVertex, flow) in flowMap) {
+        for ((fromTarget, flowMap) in targetEdgeFlows) {
+            for ((toTarget, flow) in flowMap) {
                 if (isInteger(flow)) {
                     continue
                 }
                 if (bestEdge == null ||
                     node.targetReducedCosts[fromTarget] <= leastReducedCost!! - Constants.EPS
                 ) {
-                    bestEdge = Pair(fromVertex, toVertex)
+                    bestEdge = Pair(fromTarget, toTarget)
                     leastReducedCost = node.targetReducedCosts[fromTarget]
                 }
             }
         }
 
-        val bestFromVertex = bestEdge!!.first
-        val bestToVertex = bestEdge.second
-        return node.branchOnEdge(bestFromVertex, bestToVertex, instance)
+        val bestFromTarget = bestEdge!!.first
+        val bestToTarget = bestEdge.second
+        return node.branchOnTargetEdge(bestFromTarget, bestToTarget, instance)
     }
 
     private fun isInteger(num: Double): Boolean {

@@ -6,7 +6,6 @@ import ilog.concert.IloNumVarType
 import ilog.concert.IloRange
 import ilog.cplex.IloCplex
 import mu.KLogging
-import orienteering.Constants
 import orienteering.OrienteeringException
 import orienteering.data.Instance
 import orienteering.data.Route
@@ -63,7 +62,7 @@ class SetCoverModel(private var cplex: IloCplex) {
             } else {
                 routeVariable.add(cplex.numVar(0.0, Double.MAX_VALUE, IloNumVarType.Float, "z_$i"))
             }
-            for (vertex in routes[i].path) {
+            for (vertex in routes[i].vertexPath) {
                 val target = instance.whichTarget(vertex)
                 if (target == instance.sourceTarget || target == instance.destinationTarget) {
                     continue

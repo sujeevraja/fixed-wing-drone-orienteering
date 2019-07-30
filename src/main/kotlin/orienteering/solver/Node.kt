@@ -13,7 +13,7 @@ import orienteering.getCopy
 class Node private constructor(
     val graph: SimpleDirectedWeightedGraph<Int, DefaultWeightedEdge>,
     private val mustVisitTargets: List<Boolean>,
-    private val mustVisitEdges: List<Pair<Int, Int>>
+    private val mustVisitTargetEdges: List<Pair<Int, Int>>
 ) : Comparable<Node> {
     private val index = getNodeIndex()
 
@@ -42,7 +42,7 @@ class Node private constructor(
         val enforcedTargets =
             (0 until mustVisitTargets.size).filter { mustVisitTargets[it] }.toList()
         logger.debug("must visit targets: $enforcedTargets")
-        logger.debug("must visit edges: $mustVisitEdges")
+        logger.debug("must visit target edges: $mustVisitTargetEdges")
     }
 
     fun isFeasible(instance: Instance): Boolean {
@@ -73,7 +73,7 @@ class Node private constructor(
         }
 
         // Check if all must-visit edges are present in graph.
-        val requiredEdgesExist = mustVisitEdges.all {
+        val requiredEdgesExist = mustVisitTargetEdges.all {
             graph.containsEdge(it.first, it.second)
         }
 
@@ -97,7 +97,7 @@ class Node private constructor(
             cplex,
             graph,
             mustVisitTargets,
-            mustVisitEdges
+            mustVisitTargetEdges
         )
         cgSolver.solve()
 
@@ -109,68 +109,78 @@ class Node private constructor(
     }
 
     fun branchOnTarget(target: Int, targetVertices: List<Int>): List<Node> {
-        // create a node by deleting all vertices in the target.
-        val reducedGraph = graph.getCopy()
-        for (vertex in targetVertices) {
-            reducedGraph.removeVertex(vertex)
-        }
-        val noVisitNode = Node(reducedGraph, mustVisitTargets, mustVisitEdges)
-        logger.debug("$this target-child without target $target: $noVisitNode")
+        logger.debug("branching $this on target $target")
+        val noVisitNode = getChildWithoutTarget(targetVertices)
+        logger.debug("child without $target: $noVisitNode")
 
-        // create a node by enforcing a visit to the target.
-        val newMustVisitTargets = mustVisitTargets.toMutableList()
-        newMustVisitTargets[target] = true
-        val mustVisitNode = Node(graph, newMustVisitTargets, mustVisitEdges)
-        logger.debug("$this target-child with target $target: $mustVisitNode")
+        val mustVisitNode = getChildWithTarget(target)
+        logger.debug("child with $target: $mustVisitNode")
 
         return listOf(noVisitNode, mustVisitNode)
     }
 
-    fun branchOnEdge(fromVertex: Int, toVertex: Int, instance: Instance): List<Node> {
-        val fromTarget = instance.whichTarget(fromVertex)
-        val toTarget = instance.whichTarget(toVertex)
-
+    fun branchOnTargetEdge(fromTarget: Int, toTarget: Int, instance: Instance): List<Node> {
+        val childNodes = mutableListOf<Node>()
         if (mustVisitTargets[fromTarget] || mustVisitTargets[toTarget]) {
-            // Create a node by deleting the edge.
-            val reducedGraph = graph.getCopy()
-            reducedGraph.removeEdge(reducedGraph.getEdge(fromVertex, toVertex))
-            val noVisitNode = Node(reducedGraph, mustVisitTargets, mustVisitEdges)
-            logger.debug("$this edge-child without edge ($fromVertex -> $toVertex): $noVisitNode")
+            logger.debug("branching $this with target visit already enforced")
 
-            // Create a node by enforcing a visit to "toVertex".
-            val newMustVisitEdges = mustVisitEdges.toMutableList()
-            newMustVisitEdges.add(Pair(fromVertex, toVertex))
-            val mustVisitNode = Node(graph, mustVisitTargets, newMustVisitEdges)
-            logger.debug("$this edge-child with edge ($fromVertex -> $toVertex): $noVisitNode")
+            childNodes.add(getChildWithoutTargetEdge(fromTarget, toTarget, instance))
+            logger.debug("child without $fromTarget -> $toTarget: ${childNodes.last()}")
 
-            return listOf(noVisitNode, mustVisitNode)
+            childNodes.add(getChildWithTargetEdge(fromTarget, toTarget))
+            logger.debug("child with $fromTarget -> $toTarget: ${childNodes.last()}")
         } else {
-            val childNodes = mutableListOf<Node>()
-            // Create a node prohibiting visits to target of "fromVertex".
-            val reducedGraph = graph.getCopy()
-            Graphs.addGraph(reducedGraph, graph)
-            for (vertex in instance.getVertices(fromTarget)) {
-                reducedGraph.removeVertex(vertex)
-            }
-            childNodes.add(Node(reducedGraph, mustVisitTargets, mustVisitEdges))
-            logger.debug("$this edge-child without target $fromVertex: ${childNodes.last()}")
+            logger.debug("branching $this without target visit already enforced")
+            childNodes.add(getChildWithoutTarget(instance.getVertices(fromTarget)))
+            logger.debug("child without $fromTarget: ${childNodes.last()}")
 
-            // Create a node by enforcing a visit to fromTarget and prohibiting visit to the edge.
-            val newMustVisitTargets = mustVisitTargets.toMutableList()
-            newMustVisitTargets[fromTarget] = true
-            val edgeReducedGraph = graph.getCopy()
-            edgeReducedGraph.removeEdge(edgeReducedGraph.getEdge(fromVertex, toVertex))
-            childNodes.add(Node(edgeReducedGraph, newMustVisitTargets, mustVisitEdges))
-            logger.debug("$this edge-child with target $fromVertex, without edge ($fromVertex -> $toVertex): ${childNodes.last()}")
+            childNodes.add(getChildWithTarget(fromTarget).getChildWithoutTargetEdge(fromTarget, toTarget, instance))
+            logger.debug("child with $fromTarget, without $fromTarget -> $toTarget: ${childNodes.last()}")
 
-            // Create a node by enforcing a visit to fromTarget and the edge.
-            val newMustVisitEdges = mustVisitEdges.toMutableList()
-            newMustVisitEdges.add(Pair(fromVertex, toVertex))
-            childNodes.add(Node(graph, newMustVisitTargets, newMustVisitEdges))
-            logger.debug("$this edge-child with target $fromVertex, with edge ($fromVertex -> $toVertex): ${childNodes.last()}")
-
-            return childNodes
+            childNodes.add(getChildWithTarget(fromTarget).getChildWithTargetEdge(fromTarget, toTarget))
+            logger.debug("child with $fromTarget, with $fromTarget -> $toTarget: ${childNodes.last()}")
         }
+
+        return childNodes
+    }
+
+    private fun getChildWithoutTarget(targetVertices: List<Int>): Node {
+        val reducedGraph = graph.getCopy()
+        for (vertex in targetVertices) {
+            reducedGraph.removeVertex(vertex)
+        }
+        return Node(reducedGraph, mustVisitTargets, mustVisitTargetEdges)
+    }
+
+    private fun getChildWithTarget(target: Int): Node {
+        val newMustVisitTargets = mustVisitTargets.toMutableList()
+        newMustVisitTargets[target] = true
+        return Node(graph, newMustVisitTargets, mustVisitTargetEdges)
+    }
+
+    private fun getChildWithoutTargetEdge(
+        fromTarget: Int,
+        toTarget: Int,
+        instance: Instance
+    ): Node {
+        val reducedGraph = graph.getCopy()
+        for (vertex in instance.getVertices(fromTarget)) {
+            val edgesToRemove = mutableListOf<DefaultWeightedEdge>()
+            for (nextVertex in Graphs.successorListOf(graph, vertex)) {
+                if (instance.whichTarget(nextVertex) == toTarget) {
+                    edgesToRemove.add(graph.getEdge(vertex, nextVertex))
+                }
+            }
+
+            edgesToRemove.forEach { graph.removeEdge(it) }
+        }
+        return Node(reducedGraph, mustVisitTargets, mustVisitTargetEdges)
+    }
+
+    private fun getChildWithTargetEdge(fromTarget: Int, toTarget: Int): Node {
+        val newMustVisitTargetEdges = mustVisitTargetEdges.toMutableList()
+        newMustVisitTargetEdges.add(Pair(fromTarget, toTarget))
+        return Node(graph, mustVisitTargets, newMustVisitTargetEdges)
     }
 
     override fun compareTo(other: Node): Int {

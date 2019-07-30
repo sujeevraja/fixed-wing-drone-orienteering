@@ -5,7 +5,7 @@ package orienteering
 
 import org.junit.jupiter.api.Test
 import orienteering.data.InstanceDto
-import orienteering.data.numVertices
+import orienteering.numVertices
 import kotlin.test.assertEquals
 
 class InstanceTests {
