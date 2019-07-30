@@ -42,15 +42,6 @@ class SetCoverModel(private var cplex: IloCplex) {
     private var constraints: ArrayList<IloRange> = arrayListOf()
 
     /**
-     * Boolean list indicating if the model has a constraint corresponding to a target
-     */
-    private lateinit var hasTargetConstraint: MutableList<Boolean>
-    /**
-     * constraint id list for target constraint
-     */
-    private lateinit var targetConstraintId: MutableList<Int?>
-
-    /**
      * CPLEX objective value
      */
     var objective = 0.0
@@ -88,7 +79,7 @@ class SetCoverModel(private var cplex: IloCplex) {
             routeExpr.addTerm(1.0, routeVariable[i])
             objExpr.addTerm(routes[i].score, routeVariable[i])
 
-            routes[i].targetPath.iterator().forEach {
+            routes[i].targetPath.forEach {
                 if (it == instance.sourceTarget || it == instance.destinationTarget)
                     return@forEach
                 targetRoutes[it].add(i)
@@ -116,7 +107,7 @@ class SetCoverModel(private var cplex: IloCplex) {
             if (i == instance.sourceTarget || i == instance.destinationTarget || targetRoutes[i].isEmpty())
                 continue
             val expr: IloLinearNumExpr = cplex.linearNumExpr()
-            targetRoutes[i].iterator().forEach {
+            targetRoutes[i].forEach {
                 expr.addTerm(1.0, routeVariable[it])
             }
             targetCoverConstraintId[i] = constraints.size
@@ -126,9 +117,9 @@ class SetCoverModel(private var cplex: IloCplex) {
         /**
          * mustVisit target constraints { sum(r in route) I(route contains target) * z(r) + w >= 1 }
          */
-        mustVisitTargets.iterator().forEach {
+        mustVisitTargets.forEach {
             val expr: IloLinearNumExpr = cplex.linearNumExpr()
-            targetRoutes[it].iterator().forEach { it1 ->
+            targetRoutes[it].forEach { it1 ->
                 expr.addTerm(1.0, routeVariable[it1])
             }
             expr.addTerm(1.0, auxiliaryVariable)
@@ -140,7 +131,7 @@ class SetCoverModel(private var cplex: IloCplex) {
          * populate vertex incidence on routes
          */
         val vertexRoutes = mustVisitVertices.map { it to mutableListOf<Int>() }.toMap()
-        mustVisitVertices.iterator().forEach {
+        mustVisitVertices.forEach {
             for (i in 0 until routes.size) {
                 if (it in routes[i].vertexPath)
                     vertexRoutes.getValue(it).add(i)
@@ -150,9 +141,9 @@ class SetCoverModel(private var cplex: IloCplex) {
         /**
          * mustVisit vertex constraints { sum(r in route) I(route contains vertex) * z(r) + w >= 1 }
          */
-        mustVisitVertices.iterator().forEach {
+        mustVisitVertices.forEach {
             val expr: IloLinearNumExpr = cplex.linearNumExpr()
-            vertexRoutes.getValue(it).iterator().forEach { it1 ->
+            vertexRoutes.getValue(it).forEach { it1 ->
                 expr.addTerm(1.0, routeVariable[it1])
             }
             expr.addTerm(1.0, auxiliaryVariable)
@@ -164,7 +155,7 @@ class SetCoverModel(private var cplex: IloCplex) {
          * populate targetEdge incidence on routes
          */
         val targetEdgeRoutes = mustVisitTargetEdges.map { it to mutableListOf<Int>() }.toMap()
-        mustVisitTargetEdges.iterator().forEach {
+        mustVisitTargetEdges.forEach {
             for (i in 0 until routes.size) {
                 if (it in routes[i].targetPath.zipWithNext())
                     targetEdgeRoutes.getValue(it).add(i)
@@ -173,9 +164,9 @@ class SetCoverModel(private var cplex: IloCplex) {
         /**
          * mustVisitTargetEdge constraints { sum(r in route) I(route contains targetEdge) * z(r) + w >= 1 }
          */
-        mustVisitTargetEdges.iterator().forEach {
+        mustVisitTargetEdges.forEach {
             val expr:IloLinearNumExpr = cplex.linearNumExpr()
-            targetEdgeRoutes.getValue(it).iterator().forEach { it1 ->
+            targetEdgeRoutes.getValue(it).forEach { it1 ->
                 expr.addTerm(1.0, routeVariable[it1])
             }
             expr.addTerm(1.0, auxiliaryVariable)
@@ -187,16 +178,16 @@ class SetCoverModel(private var cplex: IloCplex) {
          * populate vertexEdge incidence on routes
          */
         val vertexEdgeRoutes = mustVisitVertexEdges.map { it to mutableListOf<Int>() }.toMap()
-        mustVisitVertexEdges.iterator().forEach {
+        mustVisitVertexEdges.forEach {
             for (i in 0 until routes.size) {
                 if (it in routes[i].vertexPath.zipWithNext())
                     vertexEdgeRoutes.getValue(it).add(i)
             }
         }
 
-        mustVisitVertexEdges.iterator().forEach {
+        mustVisitVertexEdges.forEach {
             val expr:IloLinearNumExpr = cplex.linearNumExpr()
-            vertexEdgeRoutes.getValue(it).iterator().forEach { it1 ->
+            vertexEdgeRoutes.getValue(it).forEach { it1 ->
                 expr.addTerm(1.0, routeVariable[it1])
             }
             expr.addTerm(1.0, auxiliaryVariable)
@@ -246,9 +237,9 @@ class SetCoverModel(private var cplex: IloCplex) {
      * Function to get the dual value of constraint corresponding to the targets
      * @return a list of dual values with a default of 0.0 if a target constraint is not present.
      */
-    fun getTargetDuals(): List<Double> =  (0 until hasTargetConstraint.size).map {
-            if (hasTargetConstraint[it])
-                cplex.getDual(constraints[targetConstraintId[it]!!]) else 0.0
+    fun getTargetDuals(): List<Double> =  (0 until hasTargetCoverConstraint.size).map {
+            if (hasTargetCoverConstraint[it])
+                cplex.getDual(constraints[targetCoverConstraintId[it]!!]) else 0.0
         }
 
 
