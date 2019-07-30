@@ -29,15 +29,7 @@ class BranchAndPriceSolver(
             logger.debug("lower bound: $lowerBound")
             node.logInfo()
 
-            // If solution is integral, prune node by optimality.
-            if (isIntegral(node.lpSolution)) {
-                if (node.lpObjective >= lowerBound + Constants.EPS) {
-                    lowerBound = node.lpObjective
-                    bestFeasibleSolution = node.lpSolution.map { it.first }
-                }
-                logger.debug("$node pruned by optimality (integral LP solution)")
-                logger.debug("upper bound: $upperBound")
-                logger.debug("lower bound: $lowerBound")
+            if (pruneByOptimality(node)) {
                 continue
             }
 
@@ -169,6 +161,23 @@ class BranchAndPriceSolver(
         }
     }
 
+    /**
+     * Prunes [node] by optimality if possible and returns true, returns false otherwise.
+     */
+    private fun pruneByOptimality(node: Node): Boolean {
+        if (!isIntegral(node.lpSolution)) {
+            return false
+        }
+        if (node.lpObjective >= lowerBound + Constants.EPS) {
+            lowerBound = node.lpObjective
+            bestFeasibleSolution = node.lpSolution.map { it.first }
+            logger.debug("updating lower bound based on MIP solution of $node")
+        }
+        logger.debug("$node pruned by optimality (integral LP solution)")
+        logger.debug("upper bound: $upperBound")
+        logger.debug("lower bound: $lowerBound")
+        return true
+    }
 
     private fun isIntegral(columnsAndValues: List<Pair<Route, Double>>): Boolean {
         return columnsAndValues.all {
