@@ -233,10 +233,6 @@ class PricingProblemSolver(
 
             val vertex = state.vertex
             if (state.isForward) {
-                if (Graphs.vertexHasSuccessors(graph, vertex)) {
-                    extendForward(state)
-                }
-
                 // Join with all backward states.
                 for (j in 0 until numVertices) {
                     if (j == vertex || !graph.containsEdge(vertex, j)) {
@@ -249,11 +245,11 @@ class PricingProblemSolver(
                         }
                     }
                 }
-            } else {
-                if (Graphs.vertexHasPredecessors(graph, vertex)) {
-                    extendBackward(state)
-                }
 
+                if (Graphs.vertexHasSuccessors(graph, vertex)) {
+                    extendForward(state)
+                }
+            } else {
                 // Join with all forward states.
                 for (j in 0 until numVertices) {
                     if (j == vertex || !graph.containsEdge(j, vertex)) {
@@ -265,6 +261,10 @@ class PricingProblemSolver(
                             return true
                         }
                     }
+                }
+
+                if (Graphs.vertexHasPredecessors(graph, vertex)) {
+                    extendBackward(state)
                 }
             }
         }
