@@ -33,114 +33,33 @@ class BranchAndPriceSolver(
                 continue
             }
 
-            // Find flows to each target and vertex.
-            val targetFlows = MutableList(instance.numTargets) { 0.0 }
-            val edgeFlows: MutableMap<Int, MutableMap<Int, Double>> = mutableMapOf()
+            val childNodes = branch(node)
+            for (childNode in childNodes) {
+                logger.debug("solving LP for child $childNode")
+                childNode.logInfo()
 
-            for ((route, slnVal) in node.lpSolution) {
-                val path = route.path
-                for (i in 0 until path.size - 1) {
-                    val nextVertex = path[i + 1]
-                    targetFlows[instance.whichTarget(nextVertex)] += slnVal
-
-                    val currVertex = path[i]
-                    edgeFlows.putIfAbsent(currVertex, hashMapOf())
-
-                    val outFlowMap = edgeFlows[currVertex]!!
-                    outFlowMap[nextVertex] = slnVal + outFlowMap.getOrDefault(nextVertex, 0.0)
-                }
-            }
-
-            // Try to find a target for branching.
-            var bestTarget: Int? = null
-            var leastReducedCost: Double? = null
-            for (i in 0 until targetFlows.size) {
-                if (i == instance.sourceTarget ||
-                    i == instance.destinationTarget ||
-                    isInteger(targetFlows[i])
-                ) {
+                if (!childNode.isFeasible(instance)) {
+                    logger.debug("$childNode pruned by infeasibility")
                     continue
                 }
 
-                if (bestTarget == null ||
-                    node.targetReducedCosts[i] <= leastReducedCost!! - Constants.EPS
-                ) {
-                    bestTarget = i
-                    leastReducedCost = node.targetReducedCosts[i]
+                childNode.solve(instance, numReducedCostColumns, cplex)
+                if (childNode.lpObjective <= lowerBound + Constants.EPS) {
+                    logger.debug("$childNode pruned by bound")
+                    continue
                 }
-            }
 
-            // If a target is found, branch on it.
-            if (bestTarget != null) {
-                val childNodes = node.branchOnTarget(bestTarget, instance.getVertices(bestTarget))
-                for (childNode in childNodes) {
-                    logger.debug("solving LP for child $childNode")
-                    childNode.logInfo()
-                    if (!childNode.isFeasible(instance)) {
-                        logger.debug("$childNode pruned by infeasibility")
-                    } else {
-                        childNode.solve(instance, numReducedCostColumns, cplex)
-                        if (childNode.lpObjective <= lowerBound + Constants.EPS) {
-                            logger.debug("$childNode pruned by bound")
-                        } else {
-                            if (childNode.mipObjective >= lowerBound + Constants.EPS) {
-                                lowerBound = childNode.mipObjective
-                                bestFeasibleSolution = childNode.mipSolution
-                                logger.debug("updated lower bound: $lowerBound")
-                            }
-                            openNodes.add(childNode)
-                        }
-                    }
+                if (childNode.mipObjective >= lowerBound + Constants.EPS) {
+                    lowerBound = childNode.mipObjective
+                    bestFeasibleSolution = childNode.mipSolution
+                    logger.debug("updated lower bound using open child node: $lowerBound")
                 }
-                if (openNodes.isNotEmpty()) {
-                    upperBound = openNodes.peek().lpObjective
-                }
+                openNodes.add(childNode)
+                upperBound = openNodes.peek().lpObjective
+                logger.debug("added $childNode to open nodes")
                 logger.debug("upper bound: $upperBound")
                 logger.debug("lower bound: $lowerBound")
-                continue
             }
-
-            // Otherwise, find an edge to branch. Among fractional flow edges, we select the one with
-            // a starting vertex that has least reduced cost.
-            var bestEdge: Pair<Int, Int>? = null
-            for ((fromVertex, flowMap) in edgeFlows) {
-                val fromTarget = instance.whichTarget(fromVertex)
-                for ((toVertex, flow) in flowMap) {
-                    if (isInteger(flow)) {
-                        continue
-                    }
-                    if (bestEdge == null || node.targetReducedCosts[fromTarget] <= leastReducedCost!! - Constants.EPS) {
-                        bestEdge = Pair(fromVertex, toVertex)
-                        leastReducedCost = node.targetReducedCosts[fromTarget]
-                    }
-                }
-            }
-
-            val bestFromVertex = bestEdge!!.first
-            val bestToVertex = bestEdge.second
-            val childNodes = node.branchOnEdge(bestFromVertex, bestToVertex, instance)
-            for (childNode in childNodes) {
-                logger.debug("solving LP for node $childNode")
-                childNode.logInfo()
-                if (!childNode.isFeasible(instance)) {
-                    logger.debug("$childNode pruned by infeasibility")
-                } else {
-                    childNode.solve(instance, numReducedCostColumns, cplex)
-                    if (childNode.lpObjective <= lowerBound + Constants.EPS) {
-                        logger.debug("$childNode pruned by bound")
-                    } else {
-                        if (childNode.mipObjective >= lowerBound + Constants.EPS) {
-                            lowerBound = childNode.mipObjective
-                            bestFeasibleSolution = childNode.mipSolution
-                            logger.debug("updated lower bound: $lowerBound")
-                        }
-                        openNodes.add(childNode)
-                    }
-                }
-            }
-            upperBound = openNodes.peek().lpObjective
-            logger.debug("upper bound: $upperBound")
-            logger.debug("lower bound: $lowerBound")
         }
         return bestFeasibleSolution
     }
@@ -183,6 +102,72 @@ class BranchAndPriceSolver(
         return columnsAndValues.all {
             it.second >= 1.0 - Constants.EPS
         }
+    }
+
+    private fun branch(node: Node): List<Node> {
+        // Find flows to each target and vertex.
+        val targetFlows = MutableList(instance.numTargets) { 0.0 }
+        val edgeFlows: MutableMap<Int, MutableMap<Int, Double>> = mutableMapOf()
+
+        for ((route, slnVal) in node.lpSolution) {
+            val path = route.path
+            for (i in 0 until path.size - 1) {
+                val nextVertex = path[i + 1]
+                targetFlows[instance.whichTarget(nextVertex)] += slnVal
+
+                val currVertex = path[i]
+                edgeFlows.putIfAbsent(currVertex, hashMapOf())
+
+                val outFlowMap = edgeFlows[currVertex]!!
+                outFlowMap[nextVertex] = slnVal + outFlowMap.getOrDefault(nextVertex, 0.0)
+            }
+        }
+
+        // Try to find a target for branching.
+        var bestTarget: Int? = null
+        var leastReducedCost: Double? = null
+        for (i in 0 until targetFlows.size) {
+            if (i == instance.sourceTarget ||
+                i == instance.destinationTarget ||
+                isInteger(targetFlows[i])
+            ) {
+                continue
+            }
+
+            if (bestTarget == null ||
+                node.targetReducedCosts[i] <= leastReducedCost!! - Constants.EPS
+            ) {
+                bestTarget = i
+                leastReducedCost = node.targetReducedCosts[i]
+            }
+        }
+
+        // If a target is found, branch on it.
+        if (bestTarget != null) {
+            return node.branchOnTarget(bestTarget, instance.getVertices(bestTarget))
+        }
+
+        // Otherwise, find an edge to branch. Among fractional flow edges, we select the one with
+        // a starting vertex that has least reduced cost.
+        var bestEdge: Pair<Int, Int>? = null
+        for ((fromVertex, flowMap) in edgeFlows) {
+            val fromTarget = instance.whichTarget(fromVertex)
+            for ((toVertex, flow) in flowMap) {
+                if (isInteger(flow)) {
+                    continue
+                }
+                if (bestEdge == null ||
+                    node.targetReducedCosts[fromTarget] <= leastReducedCost!! - Constants.EPS
+                ) {
+                    bestEdge = Pair(fromVertex, toVertex)
+                    leastReducedCost = node.targetReducedCosts[fromTarget]
+                }
+            }
+        }
+
+        val bestFromVertex = bestEdge!!.first
+        val bestToVertex = bestEdge.second
+        return node.branchOnEdge(bestFromVertex, bestToVertex, instance)
     }
 
     private fun isInteger(num: Double): Boolean {
