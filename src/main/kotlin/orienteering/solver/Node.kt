@@ -12,10 +12,13 @@ import orienteering.getCopy
 
 class Node private constructor(
     val graph: SimpleDirectedWeightedGraph<Int, DefaultWeightedEdge>,
-    private val mustVisitTargets: List<Boolean>,
+    private val mustVisitTargets: IntArray,
     private val mustVisitTargetEdges: List<Pair<Int, Int>>
 ) : Comparable<Node> {
     private val index = getNodeIndex()
+
+    var feasible = true
+        private set
 
     var lpObjective = -Double.MAX_VALUE
         private set
@@ -39,9 +42,7 @@ class Node private constructor(
     fun logInfo() {
         logger.debug("index: $index")
         logger.debug("vertices: ${graph.vertexSet()}")
-        val enforcedTargets =
-            (0 until mustVisitTargets.size).filter { mustVisitTargets[it] }.toList()
-        logger.debug("must visit targets: $enforcedTargets")
+        logger.debug("must visit targets: ${mustVisitTargets.toList()}")
         logger.debug("must visit target edges: $mustVisitTargetEdges")
     }
 
@@ -63,10 +64,8 @@ class Node private constructor(
         }
 
         // Check if all must-visit targets are connected.
-        for (target in 0 until mustVisitTargets.size) {
-            if (mustVisitTargets[target] &&
-                instance.getVertices(target).none { isVertexConnected(it) }
-            ) {
+        for (target in mustVisitTargets) {
+            if (instance.getVertices(target).none { isVertexConnected(it) }) {
                 logger.debug("graph does not contain a must-visit target")
                 return false
             }
@@ -100,12 +99,14 @@ class Node private constructor(
             mustVisitTargetEdges
         )
         cgSolver.solve()
-
-        lpObjective = cgSolver.lpObjective
-        lpSolution = cgSolver.lpSolution
-        mipObjective = cgSolver.mipObjective
-        mipSolution = cgSolver.mipSolution
-        targetReducedCosts = cgSolver.targetReducedCosts
+        feasible = !cgSolver.lpInfeasible
+        if (feasible) {
+            lpObjective = cgSolver.lpObjective
+            lpSolution = cgSolver.lpSolution
+            mipObjective = cgSolver.mipObjective
+            mipSolution = cgSolver.mipSolution
+            targetReducedCosts = cgSolver.targetReducedCosts
+        }
     }
 
     fun branchOnTarget(target: Int, targetVertices: List<Int>): List<Node> {
@@ -121,7 +122,7 @@ class Node private constructor(
 
     fun branchOnTargetEdge(fromTarget: Int, toTarget: Int, instance: Instance): List<Node> {
         val childNodes = mutableListOf<Node>()
-        if (mustVisitTargets[fromTarget] || mustVisitTargets[toTarget]) {
+        if (fromTarget in mustVisitTargets || toTarget in mustVisitTargets) {
             logger.debug("branching $this with target visit already enforced")
 
             childNodes.add(getChildWithoutTargetEdge(fromTarget, toTarget, instance))
@@ -134,10 +135,21 @@ class Node private constructor(
             childNodes.add(getChildWithoutTarget(instance.getVertices(fromTarget)))
             logger.debug("child without $fromTarget: ${childNodes.last()}")
 
-            childNodes.add(getChildWithTarget(fromTarget).getChildWithoutTargetEdge(fromTarget, toTarget, instance))
+            childNodes.add(
+                getChildWithTarget(fromTarget).getChildWithoutTargetEdge(
+                    fromTarget,
+                    toTarget,
+                    instance
+                )
+            )
             logger.debug("child with $fromTarget, without $fromTarget -> $toTarget: ${childNodes.last()}")
 
-            childNodes.add(getChildWithTarget(fromTarget).getChildWithTargetEdge(fromTarget, toTarget))
+            childNodes.add(
+                getChildWithTarget(fromTarget).getChildWithTargetEdge(
+                    fromTarget,
+                    toTarget
+                )
+            )
             logger.debug("child with $fromTarget, with $fromTarget -> $toTarget: ${childNodes.last()}")
         }
 
@@ -153,9 +165,7 @@ class Node private constructor(
     }
 
     private fun getChildWithTarget(target: Int): Node {
-        val newMustVisitTargets = mustVisitTargets.toMutableList()
-        newMustVisitTargets[target] = true
-        return Node(graph, newMustVisitTargets, mustVisitTargetEdges)
+        return Node(graph, mustVisitTargets + target, mustVisitTargetEdges)
     }
 
     private fun getChildWithoutTargetEdge(
@@ -193,10 +203,9 @@ class Node private constructor(
 
     companion object : KLogging() {
         fun buildRootNode(
-            graph: SimpleDirectedWeightedGraph<Int, DefaultWeightedEdge>,
-            numTargets: Int
+            graph: SimpleDirectedWeightedGraph<Int, DefaultWeightedEdge>
         ): Node {
-            return Node(graph, List(numTargets) { false }, listOf())
+            return Node(graph, intArrayOf(), listOf())
         }
 
         private var nodeCount = 0

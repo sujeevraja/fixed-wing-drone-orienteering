@@ -32,9 +32,10 @@ class PricingProblemSolver(
     private val instance: Instance,
     private val routeDual: Double,
     private val targetReducedCosts: List<Double>,
+    private val targetEdgeDuals: List<List<Double>>,
     private val numReducedCostColumns: Int,
     private val graph: SimpleDirectedWeightedGraph<Int, DefaultWeightedEdge>,
-    private val mustVisitTargets: List<Boolean>,
+    private val mustVisitTargets: IntArray,
     private val mustVisitEdges: List<Pair<Int, Int>>
 ) {
     /**
@@ -392,13 +393,19 @@ class PricingProblemSolver(
         }
 
         // Here, extension is feasible. So, generate and return it.
+        var rcUpdate = targetReducedCosts[neighborTarget]
+        rcUpdate += if (state.isForward) {
+            targetEdgeDuals[instance.whichTarget(state.vertex)][neighborTarget]
+        } else {
+            targetEdgeDuals[neighborTarget][instance.whichTarget(state.vertex)]
+        }
         return state.extend(
             neighbor,
             neighborTarget,
             isCritical[neighborTarget],
             edgeLength,
             instance.targetScores[neighborTarget],
-            targetReducedCosts[neighborTarget]
+            rcUpdate
         )
     }
 

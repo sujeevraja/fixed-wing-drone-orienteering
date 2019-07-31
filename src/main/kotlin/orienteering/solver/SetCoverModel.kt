@@ -226,6 +226,10 @@ class SetCoverModel(private var cplex: IloCplex) {
         }
     }
 
+    fun getAuxiliaryVariableSolution(): Double {
+        return cplex.getValue(auxiliaryVariable)
+    }
+
     /**
      * Function to get the route dual
      * @return Dual value
