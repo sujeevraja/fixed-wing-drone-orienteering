@@ -71,8 +71,6 @@ class BranchAndPriceSolver(
                 openNodes.add(childNode)
                 upperBound = openNodes.peek().lpObjective
                 logger.debug("added $childNode to open nodes")
-                logger.debug("upper bound: $upperBound")
-                logger.debug("lower bound: $lowerBound")
             }
         }
         return bestFeasibleSolution
@@ -107,8 +105,6 @@ class BranchAndPriceSolver(
             logger.debug("updating lower bound based on MIP solution of $node")
         }
         logger.debug("$node pruned by optimality (integral LP solution)")
-        logger.debug("upper bound: $upperBound")
-        logger.debug("lower bound: $lowerBound")
         return true
     }
 
