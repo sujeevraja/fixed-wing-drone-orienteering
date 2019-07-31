@@ -419,38 +419,15 @@ class PricingProblemSolver(
             return false
         }
 
-        val joinedPath = mutableListOf<Int>()
-        joinedPath.addAll(forwardState.getPartialPathVertices().asReversed())
-        joinedPath.addAll(backwardState.getPartialPathVertices())
+        val joinedVertexPath = mutableListOf<Int>()
+        joinedVertexPath.addAll(forwardState.getPartialPathVertices().asReversed())
+        joinedVertexPath.addAll(backwardState.getPartialPathVertices())
 
-        val visitedTargets = mutableSetOf<Int>()
-        val visitedEdges = mutableSetOf<Pair<Int, Int>>()
-        for (i in 0 until joinedPath.size) {
-            visitedTargets.add(instance.whichTarget(joinedPath[i]))
-            if (i != joinedPath.size - 1) {
-                visitedEdges.add(Pair(joinedPath[i], joinedPath[i + 1]))
-            }
-        }
-
-        for (i in 0 until instance.numTargets) {
-            if (mustVisitTargets[i] && i !in visitedTargets) {
-                return false
-            }
-        }
-
-        for (edge in mustVisitEdges) {
-            if (edge !in visitedEdges) {
-                return false
-            }
-        }
-
-        val targetPath = joinedPath.map { instance.whichTarget(it) }
-        val routeLength = getJoinedPathLength(forwardState, backwardState)
         val route = Route(
-            joinedPath,
-            targetPath,
+            joinedVertexPath,
+            joinedVertexPath.map { instance.whichTarget(it) },
             forwardState.score + backwardState.score,
-            routeLength,
+            getJoinedPathLength(forwardState, backwardState),
             reducedCost
         )
         // var printed = false
@@ -463,7 +440,7 @@ class PricingProblemSolver(
              */
         }
 
-        if (!hasCycle(joinedPath) && (route !in elementaryRoutes)) {
+        if (!hasCycle(joinedVertexPath) && (route !in elementaryRoutes)) {
             elementaryRoutes.add(route)
             /*
             if (!printed) {
