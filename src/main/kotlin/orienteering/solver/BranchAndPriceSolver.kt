@@ -50,11 +50,14 @@ class BranchAndPriceSolver(
                 logger.debug("number of vertices after pre-processing: ${childNode.graph.numVertices()}")
 
                 if (!childNode.isFeasible(instance)) {
-                    logger.debug("$childNode pruned by infeasibility")
+                    logger.debug("$childNode pruned by infeasibility before solving")
                     continue
                 }
 
                 childNode.solve(instance, numReducedCostColumns, cplex)
+                if (!childNode.feasible) {
+                    logger.debug("$childNode pruned by infeasibility after solving")
+                }
                 if (childNode.lpObjective <= lowerBound + Constants.EPS) {
                     logger.debug("$childNode pruned by bound")
                     continue
@@ -76,7 +79,7 @@ class BranchAndPriceSolver(
     }
 
     private fun initialize() {
-        val rootNode = Node.buildRootNode(instance.graph, instance.numTargets)
+        val rootNode = Node.buildRootNode(instance.graph)
         rootNode.solve(instance, numReducedCostColumns, cplex)
         upperBound = rootNode.lpObjective
         lowerBound = rootNode.mipObjective

@@ -49,7 +49,7 @@ class State private constructor(
         isCritical: Boolean,
         edgeLength: Double,
         vertexScore: Double,
-        vertexReducedCost: Double
+        reducedCostChange: Double
     ): State {
         val newVisitedBits = visitedBits.copyOf()
         if (isCritical) {
@@ -62,7 +62,7 @@ class State private constructor(
             newVertex,
             pathLength + edgeLength,
             score + vertexScore,
-            reducedCost + vertexReducedCost,
+            reducedCost + reducedCostChange,
             numTargetsVisited + 1,
             newVisitedBits
         )
