@@ -85,7 +85,7 @@ class InstanceDto(
     }
 
     init {
-        logger.info("starting initialization of instance $name...")
+        logger.debug("starting initialization of instance $name...")
         collectLinesFromFile()
 
         val numTargetsLine = lines[0].split("[ \t]".toRegex())
@@ -142,8 +142,8 @@ class InstanceDto(
             verticesInTarget = verticesInTarget
         )
 
-        logger.info("number of vertices: ${graph.numVertices()}")
-        logger.info("completed instance initialization.")
+        logger.debug("number of vertices: ${graph.numVertices()}")
+        logger.debug("completed instance initialization.")
     }
 
     /**

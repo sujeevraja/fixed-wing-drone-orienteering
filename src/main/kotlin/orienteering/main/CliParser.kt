@@ -74,7 +74,7 @@ class CliParser : CliktCommand() {
         }
 
     override fun run() {
-        logger.info("reading command line arguments...")
+        logger.debug("reading command line arguments...")
     }
 }
 

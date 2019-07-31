@@ -72,15 +72,15 @@ class ColumnGenSolver(
     fun solve() {
         var columnGenIteration = 0
         while (true) {
-            logger.info("----- START column generation iteration $columnGenIteration")
+            logger.debug("----- START column generation iteration $columnGenIteration")
             solveRestrictedMasterProblem()
             val newColumns = generateColumns()
             if (newColumns.isEmpty()) {
-                logger.info("----- TERMINATE due to optimality")
+                logger.debug("----- TERMINATE due to optimality")
                 break
             }
             columns.addAll(newColumns)
-            logger.info("----- END column generation iteration $columnGenIteration")
+            logger.debug("----- END column generation iteration $columnGenIteration")
             columnGenIteration++
         }
 
@@ -108,13 +108,6 @@ class ColumnGenSolver(
                 mustVisitEdges
             )
         pricingProblemSolver.generateColumns()
-        val routes = pricingProblemSolver.elementaryRoutes
-        if (routes.isEmpty()) {
-            logger.info("no reduced cost columns found")
-        } else {
-            // val bestRoute = routes.minBy { it.reducedCost }
-            // logger.info("least reduced cost route: $bestRoute")
-        }
         return pricingProblemSolver.elementaryRoutes
     }
 
@@ -124,7 +117,6 @@ class ColumnGenSolver(
      * @param asMip true if model needs to be solved as integer, false otherwise.
      */
     private fun solveRestrictedMasterProblem(asMip: Boolean = false) {
-        logger.info("starting to solve restricted master problem...")
         logger.debug("number of columns: ${columns.size}")
         val setCoverModel = SetCoverModel(cplex)
         setCoverModel.createModel(
