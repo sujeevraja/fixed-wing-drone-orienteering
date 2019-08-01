@@ -6,7 +6,7 @@ import orienteering.Constants
 import orienteering.OrienteeringException
 import orienteering.data.Instance
 import orienteering.data.Route
-import orienteering.data.preProcess
+import orienteering.preProcess
 import orienteering.numVertices
 import java.util.*
 import kotlin.math.absoluteValue

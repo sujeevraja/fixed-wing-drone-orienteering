@@ -2,9 +2,8 @@ package orienteering.solver
 
 import ilog.cplex.IloCplex
 import mu.KLogging
-import org.jgrapht.graph.DefaultWeightedEdge
-import org.jgrapht.graph.SimpleDirectedWeightedGraph
 import orienteering.Constants
+import orienteering.SetGraph
 import orienteering.data.Instance
 import orienteering.data.Route
 
@@ -15,7 +14,7 @@ class ColumnGenSolver(
     private val instance: Instance,
     private val numReducedCostColumns: Int,
     private val cplex: IloCplex,
-    private val graph: SimpleDirectedWeightedGraph<Int, DefaultWeightedEdge>,
+    private val graph: SetGraph,
     private val mustVisitTargets: IntArray,
     private val mustVisitEdges: List<Pair<Int, Int>>
 ) {

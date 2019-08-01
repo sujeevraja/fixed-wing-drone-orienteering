@@ -3,8 +3,9 @@ package orienteering.data
 import dubins.DubinsCurve
 import mu.KLogging
 import org.jgrapht.graph.DefaultWeightedEdge
-import org.jgrapht.graph.SimpleDirectedWeightedGraph
+import orienteering.SetGraph
 import orienteering.numVertices
+import orienteering.preProcess
 import java.io.File
 import kotlin.math.PI
 import kotlin.math.sqrt
@@ -50,8 +51,7 @@ class InstanceDto(
     private var budget = 0.0
     private var verticesInTarget = mutableListOf<List<Int>>()
     private var targetOfVertex = mutableListOf<Int>()
-    private val graph =
-        SimpleDirectedWeightedGraph<Int, DefaultWeightedEdge>(DefaultWeightedEdge::class.java)
+    private val graph = SetGraph(DefaultWeightedEdge::class.java)
 
     /**
      * Logger object.

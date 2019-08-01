@@ -1,11 +1,26 @@
-package orienteering.data
+package orienteering
 
+import org.jgrapht.Graphs
 import org.jgrapht.graph.DefaultWeightedEdge
 import org.jgrapht.graph.SimpleDirectedWeightedGraph
 import kotlin.math.min
 
+typealias SetGraph = SimpleDirectedWeightedGraph<Int, DefaultWeightedEdge>
+
+fun SetGraph.numVertices() = this.vertexSet().size
+
+fun SetGraph.getEdgeWeight(from: Int, to: Int): Double {
+    return this.getEdgeWeight(this.getEdge(from, to))
+}
+
+fun SetGraph.getCopy(): SetGraph {
+    val graphCopy = SetGraph(DefaultWeightedEdge::class.java)
+    Graphs.addGraph(graphCopy, this)
+    return graphCopy
+}
+
 fun preProcess(
-    graph: SimpleDirectedWeightedGraph<Int, DefaultWeightedEdge>,
+    graph: SetGraph,
     budget: Double,
     sourceVertices: List<Int>,
     destinationVertices: List<Int>
@@ -49,3 +64,4 @@ fun preProcess(
             graph.removeVertex(it)
     }
 }
+

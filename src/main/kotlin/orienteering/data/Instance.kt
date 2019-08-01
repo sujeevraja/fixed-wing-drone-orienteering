@@ -1,7 +1,6 @@
 package orienteering.data
 
-import org.jgrapht.graph.DefaultWeightedEdge
-import org.jgrapht.graph.SimpleDirectedWeightedGraph
+import orienteering.SetGraph
 import orienteering.numVertices
 
 /**
@@ -19,7 +18,7 @@ import orienteering.numVertices
  */
 
 class Instance(
-    val graph: SimpleDirectedWeightedGraph<Int, DefaultWeightedEdge>,
+    val graph: SetGraph,
     val budget: Double,
     val sourceTarget: Int,
     val destinationTarget: Int,

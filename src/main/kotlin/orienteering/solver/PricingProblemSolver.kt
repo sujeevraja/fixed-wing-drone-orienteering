@@ -2,10 +2,9 @@ package orienteering.solver
 
 import mu.KLogging
 import org.jgrapht.Graphs
-import org.jgrapht.graph.DefaultWeightedEdge
-import org.jgrapht.graph.SimpleDirectedWeightedGraph
 import orienteering.Constants
 import orienteering.OrienteeringException
+import orienteering.SetGraph
 import orienteering.data.Instance
 import orienteering.data.Route
 import orienteering.getEdgeWeight
@@ -34,7 +33,7 @@ class PricingProblemSolver(
     private val targetReducedCosts: List<Double>,
     private val targetEdgeDuals: List<List<Double>>,
     private val numReducedCostColumns: Int,
-    private val graph: SimpleDirectedWeightedGraph<Int, DefaultWeightedEdge>,
+    private val graph: SetGraph,
     private val mustVisitTargets: IntArray,
     private val mustVisitEdges: List<Pair<Int, Int>>
 ) {

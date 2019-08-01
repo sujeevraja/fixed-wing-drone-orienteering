@@ -4,14 +4,14 @@ import ilog.cplex.IloCplex
 import mu.KLogging
 import org.jgrapht.Graphs
 import org.jgrapht.graph.DefaultWeightedEdge
-import org.jgrapht.graph.SimpleDirectedWeightedGraph
 import orienteering.Constants
+import orienteering.SetGraph
 import orienteering.data.Instance
 import orienteering.data.Route
 import orienteering.getCopy
 
 class Node private constructor(
-    val graph: SimpleDirectedWeightedGraph<Int, DefaultWeightedEdge>,
+    val graph: SetGraph,
     private val mustVisitTargets: IntArray,
     private val mustVisitTargetEdges: List<Pair<Int, Int>>
 ) : Comparable<Node> {
@@ -202,11 +202,7 @@ class Node private constructor(
     }
 
     companion object : KLogging() {
-        fun buildRootNode(
-            graph: SimpleDirectedWeightedGraph<Int, DefaultWeightedEdge>
-        ): Node {
-            return Node(graph, intArrayOf(), listOf())
-        }
+        fun buildRootNode(graph: SetGraph): Node = Node(graph, intArrayOf(), listOf())
 
         var nodeCount = 0
             private set
