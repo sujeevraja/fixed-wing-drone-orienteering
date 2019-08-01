@@ -268,7 +268,7 @@ class BoundingLP(
      * Function to export the model
      */
     fun exportModel() {
-        cplex.exportModel("temp.lp")
+        cplex.exportModel("logs/branch_and_cut_model.lp")
     }
 
     fun solve() {
