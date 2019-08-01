@@ -63,10 +63,28 @@ tasks {
         noStdlibLink = true
     }
 
-    register<Delete>("cleanLogs") {
+    register<Delete>("cleanlogs") {
         delete(fileTree("logs") {
             include("*.log", "*.lp", "*.yaml")
         })
+    }
+
+    register<Jar>("uberjar") {
+        archiveFileName.set("uber.jar")
+        duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+
+        manifest {
+            attributes("Main-Class" to "orienteering.main.MainKt")
+        }
+
+        val sourcesMain = sourceSets.main.get()
+        sourcesMain.allSource.forEach { println("add from sources: ${it.name}") }
+        from(sourceSets.main.get().output)
+
+        dependsOn(configurations.runtimeClasspath)
+        from(configurations.runtimeClasspath.get()
+            .onEach { println("add from dependencies: ${it.name}") }
+            .map { if (it.isDirectory) it else zipTree(it) })
     }
 }
 
