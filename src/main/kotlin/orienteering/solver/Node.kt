@@ -4,9 +4,9 @@ import ilog.cplex.IloCplex
 import mu.KLogging
 import org.jgrapht.Graphs
 import org.jgrapht.graph.DefaultWeightedEdge
-import orienteering.util.Constants
 import orienteering.util.SetGraph
 import orienteering.data.Instance
+import orienteering.data.Parameters
 import orienteering.data.Route
 import orienteering.util.getCopy
 
@@ -195,8 +195,8 @@ class Node private constructor(
 
     override fun compareTo(other: Node): Int {
         return when {
-            lpObjective >= other.lpObjective + Constants.EPS -> -1
-            lpObjective <= other.lpObjective - Constants.EPS -> 1
+            lpObjective >= other.lpObjective + Parameters.eps -> -1
+            lpObjective <= other.lpObjective - Parameters.eps -> 1
             else -> 0
         }
     }

@@ -39,6 +39,14 @@ object Parameters {
      */
     var timeLimitInSeconds: Int = 3600
         private set
+    /**
+     * Tolerance used to compare double values.
+     */
+    const val eps = 1e-5
+    /**
+     * Number of bits on system
+     */
+    const val numBits = 64
 
     fun initialize(
         instanceName: String,

@@ -2,10 +2,10 @@ package orienteering.solver
 
 import mu.KLogging
 import org.jgrapht.Graphs
-import orienteering.util.Constants
 import orienteering.util.OrienteeringException
 import orienteering.util.SetGraph
 import orienteering.data.Instance
+import orienteering.data.Parameters
 import orienteering.data.Route
 import orienteering.util.getEdgeWeight
 import java.util.*
@@ -114,7 +114,7 @@ class PricingProblemSolver(
         /*
         logger.debug("vehicle cover dual: $routeDual")
         for (i in 0 until numTargets) {
-            if (targetReducedCosts[i].absoluteValue >= Constants.EPS) {
+            if (targetReducedCosts[i].absoluteValue >= Parameters.eps) {
                 logger.debug("reduced cost of target: $i: ${targetReducedCosts[i]}")
             }
         }
@@ -202,7 +202,7 @@ class PricingProblemSolver(
         if (optimalRoute != null && hasCycle(optimalRoute!!.vertexPath)) {
             optimalRoute = elementaryRoutes.firstOrNull()
             for (route in elementaryRoutes.drop(1)) {
-                if (route.reducedCost <= optimalRoute!!.reducedCost - Constants.EPS) {
+                if (route.reducedCost <= optimalRoute!!.reducedCost - Parameters.eps) {
                     optimalRoute = route
                 }
             }
@@ -364,7 +364,7 @@ class PricingProblemSolver(
         // Prevent extension of states that have consumed more than half the path length
         // budget. This reduces the number of extensions to be considered, while ensuring that
         // optimality is unaffected. Refer to section 4.3 in the paper for further details.
-        if (state.pathLength >= (maxPathLength / 2.0) - Constants.EPS) {
+        if (state.pathLength >= (maxPathLength / 2.0) - Parameters.eps) {
             return false
         }
 
@@ -421,7 +421,7 @@ class PricingProblemSolver(
         }
 
         val reducedCost = routeDual + forwardState.reducedCost + backwardState.reducedCost
-        if (reducedCost >= -Constants.EPS) {
+        if (reducedCost >= -Parameters.eps) {
             return false
         }
 
@@ -437,7 +437,7 @@ class PricingProblemSolver(
             reducedCost
         )
         // var printed = false
-        if (optimalRoute == null || reducedCost <= optimalRoute!!.reducedCost - Constants.EPS) {
+        if (optimalRoute == null || reducedCost <= optimalRoute!!.reducedCost - Parameters.eps) {
             optimalRoute = route
             /*
             logger.debug("join at ${forwardState.vertex} -> ${backwardState.vertex}")
@@ -528,19 +528,19 @@ class PricingProblemSolver(
     private fun halfway(fs: State, bs: State): Boolean {
         val currDiff = (fs.pathLength - bs.pathLength).absoluteValue
 
-        if (fs.pathLength <= bs.pathLength - Constants.EPS) {
+        if (fs.pathLength <= bs.pathLength - Parameters.eps) {
             var nextDiff = 0.0
             if (bs.parent != null) {
                 nextDiff = graph.getEdgeWeight(graph.getEdge(bs.vertex, bs.parent.vertex))
             }
-            return currDiff <= nextDiff - Constants.EPS
+            return currDiff <= nextDiff - Parameters.eps
         }
 
         var prevDiff = 0.0
         if (fs.parent != null) {
             prevDiff = graph.getEdgeWeight(graph.getEdge(fs.parent.vertex, fs.vertex))
         }
-        return currDiff <= prevDiff + Constants.EPS
+        return currDiff <= prevDiff + Parameters.eps
     }
 
     /**

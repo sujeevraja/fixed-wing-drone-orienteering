@@ -212,7 +212,7 @@ class SetCoverModel(private var cplex: IloCplex) {
         logger.debug("----- lpSolution print start")
         for (i in 0 until routeVariable.size) {
             val solutionValue = cplex.getValue(routeVariable[i])
-            if (solutionValue >= Constants.EPS) {
+            if (solutionValue >= Parameters.EPS) {
                 logger.debug("column $i: $solutionValue")
             }
         }
