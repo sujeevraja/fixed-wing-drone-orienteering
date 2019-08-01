@@ -5,6 +5,11 @@ import org.jgrapht.graph.DefaultWeightedEdge
 import org.jgrapht.graph.SimpleDirectedWeightedGraph
 import kotlin.math.min
 
+/**
+ * Custom exception to throw problem-specific exception.
+ */
+class OrienteeringException(message: String) : Exception(message)
+
 typealias SetGraph = SimpleDirectedWeightedGraph<Int, DefaultWeightedEdge>
 
 /**
