@@ -1,4 +1,4 @@
-package orienteering.data
+package dubins
 
 /**
  * Class that holds a vertex for a set instance

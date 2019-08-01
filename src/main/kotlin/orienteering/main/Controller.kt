@@ -4,7 +4,7 @@ import ilog.cplex.IloCplex
 import mu.KLogging
 import org.yaml.snakeyaml.DumperOptions
 import org.yaml.snakeyaml.Yaml
-import orienteering.OrienteeringException
+import orienteering.util.OrienteeringException
 import orienteering.data.Instance
 import orienteering.data.InstanceDto
 import orienteering.data.Parameters

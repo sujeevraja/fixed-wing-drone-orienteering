@@ -2,12 +2,12 @@ package orienteering.solver
 
 import mu.KLogging
 import org.jgrapht.Graphs
-import orienteering.Constants
-import orienteering.OrienteeringException
-import orienteering.SetGraph
+import orienteering.util.Constants
+import orienteering.util.OrienteeringException
+import orienteering.util.SetGraph
 import orienteering.data.Instance
 import orienteering.data.Route
-import orienteering.getEdgeWeight
+import orienteering.util.getEdgeWeight
 import java.util.*
 import kotlin.math.absoluteValue
 

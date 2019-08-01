@@ -1,4 +1,4 @@
-package orienteering
+package orienteering.util
 
 object Constants {
     /**

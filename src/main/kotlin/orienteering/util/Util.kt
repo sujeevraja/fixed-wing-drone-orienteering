@@ -1,4 +1,4 @@
-package orienteering
+package orienteering.util
 
 import org.jgrapht.Graphs
 import org.jgrapht.graph.DefaultWeightedEdge

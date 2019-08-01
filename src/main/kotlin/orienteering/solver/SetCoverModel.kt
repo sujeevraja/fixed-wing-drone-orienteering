@@ -6,7 +6,7 @@ import ilog.concert.IloNumVarType
 import ilog.concert.IloRange
 import ilog.cplex.IloCplex
 import mu.KLogging
-import orienteering.OrienteeringException
+import orienteering.util.OrienteeringException
 import orienteering.data.Instance
 import orienteering.data.Route
 

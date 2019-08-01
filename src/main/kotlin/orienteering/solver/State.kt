@@ -1,6 +1,6 @@
 package orienteering.solver
 
-import orienteering.Constants
+import orienteering.util.Constants
 
 class State private constructor(
     val isForward: Boolean,

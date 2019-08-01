@@ -1,4 +1,4 @@
-package orienteering
+package orienteering.util
 
 /**
  * Custom exception to throw problem-specific exception.

@@ -4,11 +4,11 @@ import ilog.cplex.IloCplex
 import mu.KLogging
 import org.jgrapht.Graphs
 import org.jgrapht.graph.DefaultWeightedEdge
-import orienteering.Constants
-import orienteering.SetGraph
+import orienteering.util.Constants
+import orienteering.util.SetGraph
 import orienteering.data.Instance
 import orienteering.data.Route
-import orienteering.getCopy
+import orienteering.util.getCopy
 
 class Node private constructor(
     val graph: SetGraph,

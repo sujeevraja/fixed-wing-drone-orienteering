@@ -5,7 +5,7 @@ import ilog.concert.IloNumVar
 import ilog.cplex.IloCplex
 import mu.KLogging
 import org.jgrapht.Graphs
-import orienteering.SetGraph
+import orienteering.util.SetGraph
 import orienteering.data.Instance
 
 class BoundingLP(

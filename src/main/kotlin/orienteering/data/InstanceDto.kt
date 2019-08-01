@@ -1,11 +1,13 @@
 package orienteering.data
 
+import dubins.Coords
+import dubins.DubinsCoords
 import dubins.DubinsCurve
 import mu.KLogging
 import org.jgrapht.graph.DefaultWeightedEdge
-import orienteering.SetGraph
-import orienteering.numVertices
-import orienteering.preProcess
+import orienteering.util.SetGraph
+import orienteering.util.numVertices
+import orienteering.util.preProcess
 import java.io.File
 import kotlin.math.PI
 import kotlin.math.sqrt
@@ -127,7 +129,12 @@ class InstanceDto(
         }
 
         buildGraph(vertices)
-        preProcess(graph, budget, verticesInTarget[source], verticesInTarget[destination])
+        preProcess(
+            graph,
+            budget,
+            verticesInTarget[source],
+            verticesInTarget[destination]
+        )
 
 
         instance = Instance(

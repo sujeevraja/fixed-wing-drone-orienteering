@@ -2,8 +2,8 @@ package orienteering.solver
 
 import ilog.cplex.IloCplex
 import mu.KLogging
-import orienteering.Constants
-import orienteering.SetGraph
+import orienteering.util.Constants
+import orienteering.util.SetGraph
 import orienteering.data.Instance
 import orienteering.data.Route
 
