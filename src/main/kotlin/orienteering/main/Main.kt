@@ -6,5 +6,5 @@ fun main(args: Array<String>) {
     controller.parseArgs(args)
     controller.populateInstance()
     controller.run()
-    controller.populateRunStatistics()
+    controller.writeResults()
 }
