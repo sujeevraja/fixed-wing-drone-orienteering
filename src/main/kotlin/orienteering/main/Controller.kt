@@ -6,10 +6,13 @@ import orienteering.OrienteeringException
 import orienteering.data.Instance
 import orienteering.data.InstanceDto
 import orienteering.data.Parameters
-import orienteering.solver.ColumnGenSolver
 import kotlin.system.measureTimeMillis
 import orienteering.solver.BoundingLP
 import orienteering.solver.BranchAndPriceSolver
+
+import org.yaml.snakeyaml.DumperOptions
+import org.yaml.snakeyaml.Yaml
+import java.io.File
 
 /**
  * Manages the entire lpSolution process.
@@ -18,6 +21,7 @@ class Controller {
     private lateinit var instance: Instance
     private lateinit var cplex: IloCplex
     private lateinit var parameters: Parameters
+    private val results = sortedMapOf<String, Any>()
 
     /**
      * Parses [args], the given command-line arguments.
@@ -33,6 +37,16 @@ class Controller {
             numDiscretizations = parser.numDiscretizations,
             numReducedCostColumns = parser.numReducedCostColumns
         )
+
+        val inputData = sortedMapOf<String, Any>()
+        inputData["instance_name"] = parser.instanceName
+        inputData["instance-path"] = parser.instancePath
+        inputData["algorithm"] = if (parser.algorithm == 1) "BC" else "BP"
+        inputData["turn_radius"] = parser.turnRadius
+        inputData["number_of_discretizations"] = parser.numDiscretizations
+        inputData["number_of_reduced_cost_columns"] = parser.numReducedCostColumns
+        results["input"] = inputData
+
         logger.debug("finished parsing command line arguments and populating parameters")
     }
 
@@ -67,8 +81,8 @@ class Controller {
     fun run() {
         val timeElapsedMillis = measureTimeMillis {
             when (parameters.algorithm) {
-                1 -> runBranchAndCutAlgorithm()
-                2 -> runColumnGenAlgorithm()
+                1 -> runBranchAndCut()
+                2 -> runBranchAndPrice()
                 else -> throw OrienteeringException("unknown algorithm type")
             }
         }
@@ -78,14 +92,21 @@ class Controller {
     /**
      * Function to dump the results in a YAML file
      */
-    fun populateRunStatistics() {
+    fun writeResults() {
+        val dumperOptions = DumperOptions()
+        dumperOptions.defaultFlowStyle = DumperOptions.FlowStyle.BLOCK
+        dumperOptions.isPrettyFlow = true
 
+        val yaml = Yaml(dumperOptions)
+        val writer = File("logs/out.yaml").bufferedWriter()
+        yaml.dump(results, writer)
+        writer.close()
     }
 
     /**
      * Function to run branch-and-price algorithm
      */
-    private fun runColumnGenAlgorithm() {
+    private fun runBranchAndPrice() {
         logger.info("algorithm: branch and price")
         initCPLEX()
         val bps = BranchAndPriceSolver(instance, parameters.numReducedCostColumns, cplex)
@@ -102,7 +123,7 @@ class Controller {
     /**
      * Function to run the branch-and-cut algorithm
      */
-    private fun runBranchAndCutAlgorithm() {
+    private fun runBranchAndCut() {
         logger.info("algorithm: branch and cut")
         initCPLEX()
         val bc = BoundingLP(instance, cplex, targetDuals = List(instance.numTargets) { 0.0 })

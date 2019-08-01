@@ -40,6 +40,9 @@ dependencies {
     // use JGraphT library
     implementation("org.jgrapht:jgrapht-core:1.3.0")
 
+    // Library for writing output KPIs to YAML files
+    implementation("org.yaml:snakeyaml:1.8")
+
     compileClasspath("org.junit.platform:junit-platform-gradle-plugin:1.0.0-M3")
 
     val cplexJarPath: String by project
