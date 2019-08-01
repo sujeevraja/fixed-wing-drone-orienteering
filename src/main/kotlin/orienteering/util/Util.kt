@@ -7,18 +7,34 @@ import kotlin.math.min
 
 typealias SetGraph = SimpleDirectedWeightedGraph<Int, DefaultWeightedEdge>
 
+/**
+ * Returns number of vertices in graph.
+ */
 fun SetGraph.numVertices() = this.vertexSet().size
 
+/**
+ * Returns weight of edge between [from] vertex and [to] vertex.
+ */
 fun SetGraph.getEdgeWeight(from: Int, to: Int): Double {
     return this.getEdgeWeight(this.getEdge(from, to))
 }
 
+/**
+ * Creates a shallow copy of the graph.
+ *
+ * The returned SetGraph object is new, but its edges are references.
+ */
 fun SetGraph.getCopy(): SetGraph {
     val graphCopy = SetGraph(DefaultWeightedEdge::class.java)
     Graphs.addGraph(graphCopy, this)
     return graphCopy
 }
 
+/**
+ * Removes any vertex v from [graph] for which the length of the shortest path starting from a
+ * vertex in [sourceVertices] and reaching any vertex in [destinationVertices] via v exceeds
+ * [budget].
+ */
 fun preProcess(
     graph: SetGraph,
     budget: Double,

@@ -1,5 +1,8 @@
 package orienteering.util
 
+/**
+ * Global constants
+ */
 object Constants {
     /**
      * Tolerance used to compare double values.
