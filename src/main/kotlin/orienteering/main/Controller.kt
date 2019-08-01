@@ -33,7 +33,7 @@ class Controller {
             numDiscretizations = parser.numDiscretizations,
             numReducedCostColumns = parser.numReducedCostColumns
         )
-        logger.info("finished parsing command line arguments and populating parameters")
+        logger.debug("finished parsing command line arguments and populating parameters")
     }
 
     /**
@@ -86,7 +86,7 @@ class Controller {
      * Function to run branch-and-price algorithm
      */
     private fun runColumnGenAlgorithm() {
-        logger.info("starting the branch-and-price algorithm")
+        logger.info("algorithm: branch and price")
         initCPLEX()
         val bps = BranchAndPriceSolver(instance, parameters.numReducedCostColumns, cplex)
         val solution = bps.solve()
@@ -103,7 +103,7 @@ class Controller {
      * Function to run the branch-and-cut algorithm
      */
     private fun runBranchAndCutAlgorithm() {
-        logger.info("starting the branch-and-cut algorithm")
+        logger.info("algorithm: branch and cut")
         initCPLEX()
         val bc = BoundingLP(instance, cplex, targetDuals = List(instance.numTargets) { 0.0 })
         bc.createModel()
