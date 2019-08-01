@@ -208,7 +208,8 @@ class Node private constructor(
             return Node(graph, intArrayOf(), listOf())
         }
 
-        private var nodeCount = 0
+        var nodeCount = 0
+            private set
 
         fun getNodeIndex(): Int {
             nodeCount++

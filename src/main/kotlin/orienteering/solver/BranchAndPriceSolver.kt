@@ -17,13 +17,27 @@ class BranchAndPriceSolver(
     private val numReducedCostColumns: Int,
     private val cplex: IloCplex
 ) {
-    private var lowerBound: Double = -Double.MAX_VALUE
+    var rootLowerBound: Double = -Double.MAX_VALUE
+        private set
+
+    var rootUpperBound: Double = Double.MAX_VALUE
+        private set
+
+    var lowerBound: Double = -Double.MAX_VALUE
+        private set
+
     private var bestFeasibleSolution = listOf<Route>()
-    private var upperBound: Double = Double.MAX_VALUE
+
+    var upperBound: Double = Double.MAX_VALUE
+        private set
+
     private val openNodes = PriorityQueue<Node>()
 
+    var numNodes = 0
+        private set
+
     fun solve(): List<Route> {
-        initialize()
+        solveRootNode()
         while (openNodes.isNotEmpty()) {
             val node = openNodes.remove()
             logger.debug("processing $node")
@@ -73,14 +87,21 @@ class BranchAndPriceSolver(
                 logger.debug("added $childNode to open nodes")
             }
         }
+
+        numNodes = Node.nodeCount - 1
         return bestFeasibleSolution
     }
 
-    private fun initialize() {
+    private fun solveRootNode() {
         val rootNode = Node.buildRootNode(instance.graph)
         rootNode.solve(instance, numReducedCostColumns, cplex)
+
         upperBound = rootNode.lpObjective
+        rootUpperBound = upperBound
+
         lowerBound = rootNode.mipObjective
+        rootLowerBound = lowerBound
+
         bestFeasibleSolution = rootNode.mipSolution
         if (lowerBound >= upperBound + Constants.EPS) {
             throw OrienteeringException("lower bound overshoots upper bound")

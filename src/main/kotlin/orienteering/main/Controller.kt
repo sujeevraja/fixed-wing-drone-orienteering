@@ -2,17 +2,16 @@ package orienteering.main
 
 import ilog.cplex.IloCplex
 import mu.KLogging
+import org.yaml.snakeyaml.DumperOptions
+import org.yaml.snakeyaml.Yaml
 import orienteering.OrienteeringException
 import orienteering.data.Instance
 import orienteering.data.InstanceDto
 import orienteering.data.Parameters
-import kotlin.system.measureTimeMillis
 import orienteering.solver.BoundingLP
 import orienteering.solver.BranchAndPriceSolver
-
-import org.yaml.snakeyaml.DumperOptions
-import org.yaml.snakeyaml.Yaml
 import java.io.File
+import kotlin.system.measureTimeMillis
 
 /**
  * Manages the entire lpSolution process.
@@ -98,7 +97,7 @@ class Controller {
         dumperOptions.isPrettyFlow = true
 
         val yaml = Yaml(dumperOptions)
-        val writer = File("logs/out.yaml").bufferedWriter()
+        val writer = File("logs/results.yaml").bufferedWriter()
         yaml.dump(results, writer)
         writer.close()
     }
@@ -118,6 +117,23 @@ class Controller {
         val totalScore = solution.sumByDouble { it.score }
         logger.info("final score: $totalScore")
         clearCPLEX()
+
+        val outputResults = sortedMapOf<String, Any>()
+        outputResults["root_lower_bound"] = bps.rootLowerBound
+        outputResults["root_upper_bound"] = bps.rootUpperBound
+        outputResults["root_gap_percentage"] =
+            computePercentGap(bps.rootLowerBound, bps.rootUpperBound)
+
+        outputResults["final_lower_bound"] = bps.lowerBound
+        outputResults["final_upper bound"] = bps.upperBound
+        outputResults["final_gap_percentage"] = computePercentGap(bps.lowerBound, bps.upperBound)
+
+        outputResults["number_of_nodes"] = bps.numNodes
+        results["output"] = outputResults
+    }
+
+    private fun computePercentGap(lb: Double, ub: Double): Double {
+        return ((ub - lb) / ub) * 100.0
     }
 
     /**

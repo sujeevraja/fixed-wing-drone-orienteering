@@ -53,7 +53,6 @@ dependencies {
 
     // Use the Kotlin JUnit integration.
     testImplementation("org.junit.jupiter:junit-jupiter:5.4.2")
-
 }
 
 tasks {
@@ -66,7 +65,7 @@ tasks {
 
     register<Delete>("cleanLogs") {
         delete(fileTree("logs") {
-            include("*.log", "*.lp")
+            include("*.log", "*.lp", "*.yaml")
         })
     }
 }
