@@ -83,8 +83,17 @@ class BranchAndPriceSolver(
                     logger.debug("updated lower bound using open child node: $lowerBound")
                 }
                 openNodes.add(childNode)
-                upperBound = openNodes.peek().lpObjective
                 logger.debug("added $childNode to open nodes")
+            }
+
+            if (openNodes.isNotEmpty()) {
+                val newUpperBound = openNodes.peek().lpObjective
+                if (upperBound <= newUpperBound - Parameters.eps) {
+                    logger.error("existing upper bound: $upperBound")
+                    logger.error("open nodes upper bound: $newUpperBound")
+                    throw OrienteeringException("upper bound smaller than it should be")
+                }
+                upperBound = newUpperBound
             }
         }
 
