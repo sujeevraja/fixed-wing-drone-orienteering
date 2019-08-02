@@ -315,13 +315,15 @@ class PricingProblemSolver(
             return
         }
         state.extended = true
-
         if (!canExtend(state)) {
             return
         }
 
         val vertex = state.vertex
         for (nextVertex in Graphs.successorListOf(graph, vertex)) {
+            if (state.visits(instance.whichTarget(nextVertex))) {
+                continue
+            }
             if (state.parent != null && sameTarget(state.parent.vertex, nextVertex)) {
                 continue
             }
@@ -336,13 +338,15 @@ class PricingProblemSolver(
             return
         }
         state.extended = true
-
         if (!canExtend(state)) {
             return
         }
 
         val vertex = state.vertex
         for (prevVertex in Graphs.predecessorListOf(graph, vertex)) {
+            if (state.visits(instance.whichTarget(prevVertex))) {
+                continue
+            }
             if (state.parent != null && sameTarget(state.parent.vertex, prevVertex)) {
                 continue
             }
@@ -380,18 +384,13 @@ class PricingProblemSolver(
     }
 
     private fun extendIfFeasible(state: State, neighbor: Int, edgeLength: Double): State? {
-        // Prevent multiple visits to critical targets.
-        val neighborTarget = instance.whichTarget(neighbor)
-        if (isCritical[neighborTarget] && state.visits(neighborTarget)) {
-            return null
-        }
-
         // Prevent budget infeasibility.
         if (state.pathLength + edgeLength >= maxPathLength) {
             return null
         }
 
         // Here, extension is feasible. So, generate and return it.
+        val neighborTarget = instance.whichTarget(neighbor)
         var rcUpdate = targetReducedCosts[neighborTarget]
         rcUpdate += if (state.isForward) {
             targetEdgeDuals[instance.whichTarget(state.vertex)][neighborTarget]
@@ -469,28 +468,6 @@ class PricingProblemSolver(
      */
     private fun feasible(fs: State, bs: State): Boolean {
         return !fs.hasCommonVisits(bs) && getJoinedPathLength(fs, bs) <= maxPathLength
-
-        // return (!fs.hasCommonVisits(bs) && getJoinedPathLength(fs, bs) <= maxPathLength &&
-        //        !has2Or3Cycle(fs, bs))
-    }
-
-    private fun has2Or3Cycle(fs: State, bs: State): Boolean {
-        if (fs.parent != null && sameTarget(fs.parent.vertex, bs.vertex)) {
-            return true
-        }
-
-        if (bs.parent != null && sameTarget(fs.vertex, bs.parent.vertex)) {
-            return true
-        }
-
-        if (fs.parent != null &&
-            bs.parent != null &&
-            sameTarget(fs.parent.vertex, bs.parent.vertex)
-        ) {
-            return true
-        }
-
-        return false
     }
 
     /**
