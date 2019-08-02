@@ -2,10 +2,10 @@ package orienteering.solver
 
 import ilog.cplex.IloCplex
 import mu.KLogging
-import orienteering.util.SetGraph
 import orienteering.data.Instance
 import orienteering.data.Parameters
 import orienteering.data.Route
+import orienteering.util.SetGraph
 
 /**
  * Solves the multi-vehicle orienteering problem with column generation.
@@ -31,9 +31,12 @@ class ColumnGenSolver(
      */
     var targetReducedCosts = MutableList(instance.numTargets) { 0.0 }
         private set
-
-    var targetEdgeDuals = List(instance.numTargets) { MutableList(instance.numTargets) { 0.0 } }
-        private set
+    /**
+     * 2D list containing duals of target-edges. The outer list is indexed by the starting target
+     * and the inner list by the ending target of the target-edge.
+     */
+    private var targetEdgeDuals =
+        List(instance.numTargets) { MutableList(instance.numTargets) { 0.0 } }
     /**
      * Final LP objective value
      */
@@ -120,7 +123,7 @@ class ColumnGenSolver(
             instance,
             columns,
             asMip,
-            mustVisitTargets = mustVisitTargets.toList(),
+            mustVisitTargets,
             mustVisitTargetEdges = mustVisitEdges
         )
         setCoverModel.solve()

@@ -56,7 +56,7 @@ class SetCoverModel(private var cplex: IloCplex) {
         instance: Instance,
         routes: MutableList<Route>,
         binary: Boolean = false,
-        mustVisitTargets: List<Int> = mutableListOf(),
+        mustVisitTargets: IntArray = intArrayOf(),
         mustVisitTargetEdges: List<Pair<Int, Int>> = mutableListOf(),
         mustVisitVertices: List<Int> = mutableListOf(),
         mustVisitVertexEdges: List<Pair<Int, Int>> = mutableListOf()
