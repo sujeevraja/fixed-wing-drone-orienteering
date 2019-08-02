@@ -76,6 +76,10 @@ class ColumnGenSolver(
         while (true) {
             logger.debug("----- START column generation iteration $columnGenIteration")
             solveRestrictedMasterProblem()
+            if (TimeChecker.timeLimitReached()) {
+                break
+            }
+
             val newColumns = generateColumns()
             if (newColumns.isEmpty()) {
                 logger.debug("----- TERMINATE due to optimality")

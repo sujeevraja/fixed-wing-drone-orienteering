@@ -37,12 +37,16 @@ class BranchAndPriceSolver(
     var numNodes = 0
         private set
 
-    var optimalityProved = false
+    var optimalityReached = false
         private set
 
     fun solve() {
         solveRootNode()
         while (openNodes.isNotEmpty()) {
+            if (TimeChecker.timeLimitReached()) {
+                break
+            }
+
             val node = openNodes.remove()
             logger.debug("processing $node")
             logger.debug("upper bound: $upperBound")
@@ -75,19 +79,20 @@ class BranchAndPriceSolver(
                 childNode.solve(instance, numReducedCostColumns, cplex)
                 if (!childNode.feasible) {
                     logger.debug("$childNode pruned by infeasibility after solving")
-                }
-                if (childNode.lpObjective <= lowerBound + Parameters.eps) {
+                } else if (childNode.lpObjective <= lowerBound + Parameters.eps) {
                     logger.debug("$childNode pruned by bound")
-                    continue
+                } else {
+                    if (childNode.mipObjective >= lowerBound + Parameters.eps) {
+                        lowerBound = childNode.mipObjective
+                        bestFeasibleSolution = childNode.mipSolution
+                        logger.debug("updated lower bound using open child node: $lowerBound")
+                    }
+                    openNodes.add(childNode)
+                    logger.debug("added $childNode to open nodes")
                 }
-
-                if (childNode.mipObjective >= lowerBound + Parameters.eps) {
-                    lowerBound = childNode.mipObjective
-                    bestFeasibleSolution = childNode.mipSolution
-                    logger.debug("updated lower bound using open child node: $lowerBound")
+                if (TimeChecker.timeLimitReached()) {
+                    break
                 }
-                openNodes.add(childNode)
-                logger.debug("added $childNode to open nodes")
             }
 
             if (openNodes.isNotEmpty()) {
@@ -102,7 +107,9 @@ class BranchAndPriceSolver(
         }
 
         numNodes = Node.nodeCount - 1
-        optimalityProved = true
+        if (!TimeChecker.timeLimitReached()) {
+            optimalityReached = true
+        }
     }
 
     private fun solveRootNode() {

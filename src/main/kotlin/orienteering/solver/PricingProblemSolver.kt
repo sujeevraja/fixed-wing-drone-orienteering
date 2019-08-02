@@ -109,16 +109,6 @@ class PricingProblemSolver(
      * @return list of elementaryRoutes with negative reduced cost.
      */
     fun generateColumns() {
-        /*
-        logger.debug("vehicle cover dual: $routeDual")
-        for (i in 0 until numTargets) {
-            if (targetReducedCosts[i].absoluteValue >= Parameters.eps) {
-                logger.debug("reduced cost of target: $i: ${targetReducedCosts[i]}")
-            }
-        }
-        logger.debug("starting column generation...")
-         */
-
         // Store source states.
         for (srcVertex in srcVertices) {
             forwardStates[srcVertex].add(State.buildTerminalState(true, srcVertex, numTargets))
@@ -153,7 +143,7 @@ class PricingProblemSolver(
 
             val stopSearch = search()
             if (stopSearch) {
-                logger.debug("----- STOP column search due to #columns limit")
+                logger.debug("----- STOP column search as search() stopped")
                 break
             }
 
@@ -174,8 +164,6 @@ class PricingProblemSolver(
             logger.debug("----- END search iteration $searchIteration, stop: $stop")
             searchIteration++
         } while (!stop)
-
-        // logger.debug("completed column generation.")
     }
 
     private fun initializeIteration() {
@@ -212,6 +200,10 @@ class PricingProblemSolver(
         logger.debug("critical targets: $criticalTargets")
 
         while (unprocessedForwardStates.isNotEmpty() || unprocessedBackwardStates.isNotEmpty()) {
+            if (TimeChecker.timeLimitReached()) {
+                return true
+            }
+
             var state: State? = null
             if (processForwardState) {
                 if (unprocessedForwardStates.isNotEmpty()) {
