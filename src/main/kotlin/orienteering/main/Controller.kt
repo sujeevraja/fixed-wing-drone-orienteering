@@ -40,8 +40,9 @@ class Controller {
         )
 
         problemData["instance_name"] = parser.instanceName
-        problemData["instance-path"] = parser.instancePath
+        problemData["instance_path"] = parser.instancePath
         problemData["algorithm"] = if (parser.algorithm == 1) "BC" else "BP"
+        problemData["time_limit_in_seconds"] = parser.timeLimitInSeconds
         problemData["turn_radius"] = parser.turnRadius
         problemData["number_of_discretizations"] = parser.numDiscretizations
         problemData["number_of_reduced_cost_columns"] = parser.numReducedCostColumns
