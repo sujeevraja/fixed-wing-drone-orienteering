@@ -73,6 +73,13 @@ class CliParser : CliktCommand() {
             }
         }
 
+    val timeLimitInSeconds: Int by option("-t", help = "time limit in seconds")
+        .int().default(60).validate {
+            require( it > 0) {
+                "time limit should be a strictly positive integer"
+            }
+        }
+
     override fun run() {
         logger.debug("reading command line arguments...")
     }

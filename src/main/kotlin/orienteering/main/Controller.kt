@@ -9,6 +9,7 @@ import orienteering.data.InstanceDto
 import orienteering.data.Parameters
 import orienteering.solver.BoundingLP
 import orienteering.solver.BranchAndPriceSolver
+import orienteering.solver.TimeChecker
 import orienteering.util.OrienteeringException
 import java.io.File
 import kotlin.system.measureTimeMillis
@@ -19,6 +20,7 @@ import kotlin.system.measureTimeMillis
 class Controller {
     private lateinit var instance: Instance
     private lateinit var cplex: IloCplex
+    private val problemData = sortedMapOf<String, Any>()
     private val results = sortedMapOf<String, Any>()
 
     /**
@@ -34,18 +36,15 @@ class Controller {
             turnRadius = parser.turnRadius,
             numDiscretizations = parser.numDiscretizations,
             numReducedCostColumns = parser.numReducedCostColumns,
-            timeLimitInSeconds = 3600
+            timeLimitInSeconds = parser.timeLimitInSeconds
         )
 
-        val inputData = sortedMapOf<String, Any>()
-        inputData["instance_name"] = parser.instanceName
-        inputData["instance-path"] = parser.instancePath
-        inputData["algorithm"] = if (parser.algorithm == 1) "BC" else "BP"
-        inputData["turn_radius"] = parser.turnRadius
-        inputData["number_of_discretizations"] = parser.numDiscretizations
-        inputData["number_of_reduced_cost_columns"] = parser.numReducedCostColumns
-        results["input"] = inputData
-
+        problemData["instance_name"] = parser.instanceName
+        problemData["instance-path"] = parser.instancePath
+        problemData["algorithm"] = if (parser.algorithm == 1) "BC" else "BP"
+        problemData["turn_radius"] = parser.turnRadius
+        problemData["number_of_discretizations"] = parser.numDiscretizations
+        problemData["number_of_reduced_cost_columns"] = parser.numReducedCostColumns
         logger.debug("finished parsing command line arguments and populating parameters")
     }
 
@@ -80,6 +79,7 @@ class Controller {
      * Function to start the solver
      */
     fun run() {
+        TimeChecker.startTracking()
         val timeElapsedMillis = measureTimeMillis {
             when (Parameters.algorithm) {
                 1 -> runBranchAndCut()
@@ -87,7 +87,10 @@ class Controller {
                 else -> throw OrienteeringException("unknown algorithm type")
             }
         }
-        logger.info("run completed, time: ${timeElapsedMillis / 1000.0} seconds")
+
+        val timeInSeconds = timeElapsedMillis / 1000.0
+        results["solution_time_in_seconds"] = timeInSeconds
+        logger.info("run completed, time: $timeInSeconds seconds")
     }
 
     /**
@@ -100,7 +103,11 @@ class Controller {
 
         val yaml = Yaml(dumperOptions)
         val writer = File("logs/results.yaml").bufferedWriter()
-        yaml.dump(results, writer)
+
+        val allResults = sortedMapOf<String, Any>(
+            Pair("input", problemData), Pair("output", results)
+        )
+        yaml.dump(allResults, writer)
         writer.close()
     }
 
@@ -111,8 +118,10 @@ class Controller {
         logger.info("algorithm: branch and price")
         initCPLEX()
         val bps = BranchAndPriceSolver(instance, Parameters.numReducedCostColumns, cplex)
-        val solution = bps.solve()
+        bps.solve()
+
         logger.info("final solution:")
+        val solution = bps.bestFeasibleSolution
         for (route in solution) {
             logger.info(route.toString())
         }
@@ -120,18 +129,15 @@ class Controller {
         logger.info("final score: $totalScore")
         clearCPLEX()
 
-        val outputResults = sortedMapOf<String, Any>()
-        outputResults["root_lower_bound"] = bps.rootLowerBound
-        outputResults["root_upper_bound"] = bps.rootUpperBound
-        outputResults["root_gap_percentage"] =
+        results["root_lower_bound"] = bps.rootLowerBound
+        results["root_upper_bound"] = bps.rootUpperBound
+        results["root_gap_percentage"] =
             computePercentGap(bps.rootLowerBound, bps.rootUpperBound)
 
-        outputResults["final_lower_bound"] = bps.lowerBound
-        outputResults["final_upper bound"] = bps.upperBound
-        outputResults["final_gap_percentage"] = computePercentGap(bps.lowerBound, bps.upperBound)
-
-        outputResults["number_of_nodes"] = bps.numNodes
-        results["output"] = outputResults
+        results["final_lower_bound"] = bps.lowerBound
+        results["final_upper bound"] = bps.upperBound
+        results["final_gap_percentage"] = computePercentGap(bps.lowerBound, bps.upperBound)
+        results["optimality_reached"] = bps.optimalityReached
     }
 
     private fun computePercentGap(lb: Double, ub: Double): Double {
