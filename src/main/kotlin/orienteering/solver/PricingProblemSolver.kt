@@ -370,11 +370,10 @@ class PricingProblemSolver(
             return false
         }
 
-        // To be joined, each state needs to have at least 2 vertices on its partial path, the
-        // pseudo source/destination vertex and an actual source/destination vertex. Also, we only
-        // join a forward and backward state if they don't have the same incident vertex. So, the
-        // maximum number of vertices on any state's partial path can be numTargets - 2.
-        if (state.numTargetsVisited > numTargets - 2) {
+        // Paths joined will always be on an edge (i,j) with a forward label at i and a backward
+        // label at j. So, any label has visited more targets than (numTargets - 1) can be
+        // discarded.
+        if (state.numTargetsVisited > numTargets - 1) {
             return false
         }
 
