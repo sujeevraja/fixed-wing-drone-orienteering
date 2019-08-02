@@ -33,9 +33,7 @@ class PricingProblemSolver(
     private val targetReducedCosts: List<Double>,
     private val targetEdgeDuals: List<List<Double>>,
     private val numReducedCostColumns: Int,
-    private val graph: SetGraph,
-    private val mustVisitTargets: IntArray,
-    private val mustVisitEdges: List<Pair<Int, Int>>
+    private val graph: SetGraph
 ) {
     /**
      * Number of targets (i.e. vertex clusters) in given instance.
@@ -315,13 +313,15 @@ class PricingProblemSolver(
             return
         }
         state.extended = true
-
         if (!canExtend(state)) {
             return
         }
 
         val vertex = state.vertex
         for (nextVertex in Graphs.successorListOf(graph, vertex)) {
+            if (state.visits(instance.whichTarget(nextVertex))) {
+                continue
+            }
             if (state.parent != null && sameTarget(state.parent.vertex, nextVertex)) {
                 continue
             }
@@ -336,13 +336,15 @@ class PricingProblemSolver(
             return
         }
         state.extended = true
-
         if (!canExtend(state)) {
             return
         }
 
         val vertex = state.vertex
         for (prevVertex in Graphs.predecessorListOf(graph, vertex)) {
+            if (state.visits(instance.whichTarget(prevVertex))) {
+                continue
+            }
             if (state.parent != null && sameTarget(state.parent.vertex, prevVertex)) {
                 continue
             }
@@ -368,11 +370,10 @@ class PricingProblemSolver(
             return false
         }
 
-        // To be joined, each state needs to have at least 2 vertices on its partial path, the
-        // pseudo source/destination vertex and an actual source/destination vertex. Also, we only
-        // join a forward and backward state if they don't have the same incident vertex. So, the
-        // maximum number of vertices on any state's partial path can be numTargets - 2.
-        if (state.numTargetsVisited > numTargets - 2) {
+        // Paths joined will always be on an edge (i,j) with a forward label at i and a backward
+        // label at j. So, any label has visited more targets than (numTargets - 1) can be
+        // discarded.
+        if (state.numTargetsVisited > numTargets - 1) {
             return false
         }
 
@@ -380,18 +381,13 @@ class PricingProblemSolver(
     }
 
     private fun extendIfFeasible(state: State, neighbor: Int, edgeLength: Double): State? {
-        // Prevent multiple visits to critical targets.
-        val neighborTarget = instance.whichTarget(neighbor)
-        if (isCritical[neighborTarget] && state.visits(neighborTarget)) {
-            return null
-        }
-
         // Prevent budget infeasibility.
         if (state.pathLength + edgeLength >= maxPathLength) {
             return null
         }
 
         // Here, extension is feasible. So, generate and return it.
+        val neighborTarget = instance.whichTarget(neighbor)
         var rcUpdate = targetReducedCosts[neighborTarget]
         rcUpdate += if (state.isForward) {
             targetEdgeDuals[instance.whichTarget(state.vertex)][neighborTarget]
@@ -468,27 +464,7 @@ class PricingProblemSolver(
      * @return true if path is budget-feasible, false otherwise.
      */
     private fun feasible(fs: State, bs: State): Boolean {
-        return (!fs.hasCommonVisits(bs) && getJoinedPathLength(fs, bs) <= maxPathLength &&
-                !has2Or3Cycle(fs, bs))
-    }
-
-    private fun has2Or3Cycle(fs: State, bs: State): Boolean {
-        if (fs.parent != null && sameTarget(fs.parent.vertex, bs.vertex)) {
-            return true
-        }
-
-        if (bs.parent != null && sameTarget(fs.vertex, bs.parent.vertex)) {
-            return true
-        }
-
-        if (fs.parent != null &&
-            bs.parent != null &&
-            sameTarget(fs.parent.vertex, bs.parent.vertex)
-        ) {
-            return true
-        }
-
-        return false
+        return !fs.hasCommonVisits(bs) && getJoinedPathLength(fs, bs) <= maxPathLength
     }
 
     /**
@@ -505,42 +481,45 @@ class PricingProblemSolver(
     /**
      * Check if the given forward and backward state satisfy "half-way-point" conditions.
      *
-     * This condition is used to prune duplicate paths. At a high level, say the given forward
-     * state is at vertex i and the backward state is at vertex j. Also assume that the parent
-     * (i.e. predecessor) of the forward state has vertex i1 and the parent (i.e. successor) of
-     * the backward state has vertex j1. The half-way-point condition is satisfied by the given
-     * forward-backward state pair if the length of the edge (i,j) is minimum among (i1,i),
-     * (i,j) and (j,j1). If we only save paths that satisfy the halfway condition, we can prune out
-     * most duplicate paths (the only remaining duplicates occur when there are ties for the
-     * minimum edge length, which can also be pruned by this function with a bit more care).
-     *
-     * In this example, assume that (i,j) satisfies the half-way-point condition. Then, this path
-     * would be stored. If the same path got generated by joining the forward state at i1 and the
-     * backward state at i, that path, being a duplicate of the (i,j) path would be rejected
-     * because it fails the half-way-point condition (as (i,j) edge length is smaller than the
-     * (i1,i) edge length). The duplicate path generated by joining the (j,j1) path would also
-     * be rejected for the same reason. For further details, refer section 5.1 in the paper.
-     *
      * @param fs forward state for partial path from source
      * @param bs backward state for partial path to destination
      * @return true if (fs,bs) satisfy the half-way-point condition, false otherwise
      */
     private fun halfway(fs: State, bs: State): Boolean {
         val currDiff = (fs.pathLength - bs.pathLength).absoluteValue
+        if (currDiff <= Parameters.eps) {
+            return true
+        }
 
+        val joinEdgeLength = graph.getEdgeWeight(fs.vertex, bs.vertex)
+        var otherDiff = 0.0
         if (fs.pathLength <= bs.pathLength - Parameters.eps) {
-            var nextDiff = 0.0
             if (bs.parent != null) {
-                nextDiff = graph.getEdgeWeight(graph.getEdge(bs.vertex, bs.parent.vertex))
+                // If extension of forward label past joined edge is infeasible, that extension
+                // cannot be a valid candidate. So, we can accept the current path.
+                if (fs.pathLength + joinEdgeLength >= maxPathLength * 0.5) {
+                    return true
+                }
+                otherDiff = (fs.pathLength + joinEdgeLength - bs.parent.pathLength).absoluteValue
             }
-            return currDiff <= nextDiff - Parameters.eps
+        } else {
+            // If extension of backward label past joined edge is infeasible, that extension
+            // cannot be a valid candidate. So, we accept the current path.
+            if (fs.parent != null) {
+                if (joinEdgeLength + bs.pathLength >= maxPathLength * 0.5) {
+                    return true
+                }
+                otherDiff = (fs.parent.pathLength - (joinEdgeLength + bs.pathLength)).absoluteValue
+            }
         }
 
-        var prevDiff = 0.0
-        if (fs.parent != null) {
-            prevDiff = graph.getEdgeWeight(graph.getEdge(fs.parent.vertex, fs.vertex))
+        if (currDiff <= otherDiff - Parameters.eps) {
+            return true
         }
-        return currDiff <= prevDiff + Parameters.eps
+        if (currDiff >= otherDiff + Parameters.eps) {
+            return false
+        }
+        return fs.pathLength >= bs.pathLength + Parameters.eps
     }
 
     /**

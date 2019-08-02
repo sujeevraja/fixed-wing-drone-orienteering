@@ -12,6 +12,9 @@ class State private constructor(
     val numTargetsVisited: Int,
     private val visitedBits: LongArray
 ) : Comparable<State> {
+    /**
+     * Reduced cost per unit length of partial path up to incident vertex of label.
+     */
     private val bangForBuck = if (pathLength >= Parameters.eps) reducedCost / pathLength else 0.0
     /**
      * true if all extensions have been generated, false otherwise
