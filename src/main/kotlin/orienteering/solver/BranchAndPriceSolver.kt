@@ -26,7 +26,8 @@ class BranchAndPriceSolver(
     var lowerBound: Double = -Double.MAX_VALUE
         private set
 
-    private var bestFeasibleSolution = listOf<Route>()
+    var bestFeasibleSolution = listOf<Route>()
+        private set
 
     var upperBound: Double = Double.MAX_VALUE
         private set
@@ -36,7 +37,10 @@ class BranchAndPriceSolver(
     var numNodes = 0
         private set
 
-    fun solve(): List<Route> {
+    var optimalityProved = false
+        private set
+
+    fun solve() {
         solveRootNode()
         while (openNodes.isNotEmpty()) {
             val node = openNodes.remove()
@@ -98,7 +102,7 @@ class BranchAndPriceSolver(
         }
 
         numNodes = Node.nodeCount - 1
-        return bestFeasibleSolution
+        optimalityProved = true
     }
 
     private fun solveRootNode() {
