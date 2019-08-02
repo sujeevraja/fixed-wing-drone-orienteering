@@ -102,9 +102,7 @@ class ColumnGenSolver(
                 targetReducedCosts,
                 targetEdgeDuals,
                 numReducedCostColumns,
-                graph,
-                mustVisitTargets,
-                mustVisitEdges
+                graph
             )
         pricingProblemSolver.generateColumns()
         return pricingProblemSolver.elementaryRoutes

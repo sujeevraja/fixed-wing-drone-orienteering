@@ -33,9 +33,7 @@ class PricingProblemSolver(
     private val targetReducedCosts: List<Double>,
     private val targetEdgeDuals: List<List<Double>>,
     private val numReducedCostColumns: Int,
-    private val graph: SetGraph,
-    private val mustVisitTargets: IntArray,
-    private val mustVisitEdges: List<Pair<Int, Int>>
+    private val graph: SetGraph
 ) {
     /**
      * Number of targets (i.e. vertex clusters) in given instance.
