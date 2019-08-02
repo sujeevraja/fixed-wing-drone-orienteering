@@ -2,10 +2,9 @@ package orienteering.solver
 
 import ilog.cplex.IloCplex
 import mu.KLogging
-import org.jgrapht.graph.DefaultWeightedEdge
-import org.jgrapht.graph.SimpleDirectedWeightedGraph
-import orienteering.Constants
+import orienteering.util.SetGraph
 import orienteering.data.Instance
+import orienteering.data.Parameters
 import orienteering.data.Route
 
 /**
@@ -15,7 +14,7 @@ class ColumnGenSolver(
     private val instance: Instance,
     private val numReducedCostColumns: Int,
     private val cplex: IloCplex,
-    private val graph: SimpleDirectedWeightedGraph<Int, DefaultWeightedEdge>,
+    private val graph: SetGraph,
     private val mustVisitTargets: IntArray,
     private val mustVisitEdges: List<Pair<Int, Int>>
 ) {
@@ -134,7 +133,7 @@ class ColumnGenSolver(
             val setCoverSolution = setCoverModel.getSolution()
             val selectedRoutes = mutableListOf<Route>()
             for (i in 0 until setCoverSolution.size) {
-                if (setCoverSolution[i] >= Constants.EPS) {
+                if (setCoverSolution[i] >= Parameters.eps) {
                     selectedRoutes.add(columns[i])
                 }
             }
@@ -167,11 +166,11 @@ class ColumnGenSolver(
             lpSolution.clear()
             val setCoverSolution = setCoverModel.getSolution()
             for (i in 0 until setCoverSolution.size) {
-                if (setCoverSolution[i] >= Constants.EPS) {
+                if (setCoverSolution[i] >= Parameters.eps) {
                     lpSolution.add(Pair(columns[i], setCoverSolution[i]))
                 }
             }
-            lpInfeasible = setCoverModel.getAuxiliaryVariableSolution() >= Constants.EPS
+            lpInfeasible = setCoverModel.getAuxiliaryVariableSolution() >= Parameters.eps
             // logger.info("solved restricted master LP")
         }
         cplex.clearModel()

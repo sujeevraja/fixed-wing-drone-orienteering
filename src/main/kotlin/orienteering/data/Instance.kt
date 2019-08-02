@@ -1,8 +1,7 @@
 package orienteering.data
 
-import org.jgrapht.graph.DefaultWeightedEdge
-import org.jgrapht.graph.SimpleDirectedWeightedGraph
-import orienteering.numVertices
+import orienteering.util.SetGraph
+import orienteering.util.numVertices
 
 /**
  * Class that holds the Dubins Team orienteering instance data
@@ -19,7 +18,7 @@ import orienteering.numVertices
  */
 
 class Instance(
-    val graph: SimpleDirectedWeightedGraph<Int, DefaultWeightedEdge>,
+    val graph: SetGraph,
     val budget: Double,
     val sourceTarget: Int,
     val destinationTarget: Int,

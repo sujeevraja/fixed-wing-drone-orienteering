@@ -5,17 +5,14 @@ import ilog.concert.IloNumVar
 import ilog.cplex.IloCplex
 import mu.KLogging
 import org.jgrapht.Graphs
-import org.jgrapht.graph.DefaultWeightedEdge
-import org.jgrapht.graph.SimpleDirectedWeightedGraph
-
+import orienteering.util.SetGraph
 import orienteering.data.Instance
-import orienteering.numVertices
 
 class BoundingLP(
     private val instance: Instance,
     private var cplex: IloCplex,
     private val targetDuals: List<Double> = listOf(),
-    private val updatedGraph: SimpleDirectedWeightedGraph<Int, DefaultWeightedEdge> = instance.graph,
+    private val updatedGraph: SetGraph = instance.graph,
     private val mustVisitTargets: List<Int> = listOf(),
     private val mustVisitEdges: List<Pair<Int, Int>> = listOf()
 ) {
@@ -96,7 +93,8 @@ class BoundingLP(
             if (!adjacentVertices.isEmpty()) {
                 lengthVariable[it] = mutableMapOf()
                 for (j in adjacentVertices)
-                    lengthVariable.getValue(it)[j] = cplex.numVar(0.0, Double.MAX_VALUE, "z_${it}_$j")
+                    lengthVariable.getValue(it)[j] =
+                        cplex.numVar(0.0, Double.MAX_VALUE, "z_${it}_$j")
             }
         }
     }
@@ -120,7 +118,8 @@ class BoundingLP(
     private fun addDegreeConstraints() {
         updatedGraph.vertexSet().iterator().forEach {
             if (instance.whichTarget(it) == instance.sourceTarget ||
-                instance.whichTarget(it) == instance.destinationTarget)
+                instance.whichTarget(it) == instance.destinationTarget
+            )
                 return@forEach
 
             val inExpression: IloLinearNumExpr = cplex.linearNumExpr()
@@ -156,7 +155,11 @@ class BoundingLP(
             for (j in predecessors)
                 destinationInExpression.addTerm(1.0, edgeVariable[j]?.get(i))
         }
-        cplex.addEq(destinationInExpression, instance.numVehicles.toDouble(), "in_degree_destination")
+        cplex.addEq(
+            destinationInExpression,
+            instance.numVehicles.toDouble(),
+            "in_degree_destination"
+        )
 
     }
 

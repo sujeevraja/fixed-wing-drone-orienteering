@@ -2,12 +2,12 @@ package orienteering.solver
 
 import ilog.cplex.IloCplex
 import mu.KLogging
-import orienteering.Constants
-import orienteering.OrienteeringException
+import orienteering.util.OrienteeringException
 import orienteering.data.Instance
+import orienteering.data.Parameters
 import orienteering.data.Route
-import orienteering.data.preProcess
-import orienteering.numVertices
+import orienteering.util.preProcess
+import orienteering.util.numVertices
 import java.util.*
 import kotlin.math.absoluteValue
 import kotlin.math.round
@@ -72,12 +72,12 @@ class BranchAndPriceSolver(
                 if (!childNode.feasible) {
                     logger.debug("$childNode pruned by infeasibility after solving")
                 }
-                if (childNode.lpObjective <= lowerBound + Constants.EPS) {
+                if (childNode.lpObjective <= lowerBound + Parameters.eps) {
                     logger.debug("$childNode pruned by bound")
                     continue
                 }
 
-                if (childNode.mipObjective >= lowerBound + Constants.EPS) {
+                if (childNode.mipObjective >= lowerBound + Parameters.eps) {
                     lowerBound = childNode.mipObjective
                     bestFeasibleSolution = childNode.mipSolution
                     logger.debug("updated lower bound using open child node: $lowerBound")
@@ -103,10 +103,10 @@ class BranchAndPriceSolver(
         rootLowerBound = lowerBound
 
         bestFeasibleSolution = rootNode.mipSolution
-        if (lowerBound >= upperBound + Constants.EPS) {
+        if (lowerBound >= upperBound + Parameters.eps) {
             throw OrienteeringException("lower bound overshoots upper bound")
         }
-        if (upperBound - lowerBound <= Constants.EPS) {
+        if (upperBound - lowerBound <= Parameters.eps) {
             logger.info("gap closed in root node")
         } else {
             openNodes.add(rootNode)
@@ -120,7 +120,7 @@ class BranchAndPriceSolver(
         if (!isIntegral(node.lpSolution)) {
             return false
         }
-        if (node.lpObjective >= lowerBound + Constants.EPS) {
+        if (node.lpObjective >= lowerBound + Parameters.eps) {
             lowerBound = node.lpObjective
             bestFeasibleSolution = node.lpSolution.map { it.first }
             logger.debug("updating lower bound based on MIP solution of $node")
@@ -131,7 +131,7 @@ class BranchAndPriceSolver(
 
     private fun isIntegral(columnsAndValues: List<Pair<Route, Double>>): Boolean {
         return columnsAndValues.all {
-            it.second >= 1.0 - Constants.EPS
+            it.second >= 1.0 - Parameters.eps
         }
     }
 
@@ -167,7 +167,8 @@ class BranchAndPriceSolver(
             }
 
             if (bestTarget == null ||
-                node.targetReducedCosts[i] <= leastReducedCost!! - Constants.EPS
+                node.targetReducedCosts[i] <= leastReducedCost!! - Parameters.eps
+
             ) {
                 bestTarget = i
                 leastReducedCost = node.targetReducedCosts[i]
@@ -188,7 +189,7 @@ class BranchAndPriceSolver(
                     continue
                 }
                 if (bestEdge == null ||
-                    node.targetReducedCosts[fromTarget] <= leastReducedCost!! - Constants.EPS
+                    node.targetReducedCosts[fromTarget] <= leastReducedCost!! - Parameters.eps
                 ) {
                     bestEdge = Pair(fromTarget, toTarget)
                     leastReducedCost = node.targetReducedCosts[fromTarget]
@@ -202,7 +203,7 @@ class BranchAndPriceSolver(
     }
 
     private fun isInteger(num: Double): Boolean {
-        return (num - round(num)).absoluteValue <= Constants.EPS
+        return (num - round(num)).absoluteValue <= Parameters.eps
     }
 
     companion object : KLogging()

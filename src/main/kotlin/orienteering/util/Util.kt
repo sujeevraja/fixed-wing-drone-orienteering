@@ -1,11 +1,47 @@
-package orienteering.data
+package orienteering.util
 
+import org.jgrapht.Graphs
 import org.jgrapht.graph.DefaultWeightedEdge
 import org.jgrapht.graph.SimpleDirectedWeightedGraph
 import kotlin.math.min
 
+/**
+ * Custom exception to throw problem-specific exception.
+ */
+class OrienteeringException(message: String) : Exception(message)
+
+typealias SetGraph = SimpleDirectedWeightedGraph<Int, DefaultWeightedEdge>
+
+/**
+ * Returns number of vertices in graph.
+ */
+fun SetGraph.numVertices() = this.vertexSet().size
+
+/**
+ * Returns weight of edge between [from] vertex and [to] vertex.
+ */
+fun SetGraph.getEdgeWeight(from: Int, to: Int): Double {
+    return this.getEdgeWeight(this.getEdge(from, to))
+}
+
+/**
+ * Creates a shallow copy of the graph.
+ *
+ * The returned SetGraph object is new, but its edges are references.
+ */
+fun SetGraph.getCopy(): SetGraph {
+    val graphCopy = SetGraph(DefaultWeightedEdge::class.java)
+    Graphs.addGraph(graphCopy, this)
+    return graphCopy
+}
+
+/**
+ * Removes any vertex v from [graph] for which the length of the shortest path starting from a
+ * vertex in [sourceVertices] and reaching any vertex in [destinationVertices] via v exceeds
+ * [budget].
+ */
 fun preProcess(
-    graph: SimpleDirectedWeightedGraph<Int, DefaultWeightedEdge>,
+    graph: SetGraph,
     budget: Double,
     sourceVertices: List<Int>,
     destinationVertices: List<Int>
@@ -49,3 +85,4 @@ fun preProcess(
             graph.removeVertex(it)
     }
 }
+

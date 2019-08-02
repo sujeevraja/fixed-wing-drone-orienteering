@@ -4,12 +4,12 @@ import ilog.cplex.IloCplex
 import mu.KLogging
 import org.yaml.snakeyaml.DumperOptions
 import org.yaml.snakeyaml.Yaml
-import orienteering.OrienteeringException
 import orienteering.data.Instance
 import orienteering.data.InstanceDto
 import orienteering.data.Parameters
 import orienteering.solver.BoundingLP
 import orienteering.solver.BranchAndPriceSolver
+import orienteering.util.OrienteeringException
 import java.io.File
 import kotlin.system.measureTimeMillis
 
@@ -19,7 +19,6 @@ import kotlin.system.measureTimeMillis
 class Controller {
     private lateinit var instance: Instance
     private lateinit var cplex: IloCplex
-    private lateinit var parameters: Parameters
     private val results = sortedMapOf<String, Any>()
 
     /**
@@ -28,13 +27,14 @@ class Controller {
     fun parseArgs(args: Array<String>) {
         val parser = CliParser()
         parser.main(args)
-        parameters = Parameters(
+        Parameters.initialize(
             instanceName = parser.instanceName,
             instancePath = parser.instancePath,
             algorithm = parser.algorithm,
             turnRadius = parser.turnRadius,
             numDiscretizations = parser.numDiscretizations,
-            numReducedCostColumns = parser.numReducedCostColumns
+            numReducedCostColumns = parser.numReducedCostColumns,
+            timeLimitInSeconds = 3600
         )
 
         val inputData = sortedMapOf<String, Any>()
@@ -54,8 +54,10 @@ class Controller {
      */
     fun populateInstance() {
         instance = InstanceDto(
-            parameters.instanceName, parameters.instancePath,
-            parameters.numDiscretizations, parameters.turnRadius
+            Parameters.instanceName,
+            Parameters.instancePath,
+            Parameters.numDiscretizations,
+            Parameters.turnRadius
         ).getInstance()
     }
 
@@ -79,7 +81,7 @@ class Controller {
      */
     fun run() {
         val timeElapsedMillis = measureTimeMillis {
-            when (parameters.algorithm) {
+            when (Parameters.algorithm) {
                 1 -> runBranchAndCut()
                 2 -> runBranchAndPrice()
                 else -> throw OrienteeringException("unknown algorithm type")
@@ -108,7 +110,7 @@ class Controller {
     private fun runBranchAndPrice() {
         logger.info("algorithm: branch and price")
         initCPLEX()
-        val bps = BranchAndPriceSolver(instance, parameters.numReducedCostColumns, cplex)
+        val bps = BranchAndPriceSolver(instance, Parameters.numReducedCostColumns, cplex)
         val solution = bps.solve()
         logger.info("final solution:")
         for (route in solution) {

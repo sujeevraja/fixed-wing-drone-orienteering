@@ -1,6 +1,6 @@
 package orienteering.solver
 
-import orienteering.Constants
+import orienteering.data.Parameters
 
 class State private constructor(
     val isForward: Boolean,
@@ -12,7 +12,7 @@ class State private constructor(
     val numTargetsVisited: Int,
     private val visitedBits: LongArray
 ) : Comparable<State> {
-    private val bangForBuck = if (pathLength >= Constants.EPS) reducedCost / pathLength else 0.0
+    private val bangForBuck = if (pathLength >= Parameters.eps) reducedCost / pathLength else 0.0
     /**
      * true if all extensions have been generated, false otherwise
      */
@@ -29,15 +29,15 @@ class State private constructor(
 
     override fun compareTo(other: State): Int {
         return when {
-            bangForBuck <= other.bangForBuck - Constants.EPS -> -1
-            bangForBuck >= other.bangForBuck + Constants.EPS -> 1
+            bangForBuck <= other.bangForBuck - Parameters.eps -> -1
+            bangForBuck >= other.bangForBuck + Parameters.eps -> 1
             else -> 0
         }
 
         /*
         return when {
-            reducedCost <= other.reducedCost - Constants.EPS -> -1
-            reducedCost >= other.reducedCost + Constants.EPS -> 1
+            reducedCost <= other.reducedCost - Parameters.EPS -> -1
+            reducedCost >= other.reducedCost + Parameters.EPS -> 1
             else -> 0
         }
          */
@@ -73,16 +73,16 @@ class State private constructor(
      */
     fun dominates(other: State, useVisitCondition: Boolean): Boolean {
         var strict = false
-        if (reducedCost >= other.reducedCost + Constants.EPS) {
+        if (reducedCost >= other.reducedCost + Parameters.eps) {
             return false
         }
-        if (reducedCost <= other.reducedCost - Constants.EPS) {
+        if (reducedCost <= other.reducedCost - Parameters.eps) {
             strict = true
         }
-        if(pathLength >= other.pathLength + Constants.EPS) {
+        if(pathLength >= other.pathLength + Parameters.eps) {
             return false
         }
-        if (!strict && pathLength <= other.pathLength - Constants.EPS) {
+        if (!strict && pathLength <= other.pathLength - Parameters.eps) {
             strict = true
         }
 
@@ -129,8 +129,8 @@ class State private constructor(
      * Returns true if [target] is on partial path, false otherwise.
      */
     fun visits(target: Int): Boolean {
-        val quotient: Int = target / Constants.NUM_BITS
-        val remainder: Int = target % Constants.NUM_BITS
+        val quotient: Int = target / Parameters.numBits
+        val remainder: Int = target % Parameters.numBits
         return visitedBits[quotient] and (1L shl remainder) != 0L
     }
 
@@ -152,14 +152,14 @@ class State private constructor(
             vertex: Int,
             numTargets: Int
         ): State {
-            val size: Int = (numTargets / Constants.NUM_BITS) + 1
+            val size: Int = (numTargets / Parameters.numBits) + 1
             return State(isForward, null, vertex, 0.0, 0.0, 0.0,
                 0, LongArray(size) { 0L })
         }
 
         private fun markVisited(visitedBits: LongArray, target: Int) {
-            val quotient: Int = target / Constants.NUM_BITS
-            val remainder: Int = target % Constants.NUM_BITS
+            val quotient: Int = target / Parameters.numBits
+            val remainder: Int = target % Parameters.numBits
             visitedBits[quotient] = visitedBits[quotient] or (1L shl remainder)
         }
     }
