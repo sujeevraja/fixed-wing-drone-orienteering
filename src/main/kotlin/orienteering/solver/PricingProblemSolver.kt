@@ -468,8 +468,10 @@ class PricingProblemSolver(
      * @return true if path is budget-feasible, false otherwise.
      */
     private fun feasible(fs: State, bs: State): Boolean {
-        return (!fs.hasCommonVisits(bs) && getJoinedPathLength(fs, bs) <= maxPathLength &&
-                !has2Or3Cycle(fs, bs))
+        return !fs.hasCommonVisits(bs) && getJoinedPathLength(fs, bs) <= maxPathLength
+
+        // return (!fs.hasCommonVisits(bs) && getJoinedPathLength(fs, bs) <= maxPathLength &&
+        //        !has2Or3Cycle(fs, bs))
     }
 
     private fun has2Or3Cycle(fs: State, bs: State): Boolean {
