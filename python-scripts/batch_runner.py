@@ -5,7 +5,6 @@ import logging
 import os
 import subprocess
 
-
 log = logging.getLogger(__name__)
 
 
@@ -13,19 +12,17 @@ class Config(object):
     """Class that holds global parameters."""
 
     def __init__(self):
+        folder_path = os.path.dirname(os.path.realpath(__file__))
+        self.base_path = os.path.abspath(os.path.join(folder_path, '..'))
+        self.data_path = os.path.join(self.base_path, 'data')
+        self.jar_path = os.path.join(self.base_path, 'build', 'libs', 'uber.jar')
+        self.cplex_lib_path = None
+
         self.run_budget_set = False
         self.run_mean_set = False
         self.run_parallel_set = False
         self.run_quality_set = False
         self.run_time_comparison_set = False
-        self.jar_path = "build/libs/stochastic_uber.jar"
-        self.cplex_lib_path = None
-
-        self.names = ["s{}".format(i) for i in range(1, 6)]
-        self.paths = ["data/paper/{}".format(n) for n in self.names]
-        # self.names = ["instance1", "instance2"]
-        # self.names = ["instance1"]
-        # self.paths = ["data/{}".format(n) for n in self.names]
 
 
 class ScriptException(Exception):
@@ -39,6 +36,21 @@ class ScriptException(Exception):
         return repr(self.value)
 
 
+def guess_cplex_library_path():
+    gp_path = os.path.join(os.path.expanduser("~"), ".gradle", "gradle.properties")
+    if not os.path.isfile(gp_path):
+        log.warn("gradle.properties not available at {}".format(gp_path))
+        return None
+
+    with open(gp_path, 'r') as fin:
+        for line in fin:
+            line = line.strip()
+            if line.startswith('cplexLibPath='):
+                return line.split('=')[-1].strip()
+
+    return None
+
+
 class Controller:
     """class that manages the functionality of the entire script."""
 
@@ -48,8 +60,13 @@ class Controller:
         self._models = ["naive", "dep", "benders"]
 
     def run(self):
+        if self.config.cplex_lib_path is None:
+            self.config.cplex_lib_path = guess_cplex_library_path()
+
+        self._prepare_uberjar()
         self._validate_setup()
-        self._validate_cplex_library_path()
+        return
+
         self._base_cmd = [
             "java",
             "-Xms32m",
@@ -78,6 +95,32 @@ class Controller:
             self._run_time_comparison_set()
 
         log.info("completed all batch runs")
+
+    def _validate_setup(self):
+        os.makedirs("logs", exist_ok=True)
+        log.info("logs folder valid.")
+
+        if not os.path.isdir(self.config.data_path):
+            raise ScriptException(f"data folder not found at {self.config.data_path}")
+        else:
+            log.info("data folder found.")
+
+        if not self.config.cplex_lib_path:
+            raise ScriptException("unable to find cplex library path")
+        elif not os.path.isdir(self.config.cplex_lib_path):
+            raise ScriptException(
+                "invalid folder at cplex library path: {}".format(
+                    self.config.cplex_lib_path))
+        else:
+            log.info("located cplex library path.")
+
+    def _prepare_uberjar(self):
+        os.chdir(self.config.base_path)
+        subprocess.check_call(['gradle', 'clean', 'cleanlogs', 'uberjar'])
+        if not os.path.isfile(self.config.jar_path):
+            raise ScriptException("uberjar build failed")
+
+        log.info("prepared uberjar")
 
     def _run_budget_set(self):
         log.info("starting budget comparison runs...")
@@ -218,52 +261,6 @@ class Controller:
             "-parseDelays",
             "-type", "test"])
         subprocess.check_call(cmd)
-
-    def _validate_setup(self):
-        if not os.path.isfile(self.config.jar_path):
-            raise ScriptException(
-                "unable to find uberjar at {}".format(self.config.jar_path))
-        else:
-            log.info("located uberjar.")
-
-        os.makedirs("logs", exist_ok=True)
-        log.info("created/checked logs folder")
-
-        os.makedirs("solution", exist_ok=True)
-        for f in os.listdir(os.path.join(os.getcwd(), "solution")):
-            if f != '.gitkeep':
-                raise ScriptException("solution folder not empty.")
-        log.info("created/checked solution folder")
-
-    def _validate_cplex_library_path(self):
-        if self.config.cplex_lib_path is None:
-            self.config.cplex_lib_path = self._guess_cplex_library_path()
-
-        if not self.config.cplex_lib_path:
-            raise ScriptException("unable to find cplex library path")
-        elif not os.path.isdir(self.config.cplex_lib_path):
-            raise ScriptException(
-                "invalid folder at cplex library path: {}".format(
-                    self.config.cplex_lib_path))
-        else:
-            log.info("located cplex library path.")
-
-    @staticmethod
-    def _guess_cplex_library_path():
-        gp_path = os.path.join(os.path.expanduser("~"), ".gradle",
-                               "gradle.properties")
-        if not os.path.isfile(gp_path):
-            log.warn("gradle.properties not available at {}".format(gp_path))
-            return None
-
-        with open(gp_path, 'r') as fin:
-            for line in fin:
-                line = line.strip()
-                if line.startswith('cplexLibPath='):
-                    return line.split('=')[-1].strip()
-
-        return None
-
     @staticmethod
     def _clean_delay_files():
         sln_path = os.path.join(os.getcwd(), 'solution')
