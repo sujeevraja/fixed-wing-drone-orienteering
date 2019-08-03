@@ -3,7 +3,9 @@
 import argparse
 import logging
 import os
+import sqlite3
 import subprocess
+
 
 log = logging.getLogger(__name__)
 
@@ -59,8 +61,12 @@ class Controller:
         self._base_cmd = None
         self._models = ["naive", "dep", "benders"]
         self._cases = []  # paths to files with problem data
+        self._connection = None  # will point to a connection to a SQL database
 
     def run(self):
+        self._prepare_db()
+        return
+
         if self.config.cplex_lib_path is None:
             self.config.cplex_lib_path = guess_cplex_library_path()
 
@@ -72,7 +78,6 @@ class Controller:
         else:
             log.info(f"number of cases: {len(self._cases)}")
 
-        print(self._cases)
         self._base_cmd = [
             "java",
             "-Xms32m",
@@ -80,33 +85,23 @@ class Controller:
             "-Djava.library.path={}".format(
                 self.config.cplex_lib_path),
             "-jar",
-            self.config.jar_path, ]
+            self.config.jar_path,
+        ]
 
-        return
-
-        if not (self.config.run_budget_set or
-                self.config.run_mean_set or
-                self.config.run_parallel_set or
-                self.config.run_quality_set or
-                self.config.run_time_comparison_set):
-            raise ScriptException("no batch run chosen, nothing to do.")
-
-        if self.config.run_budget_set:
-            self._run_budget_set()
-        if self.config.run_mean_set:
-            self._run_mean_set()
-        if self.config.run_parallel_set:
-            self._run_parallel_set()
-        if self.config.run_quality_set:
-            self._run_quality_set()
-        if self.config.run_time_comparison_set:
-            self._run_time_comparison_set()
-
-        log.info("completed all batch runs")
+        for case in self._cases:
+            case_name = os.path.basename(case)
+            case_path = os.path.dirname(case)
+            cmd = [c for c in self._base_cmd]
+            cmd.extend([
+                "-n", case_name,
+                "-p", case_path + "/",
+            ])
+            subprocess.check_call(cmd)
+            break
 
     def _validate_setup(self):
-        os.makedirs("logs", exist_ok=True)
-        log.info("logs folder valid.")
+        logs_path = os.path.join(self.config.base_path, "logs")
+        os.makedirs(logs_path, exist_ok=True)
 
         if not os.path.isdir(self.config.data_path):
             raise ScriptException(f"data folder not found at {self.config.data_path}")
@@ -135,154 +130,10 @@ class Controller:
             for f in files:
                 if f.endswith(".txt"):
                     self._cases.append(os.path.join(top, f))
-                    return
 
-    def _run_budget_set(self):
-        log.info("starting budget comparison runs...")
-        budget_fractions = ["0.25", "0.5", "0.75", "1", "2"]
-        for name, path in zip(self.config.names, self.config.paths):
-            for bf in budget_fractions:
-                cmd = [c for c in self._base_cmd]
-                cmd.extend([
-                    "-batch",
-                    "-path", path,
-                    "-n", name,
-                    "-r", bf])
-
-                self._generate_all_results(cmd)
-
-        self._clean_delay_files()
-        log.info("completed budget comparison runs.")
-
-    def _run_mean_set(self):
-        log.info("starting mean comparison runs...")
-        for name, path in zip(self.config.names, self.config.paths):
-            for distribution in ['exp', 'tnorm', 'lnorm']:
-                for mean in ["15", "30", "45", "60"]:
-                    cmd = [c for c in self._base_cmd]
-                    cmd.extend([
-                        "-batch",
-                        "-path", path,
-                        "-n", name,
-                        "-d", distribution,
-                        "-mean", mean, ])
-
-                    self._generate_all_results(cmd)
-
-        self._clean_delay_files()
-        log.info("completed mean comparison runs.")
-
-    def _run_quality_set(self):
-        log.info("starting quality runs...")
-        for name, path in zip(self.config.names, self.config.paths):
-            for distribution in ['exp', 'tnorm', 'lnorm']:
-                for flight_pick in ['all', 'hub', 'rush']:
-                    cmd = [c for c in self._base_cmd]
-                    cmd.extend([
-                        "-batch",
-                        "-path", path,
-                        "-n", name,
-                        "-d", distribution,
-                        "-f", flight_pick, ])
-
-                    self._generate_all_results(cmd)
-
-        self._clean_delay_files()
-        log.info("completed quality runs.")
-
-    def _run_parallel_set(self):
-        log.info("starting multi-threading comparison runs...")
-        for name, path in zip(self.config.names, self.config.paths):
-            for _ in range(5):
-                cmd = [c for c in self._base_cmd]
-                cmd.extend([
-                    "-batch",
-                    "-path", path,
-                    "-n", name,
-                    "-type", "time"])
-
-                self._generate_delays(cmd)
-
-                for num_threads in [1, 10, 20, 30]:
-                    run_cmd = [c for c in cmd]
-                    run_cmd.extend([
-                        "-model", "benders",
-                        "-parseDelays",
-                        "-parallel", str(num_threads), ])
-
-                    subprocess.check_call(run_cmd)
-                    log.info(
-                        f'finished threading run for {name}, {num_threads}')
-
-        self._clean_delay_files()
-        log.info("completed multi-threading comparison runs.")
-
-    def _run_time_comparison_set(self):
-        log.info("starting time comparison runs...")
-        for name, path in zip(self.config.names, self.config.paths):
-            for _ in range(5):
-                cmd = [c for c in self._base_cmd]
-                cmd.extend([
-                    "-batch",
-                    "-path", path,
-                    "-n", name,
-                    "-type", "time"])
-
-                self._generate_delays(cmd)
-
-                for cgen in ['enum', 'all', 'best', 'first']:
-                    run_cmd = [c for c in cmd]
-                    run_cmd.extend([
-                        "-parseDelays",
-                        "-model", "benders",
-                        "-c", cgen, ])
-
-                    subprocess.check_call(run_cmd)
-                    log.info(f"finished time comparison run for {run_cmd}")
-
-        self._clean_delay_files()
-        log.info("completed time comparison runs.")
-
-    def _generate_all_results(self, cmd):
-        self._generate_delays(cmd)
-        log.info(f'generated delays for {cmd}')
-
-        for model in self._models:
-            self._generate_reschedule_solution(cmd, model)
-            log.info(f'finished training run for {model}')
-
-        self._generate_test_results(cmd)
-        log.info(f'generated test results for {cmd}')
-
-    @staticmethod
-    def _generate_delays(orig_cmd):
-        cmd = [c for c in orig_cmd]
-        cmd.append("-generateDelays")
-        subprocess.check_call(cmd)
-
-    @staticmethod
-    def _generate_reschedule_solution(orig_cmd, model):
-        cmd = [c for c in orig_cmd]
-        cmd.extend([
-            "-model", model,
-            "-parseDelays",
-            "-type", "training"])
-        subprocess.check_call(cmd)
-
-    @staticmethod
-    def _generate_test_results(orig_cmd):
-        cmd = [c for c in orig_cmd]
-        cmd.extend([
-            "-parseDelays",
-            "-type", "test"])
-        subprocess.check_call(cmd)
-    @staticmethod
-    def _clean_delay_files():
-        sln_path = os.path.join(os.getcwd(), 'solution')
-        for f in os.listdir(sln_path):
-            if (f.endswith(".csv")
-                    and (f.startswith("primary_delay") or f.startswith("reschedule_"))):
-                os.remove(os.path.join(sln_path, f))
+    def _prepare_db(self):
+        db_path = os.path.join(self.config.base_path, 'python-scripts', 'results.db')
+        self._conn = sqlite3.connect(db_path)
 
 
 def handle_command_line():
