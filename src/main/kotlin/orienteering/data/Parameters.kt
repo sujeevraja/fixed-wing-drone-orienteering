@@ -30,6 +30,12 @@ object Parameters {
     var numDiscretizations: Int = 1
         private set
     /**
+     * If the most negative reduced cost column of a DSSR search iteration is not elementary, but
+     * the number of elementary routes with negative reduced cost collected during the search is
+     * greater than or equal to this value, that DSSR iteration will be terminated.
+     */
+    const val numElementaryRoutesForExit = 10
+    /**
      * limit on number of reduced cost columns to stop pricing problem
      */
     var numReducedCostColumns: Int = 500

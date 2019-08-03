@@ -12,7 +12,6 @@ import orienteering.main.SetGraph
  */
 class ColumnGenSolver(
     private val instance: Instance,
-    private val numReducedCostColumns: Int,
     private val cplex: IloCplex,
     private val graph: SetGraph,
     private val mustVisitTargets: IntArray,
@@ -108,7 +107,6 @@ class ColumnGenSolver(
                 vehicleCoverDual,
                 targetReducedCosts,
                 targetEdgeDuals,
-                numReducedCostColumns,
                 graph
             )
         pricingProblemSolver.generateColumns()

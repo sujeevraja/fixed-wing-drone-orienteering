@@ -25,14 +25,12 @@ import kotlin.math.absoluteValue
  *
  * @param instance problem data
  * @param targetReducedCosts reduced costs indexed by vertex id
- * @param numReducedCostColumns maxim
  */
 class PricingProblemSolver(
     private val instance: Instance,
     private val routeDual: Double,
     private val targetReducedCosts: List<Double>,
     private val targetEdgeDuals: List<List<Double>>,
-    private val numReducedCostColumns: Int,
     private val graph: SetGraph
 ) {
     /**
@@ -147,7 +145,7 @@ class PricingProblemSolver(
                 break
             }
 
-            if (elementaryRoutes.size >= 10) {
+            if (elementaryRoutes.size >= Parameters.numElementaryRoutesForExit) {
                 logger.debug("----- STOP column search due to elementary route existence")
                 break
             }
@@ -424,25 +422,13 @@ class PricingProblemSolver(
             getJoinedPathLength(forwardState, backwardState),
             reducedCost
         )
-        // var printed = false
         if (optimalRoute == null || reducedCost <= optimalRoute!!.reducedCost - Parameters.eps) {
             optimalRoute = route
-            /*
-            logger.debug("join at ${forwardState.vertex} -> ${backwardState.vertex}")
-            printed = true
-            logger.debug("opt update: $route")
-             */
         }
 
         if (!hasCycle(joinedVertexPath) && (route !in elementaryRoutes)) {
             elementaryRoutes.add(route)
-            /*
-            if (!printed) {
-                logger.debug("join at ${forwardState.vertex} -> ${backwardState.vertex}")
-            }
-            logger.debug("ele update: $route")
-             */
-            if (elementaryRoutes.size >= numReducedCostColumns) {
+            if (elementaryRoutes.size >= Parameters.numReducedCostColumns) {
                 return true
             }
         }

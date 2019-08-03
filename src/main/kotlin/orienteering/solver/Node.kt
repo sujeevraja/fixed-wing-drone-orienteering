@@ -88,11 +88,10 @@ class Node private constructor(
                 Graphs.vertexHasSuccessors(graph, vertex))
     }
 
-    fun solve(instance: Instance, numReducedCostColumns: Int, cplex: IloCplex) {
+    fun solve(instance: Instance, cplex: IloCplex) {
         logger.debug("solving node number $index")
         val cgSolver = ColumnGenSolver(
             instance,
-            numReducedCostColumns,
             cplex,
             graph,
             mustVisitTargets,

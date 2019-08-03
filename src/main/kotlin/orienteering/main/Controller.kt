@@ -112,7 +112,7 @@ class Controller {
     private fun runBranchAndPrice() {
         logger.info("algorithm: branch and price")
         initCPLEX()
-        val bps = BranchAndPriceSolver(instance, Parameters.numReducedCostColumns, cplex)
+        val bps = BranchAndPriceSolver(instance, cplex)
         bps.solve()
 
         logger.info("final solution:")
