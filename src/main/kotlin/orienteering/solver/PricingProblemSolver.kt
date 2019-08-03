@@ -145,7 +145,7 @@ class PricingProblemSolver(
                 break
             }
 
-            if (elementaryRoutes.size >= 10) {
+            if (elementaryRoutes.size >= Parameters.numElementaryRoutesForExit) {
                 logger.debug("----- STOP column search due to elementary route existence")
                 break
             }
