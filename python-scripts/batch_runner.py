@@ -91,12 +91,16 @@ class Controller:
             column_names = sorted(list(result_dict.keys()))
             cursor.execute(f"""CREATE TABLE results ({",".join(column_names)})""")
         self._add_results_to_table()
+        log.info(f"completed 1 out of {len(self._cases)}")
 
+        completed_count = 1
         for case in self._cases[1:]:
             self._run_case(case)
             self._add_results_to_table()
+            self._connection.commit()
+            completed_count += 1
+            log.info(f"completed {completed_count} out of {len(self._cases)}")
 
-        self._connection.commit()
         self._connection.close()
 
     def _validate_setup(self):
