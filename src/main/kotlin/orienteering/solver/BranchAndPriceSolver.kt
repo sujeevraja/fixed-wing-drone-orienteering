@@ -2,12 +2,12 @@ package orienteering.solver
 
 import ilog.cplex.IloCplex
 import mu.KLogging
-import orienteering.util.OrienteeringException
+import orienteering.main.OrienteeringException
 import orienteering.data.Instance
 import orienteering.data.Parameters
 import orienteering.data.Route
-import orienteering.util.preProcess
-import orienteering.util.numVertices
+import orienteering.main.preProcess
+import orienteering.main.numVertices
 import java.util.*
 import kotlin.math.absoluteValue
 import kotlin.math.round

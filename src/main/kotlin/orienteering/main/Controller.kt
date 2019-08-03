@@ -10,7 +10,6 @@ import orienteering.data.Parameters
 import orienteering.solver.BoundingLP
 import orienteering.solver.BranchAndPriceSolver
 import orienteering.solver.TimeChecker
-import orienteering.util.OrienteeringException
 import java.io.File
 import kotlin.system.measureTimeMillis
 

@@ -5,7 +5,7 @@ import mu.KLogging
 import orienteering.data.Instance
 import orienteering.data.Parameters
 import orienteering.data.Route
-import orienteering.util.SetGraph
+import orienteering.main.SetGraph
 
 /**
  * Solves the multi-vehicle orienteering problem with column generation.

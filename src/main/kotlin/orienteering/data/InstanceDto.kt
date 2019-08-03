@@ -5,9 +5,9 @@ import dubins.DubinsCoords
 import dubins.DubinsCurve
 import mu.KLogging
 import org.jgrapht.graph.DefaultWeightedEdge
-import orienteering.util.SetGraph
-import orienteering.util.numVertices
-import orienteering.util.preProcess
+import orienteering.main.SetGraph
+import orienteering.main.numVertices
+import orienteering.main.preProcess
 import java.io.File
 import kotlin.math.PI
 import kotlin.math.sqrt
