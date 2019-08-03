@@ -80,12 +80,11 @@ class BranchAndPriceSolver(
                     logger.debug("$childNode pruned by infeasibility before solving")
                     return@forEachIndexed
                 }
-                
-                withContext(Dispatchers.Default) {
-                    launch {
-                        actors[index].send(Envelope(Payload(childNode, instance), Solve(responses[index])))
-                    }
+
+                GlobalScope.launch(Dispatchers.Default) {
+                    actors[index].send(Envelope(Payload(childNode, instance), Solve(responses[index])))
                 }
+
             }
 
             responses.forEach {
