@@ -2,10 +2,11 @@
 
 import argparse
 import logging
+import operator
 import os
 import sqlite3
 import subprocess
-
+import yaml
 
 log = logging.getLogger(__name__)
 
@@ -16,15 +17,11 @@ class Config(object):
     def __init__(self):
         folder_path = os.path.dirname(os.path.realpath(__file__))
         self.base_path = os.path.abspath(os.path.join(folder_path, '..'))
-        self.data_path = os.path.join(self.base_path, 'data')
-        self.jar_path = os.path.join(self.base_path, 'build', 'libs', 'uber.jar')
         self.cplex_lib_path = None
-
-        self.run_budget_set = False
-        self.run_mean_set = False
-        self.run_parallel_set = False
-        self.run_quality_set = False
-        self.run_time_comparison_set = False
+        self.data_path = os.path.join(self.base_path, 'data')
+        self.db_path = os.path.join(self.base_path, 'logs', 'results.db')
+        self.jar_path = os.path.join(self.base_path, 'build', 'libs', 'uber.jar')
+        self.results_yaml_path = os.path.join(self.base_path, "logs", "results.yaml")
 
 
 class ScriptException(Exception):
@@ -64,9 +61,6 @@ class Controller:
         self._connection = None  # will point to a connection to a SQL database
 
     def run(self):
-        self._prepare_db()
-        return
-
         if self.config.cplex_lib_path is None:
             self.config.cplex_lib_path = guess_cplex_library_path()
 
@@ -86,18 +80,24 @@ class Controller:
                 self.config.cplex_lib_path),
             "-jar",
             self.config.jar_path,
+            "-t", "5"
         ]
 
-        for case in self._cases:
-            case_name = os.path.basename(case)
-            case_path = os.path.dirname(case)
-            cmd = [c for c in self._base_cmd]
-            cmd.extend([
-                "-n", case_name,
-                "-p", case_path + "/",
-            ])
-            subprocess.check_call(cmd)
-            break
+        self._prepare_db()
+        self._run_case(self._cases[0])
+        cursor = self._connection.cursor()
+        with open(self.config.results_yaml_path, "r") as f_result:
+            result_dict = yaml.load(f_result, Loader=yaml.FullLoader)
+            column_names = sorted(list(result_dict.keys()))
+            cursor.execute(f"""CREATE TABLE results ({",".join(column_names)})""")
+        self._add_results_to_table()
+
+        for case in self._cases[1:]:
+            self._run_case(case)
+            self._add_results_to_table()
+
+        self._connection.commit()
+        self._connection.close()
 
     def _validate_setup(self):
         logs_path = os.path.join(self.config.base_path, "logs")
@@ -132,8 +132,38 @@ class Controller:
                     self._cases.append(os.path.join(top, f))
 
     def _prepare_db(self):
-        db_path = os.path.join(self.config.base_path, 'python-scripts', 'results.db')
-        self._conn = sqlite3.connect(db_path)
+        if os.path.isfile(self.config.db_path):
+            os.unlink(self.config.db_path)
+        self._connection = sqlite3.connect(self.config.db_path)
+
+    def _run_case(self, case):
+        case_name = os.path.basename(case)
+        case_path = os.path.dirname(case)
+        cmd = [c for c in self._base_cmd]
+        cmd.extend([
+            "-n", case_name,
+            "-p", case_path + "/",
+                  ])
+        subprocess.check_call(cmd)
+
+    @staticmethod
+    def _build_create_table_command(num_columns):
+        cmd_list = ['CREATE TABLE results', '(']
+        for _ in range(num_columns - 1):
+            cmd_list.append('?,')
+        cmd_list.append('?)')
+        return ''.join(cmd_list)
+
+    def _add_results_to_table(self):
+        cursor = self._connection.cursor()
+        with open(self.config.results_yaml_path, "r") as f_result:
+            result_dict = yaml.load(f_result, Loader=yaml.FullLoader)
+            keys_and_values = [(key, val) for (key, val) in result_dict.items()]
+            keys_and_values.sort(key=operator.itemgetter(0))
+            _, values = zip(*keys_and_values)
+            values = [f"'{v}'" for v in values]
+
+            cursor.execute(f"""INSERT INTO results VALUES ({",".join(values)})""")
 
 
 def handle_command_line():
@@ -144,41 +174,12 @@ def handle_command_line():
 
     parser.add_argument("-a", "--all", help="run all sets",
                         action="store_true")
-    parser.add_argument("-b", "--budget", help="run budget set",
-                        action="store_true")
-    parser.add_argument("-m", "--mean", help="run mean set",
-                        action="store_true")
-    parser.add_argument("-p", "--parallel", help="run parallel run set",
-                        action="store_true")
-    parser.add_argument("-q", "--quality", help="run quality set",
-                        action="store_true")
-    parser.add_argument("-t", "--time", help="run time comparison set",
-                        action="store_true")
 
     args = parser.parse_args()
     config = Config()
 
-    if args.all:
-        config.run_budget_set = True
-        config.run_mean_set = True
-        config.run_parallel_set = True
-        config.run_quality_set = True
-        config.run_time_comparison_set = True
-    else:
-        config.run_budget_set = args.budget
-        config.run_mean_set = args.mean
-        config.run_parallel_set = args.parallel
-        config.run_quality_set = args.quality
-        config.run_time_comparison_set = args.time
-
     if args.jarpath:
         config.jar_path = args.jarpath
-
-    log.info("do budget runs: {}".format(config.run_budget_set))
-    log.info("do mean runs: {}".format(config.run_mean_set))
-    log.info("do quality runs: {}".format(config.run_quality_set))
-    log.info("do time comparison runs: {}".format(
-        config.run_time_comparison_set))
 
     return config
 
