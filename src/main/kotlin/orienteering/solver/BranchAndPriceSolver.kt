@@ -61,7 +61,7 @@ class BranchAndPriceSolver(
             }
 
             val childNodes = branch(node)
-            val responses = List(childNodes.size) { CompletableDeferred(false) }
+            val responses = List(childNodes.size) { CompletableDeferred<Boolean>() }
 
             childNodes.forEachIndexed { index, childNode ->
                 logger.debug("solving LP for child $childNode")
