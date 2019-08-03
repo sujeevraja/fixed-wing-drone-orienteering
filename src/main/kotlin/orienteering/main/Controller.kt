@@ -19,7 +19,6 @@ import kotlin.system.measureTimeMillis
 class Controller {
     private lateinit var instance: Instance
     private lateinit var cplex: IloCplex
-    private val problemData = sortedMapOf<String, Any>()
     private val results = sortedMapOf<String, Any>()
 
     /**
@@ -38,13 +37,13 @@ class Controller {
             timeLimitInSeconds = parser.timeLimitInSeconds
         )
 
-        problemData["instance_name"] = parser.instanceName
-        problemData["instance_path"] = parser.instancePath
-        problemData["algorithm"] = if (parser.algorithm == 1) "BC" else "BP"
-        problemData["time_limit_in_seconds"] = parser.timeLimitInSeconds
-        problemData["turn_radius"] = parser.turnRadius
-        problemData["number_of_discretizations"] = parser.numDiscretizations
-        problemData["number_of_reduced_cost_columns"] = parser.numReducedCostColumns
+        results["instance_name"] = parser.instanceName
+        results["instance_path"] = parser.instancePath
+        results["algorithm"] = if (parser.algorithm == 1) "BC" else "BP"
+        results["time_limit_in_seconds"] = parser.timeLimitInSeconds
+        results["turn_radius"] = parser.turnRadius
+        results["number_of_discretizations"] = parser.numDiscretizations
+        results["number_of_reduced_cost_columns"] = parser.numReducedCostColumns
         logger.debug("finished parsing command line arguments and populating parameters")
     }
 
@@ -103,11 +102,7 @@ class Controller {
 
         val yaml = Yaml(dumperOptions)
         val writer = File("logs/results.yaml").bufferedWriter()
-
-        val allResults = sortedMapOf<String, Any>(
-            Pair("input", problemData), Pair("output", results)
-        )
-        yaml.dump(allResults, writer)
+        yaml.dump(results, writer)
         writer.close()
     }
 
@@ -135,7 +130,7 @@ class Controller {
             computePercentGap(bps.rootLowerBound, bps.rootUpperBound)
 
         results["final_lower_bound"] = bps.lowerBound
-        results["final_upper bound"] = bps.upperBound
+        results["final_upper_bound"] = bps.upperBound
         results["final_gap_percentage"] = computePercentGap(bps.lowerBound, bps.upperBound)
         results["optimality_reached"] = bps.optimalityReached
     }
