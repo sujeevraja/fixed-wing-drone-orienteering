@@ -14,7 +14,6 @@ import kotlin.math.round
 
 class BranchAndPriceSolver(
     private val instance: Instance,
-    private val numReducedCostColumns: Int,
     private val cplex: IloCplex
 ) {
     var rootLowerBound: Double = -Double.MAX_VALUE
@@ -76,7 +75,7 @@ class BranchAndPriceSolver(
                     continue
                 }
 
-                childNode.solve(instance, numReducedCostColumns, cplex)
+                childNode.solve(instance, cplex)
                 if (!childNode.feasible) {
                     logger.debug("$childNode pruned by infeasibility after solving")
                 } else if (childNode.lpObjective <= lowerBound + Parameters.eps) {
@@ -114,7 +113,7 @@ class BranchAndPriceSolver(
 
     private fun solveRootNode() {
         val rootNode = Node.buildRootNode(instance.graph)
-        rootNode.solve(instance, numReducedCostColumns, cplex)
+        rootNode.solve(instance, cplex)
 
         upperBound = rootNode.lpObjective
         rootUpperBound = upperBound
