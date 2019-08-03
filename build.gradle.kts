@@ -65,7 +65,7 @@ tasks {
 
     register<Delete>("cleanlogs") {
         delete(fileTree("logs") {
-            include("*.log", "*.lp", "*.yaml")
+            include("*.db", "*.log", "*.lp", "*.yaml")
         })
     }
 
