@@ -40,6 +40,7 @@ class BranchAndPriceSolver(
     var optimalityReached = false
         private set
 
+    @kotlinx.coroutines.ObsoleteCoroutinesApi
     fun solve() = runBlocking {
         val actors = List(3) { solverActor() }
 
@@ -81,7 +82,9 @@ class BranchAndPriceSolver(
                 }
                 
                 withContext(Dispatchers.Default) {
-                    actors[index].send(Envelope(Payload(childNode, instance), Solve(responses[index])))
+                    launch {
+                        actors[index].send(Envelope(Payload(childNode, instance), Solve(responses[index])))
+                    }
                 }
             }
 
