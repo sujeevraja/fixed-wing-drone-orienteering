@@ -1,6 +1,7 @@
 package orienteering.solver
 
 import ilog.cplex.IloCplex
+import kotlinx.coroutines.*
 import mu.KLogging
 import orienteering.main.OrienteeringException
 import orienteering.data.Instance
@@ -39,7 +40,9 @@ class BranchAndPriceSolver(
     var optimalityReached = false
         private set
 
-    fun solve() {
+    fun solve() = runBlocking {
+        val actors = List(3) { solverActor() }
+
         solveRootNode()
         while (openNodes.isNotEmpty()) {
             if (TimeChecker.timeLimitReached()) {
@@ -57,7 +60,9 @@ class BranchAndPriceSolver(
             }
 
             val childNodes = branch(node)
-            for (childNode in childNodes) {
+            val responses = List(childNodes.size) { CompletableDeferred(false) }
+
+            childNodes.forEachIndexed { index, childNode ->
                 logger.debug("solving LP for child $childNode")
                 childNode.logInfo()
 
@@ -72,10 +77,19 @@ class BranchAndPriceSolver(
 
                 if (!childNode.isFeasible(instance)) {
                     logger.debug("$childNode pruned by infeasibility before solving")
-                    continue
+                    return@forEachIndexed
                 }
+                
+                withContext(Dispatchers.Default) {
+                    actors[index].send(Envelope(Payload(childNode, instance), Solve(responses[index])))
+                }
+            }
 
-                childNode.solve(instance, cplex)
+            responses.forEach {
+                logger.debug("actor solve status ${it.await()}")
+            }
+
+            for (childNode in childNodes) {
                 if (!childNode.feasible) {
                     logger.debug("$childNode pruned by infeasibility after solving")
                 } else if (childNode.lpObjective <= lowerBound + Parameters.eps) {
@@ -105,10 +119,16 @@ class BranchAndPriceSolver(
             }
         }
 
+        actors.forEach {
+            it.send(Envelope(null, ClearCPLEX))
+            it.close()
+        }
+
         numNodes = Node.nodeCount - 1
         if (!TimeChecker.timeLimitReached()) {
             optimalityReached = true
         }
+
     }
 
     private fun solveRootNode() {

@@ -8,7 +8,7 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
     // Apply the Kotlin JVM plugin to add support for Kotlin on the JVM.
-    id("org.jetbrains.kotlin.jvm").version("1.3.40")
+    id("org.jetbrains.kotlin.jvm").version("1.3.41")
 
     // Apply the application plugin to add support for building a CLI application.
     application
@@ -26,6 +26,9 @@ repositories {
 dependencies {
     // Use the Kotlin JDK 8 standard library.
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
+
+    // coroutines
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.3.0-RC")
 
     // Kotlin logging with slf4j API and log4j logger
     implementation("io.github.microutils:kotlin-logging:1.6.24")
