@@ -58,6 +58,7 @@ class Controller:
         self.config = config
         self._base_cmd = None
         self._models = ["naive", "dep", "benders"]
+        self._cases = []  # paths to files with problem data
 
     def run(self):
         if self.config.cplex_lib_path is None:
@@ -65,8 +66,13 @@ class Controller:
 
         self._prepare_uberjar()
         self._validate_setup()
-        return
+        self._collect_cases_to_run()
+        if not self._cases:
+            raise ScriptException(f"no cases found in {self.config.data_path}")
+        else:
+            log.info(f"number of cases: {len(self._cases)}")
 
+        print(self._cases)
         self._base_cmd = [
             "java",
             "-Xms32m",
@@ -75,6 +81,8 @@ class Controller:
                 self.config.cplex_lib_path),
             "-jar",
             self.config.jar_path, ]
+
+        return
 
         if not (self.config.run_budget_set or
                 self.config.run_mean_set or
@@ -121,6 +129,13 @@ class Controller:
             raise ScriptException("uberjar build failed")
 
         log.info("prepared uberjar")
+
+    def _collect_cases_to_run(self):
+        for top, _, files in os.walk(self.config.data_path):
+            for f in files:
+                if f.endswith(".txt"):
+                    self._cases.append(os.path.join(top, f))
+                    return
 
     def _run_budget_set(self):
         log.info("starting budget comparison runs...")
