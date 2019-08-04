@@ -74,9 +74,19 @@ class CliParser : CliktCommand() {
         }
 
     val timeLimitInSeconds: Int by option("-t", help = "time limit in seconds")
-        .int().default(60).validate {
-            require( it > 0) {
+        .int().default(3600).validate {
+            require(it > 0) {
                 "time limit should be a strictly positive integer"
+            }
+        }
+
+    val useNumTargetsForDominance: Int by option(
+        "-u",
+        help = "use number of targets in dominance check"
+    )
+        .int().default(0).validate {
+            require(it == 1 || it == 0) {
+                "should be 1 or 0"
             }
         }
 
