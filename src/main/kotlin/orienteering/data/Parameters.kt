@@ -30,12 +30,6 @@ object Parameters {
     var numDiscretizations: Int = 1
         private set
     /**
-     * If the most negative reduced cost column of a DSSR search iteration is not elementary, but
-     * the number of elementary routes with negative reduced cost collected during the search is
-     * greater than or equal to this value, that DSSR iteration will be terminated.
-     */
-    const val numElementaryRoutesForExit = 10
-    /**
      * limit on number of reduced cost columns to stop pricing problem
      */
     var numReducedCostColumns: Int = 500
@@ -45,6 +39,17 @@ object Parameters {
      */
     var timeLimitInSeconds: Int = 3600
         private set
+    /**
+     * If true, states can dominate others only if they visit a fewer number of critical targets.
+     */
+    var useNumTargetsForDominance = false
+        private set
+    /**
+     * If the most negative reduced cost column of a DSSR search iteration is not elementary, but
+     * the number of elementary routes with negative reduced cost collected during the search is
+     * greater than or equal to this value, that DSSR iteration will be terminated.
+     */
+    const val numElementaryRoutesForExit = 10
     /**
      * Tolerance used to compare double values.
      */
@@ -61,7 +66,8 @@ object Parameters {
         turnRadius: Double,
         numDiscretizations: Int,
         numReducedCostColumns: Int,
-        timeLimitInSeconds: Int
+        timeLimitInSeconds: Int,
+        useNumTargetsForDominance: Boolean
     ) {
         Parameters.instanceName = instanceName
         Parameters.instancePath = instancePath
@@ -70,6 +76,7 @@ object Parameters {
         Parameters.numDiscretizations = numDiscretizations
         Parameters.numReducedCostColumns = numReducedCostColumns
         Parameters.timeLimitInSeconds = timeLimitInSeconds
+        Parameters.useNumTargetsForDominance = useNumTargetsForDominance
     }
 }
 

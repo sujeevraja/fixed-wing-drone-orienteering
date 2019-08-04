@@ -34,7 +34,8 @@ class Controller {
             turnRadius = parser.turnRadius,
             numDiscretizations = parser.numDiscretizations,
             numReducedCostColumns = parser.numReducedCostColumns,
-            timeLimitInSeconds = parser.timeLimitInSeconds
+            timeLimitInSeconds = parser.timeLimitInSeconds,
+            useNumTargetsForDominance =  parser.useNumTargetsForDominance == 1
         )
 
         results["instance_name"] = parser.instanceName

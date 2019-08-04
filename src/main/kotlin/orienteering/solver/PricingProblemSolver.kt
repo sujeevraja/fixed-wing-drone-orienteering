@@ -360,11 +360,13 @@ class PricingProblemSolver(
             return false
         }
 
-        // Paths joined will always be on an edge (i,j) with a forward label at i and a backward
-        // label at j. So, any label has visited more targets than (numTargets - 1) can be
-        // discarded.
-        if (state.numTargetsVisited > numTargets - 1) {
-            return false
+        if (Parameters.useNumTargetsForDominance) {
+            // Paths joined will always be on an edge (i,j) with a forward label at i and a
+            // backward label at j. So, any label has visited more targets than (numTargets - 1)
+            // can be discarded.
+            if (state.numTargetsVisited > numTargets - 1) {
+                return false
+            }
         }
 
         return true

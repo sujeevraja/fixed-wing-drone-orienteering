@@ -90,11 +90,13 @@ class State private constructor(
         }
 
         if (useVisitCondition) {
-            if (numTargetsVisited > other.numTargetsVisited) {
-                return false
-            }
-            if (!strict && numTargetsVisited < other.numTargetsVisited) {
-                strict = true
+            if (Parameters.useNumTargetsForDominance) {
+                if (numTargetsVisited > other.numTargetsVisited) {
+                    return false
+                }
+                if (!strict && numTargetsVisited < other.numTargetsVisited) {
+                    strict = true
+                }
             }
             for (i in 0 until visitedBits.size) {
                 // Following condition is satisfied when "this" visits a critical target and
