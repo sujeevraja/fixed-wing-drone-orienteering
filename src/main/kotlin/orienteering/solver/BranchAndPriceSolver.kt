@@ -98,7 +98,7 @@ class BranchAndPriceSolver(
                      */
 
                     select {
-                        actors.map {
+                        actors.forEach {
                             it.onSend(
                                 Envelope(
                                     index,
@@ -146,15 +146,16 @@ class BranchAndPriceSolver(
                 }
             }
 
-            actors.forEach {
-                it.send(Envelope(0, null, ClearCPLEX))
-                it.close()
-            }
-
             numNodes = Node.nodeCount - 1
             if (!TimeChecker.timeLimitReached()) {
                 optimalityReached = true
             }
+
+            actors.forEach {
+                it.send(Envelope(0, null, ClearCPLEX))
+                // it.close()
+            }
+            coroutineContext.cancelChildren()
         }
     }
 
