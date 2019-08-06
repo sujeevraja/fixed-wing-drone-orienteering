@@ -2,6 +2,7 @@ package orienteering.solver
 
 import ilog.cplex.IloCplex
 import kotlinx.coroutines.*
+import kotlinx.coroutines.selects.select
 import mu.KLogging
 import orienteering.main.OrienteeringException
 import orienteering.data.Instance
@@ -47,7 +48,7 @@ class BranchAndPriceSolver(
 
         withContext(Dispatchers.Default) {
             val actors = (0 until numActors).map {
-                solverActor(coroutineContext)
+                solverActor(it, coroutineContext)
             }
             while (openNodes.isNotEmpty()) {
                 if (TimeChecker.timeLimitReached()) {
@@ -85,12 +86,30 @@ class BranchAndPriceSolver(
                         return@forEachIndexed
                     }
 
+                    /*
+                    println("sending message $index to actor $index")
                     actors[index].send(
                         Envelope(
+                            index,
                             Payload(childNode, instance),
                             Solve(responses[index])
                         )
                     )
+                     */
+
+                    select {
+                        actors.map {
+                            it.onSend(
+                                Envelope(
+                                    index,
+                                    Payload(childNode, instance),
+                                    Solve(responses[index])
+                                )
+                            ) {
+                                logger.debug("sent message $index")
+                            }
+                        }
+                    }
                 }
 
                 responses.forEach {
@@ -128,7 +147,7 @@ class BranchAndPriceSolver(
             }
 
             actors.forEach {
-                it.send(Envelope(null, ClearCPLEX))
+                it.send(Envelope(0, null, ClearCPLEX))
                 it.close()
             }
 

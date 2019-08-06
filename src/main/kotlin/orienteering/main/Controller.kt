@@ -94,7 +94,6 @@ class Controller {
         val timeInSeconds = timeElapsedMillis / 1000.0
         results["solution_time_in_seconds"] = timeInSeconds
         logger.info("run completed, time: $timeInSeconds seconds")
-        println("run completed, time: $timeInSeconds seconds")
     }
 
     /**

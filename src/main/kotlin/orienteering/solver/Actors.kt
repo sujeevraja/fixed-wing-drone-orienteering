@@ -29,7 +29,7 @@ object ClearCPLEX: Message()
 /**
  * Envelope data class that envelopes message with payload
  */
-data class Envelope(val payload: Payload?, val message: Message)
+data class Envelope(val index: Int, val payload: Payload?, val message: Message)
 
 /**
  * This function launches the SolverActors
@@ -37,6 +37,7 @@ data class Envelope(val payload: Payload?, val message: Message)
 
 @ObsoleteCoroutinesApi
 fun CoroutineScope.solverActor(
+    actorId: Int,
     context: CoroutineContext = EmptyCoroutineContext) =
     actor<Envelope>(context = context) {
     val cplex = IloCplex()
@@ -45,7 +46,7 @@ fun CoroutineScope.solverActor(
         when (envelope.message) {
             is ClearCPLEX -> cplex.end()
             is Solve -> {
-                println("thread=[${Thread.currentThread().name}]")
+                println("actor $actorId received message ${envelope.index} in ${Thread.currentThread().name}")
                 val node = payload!!.node
                 val instance = payload.instance
                 node.solve(instance, cplex)
