@@ -1,5 +1,9 @@
 package orienteering.main
 
+import kotlinx.coroutines.ObsoleteCoroutinesApi
+
+
+@ObsoleteCoroutinesApi
 fun main(args: Array<String>) {
 
     val controller = Controller()

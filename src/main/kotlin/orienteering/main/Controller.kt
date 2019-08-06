@@ -1,6 +1,7 @@
 package orienteering.main
 
 import ilog.cplex.IloCplex
+import kotlinx.coroutines.ObsoleteCoroutinesApi
 import mu.KLogging
 import org.yaml.snakeyaml.DumperOptions
 import org.yaml.snakeyaml.Yaml
@@ -78,6 +79,7 @@ class Controller {
     /**
      * Function to start the solver
      */
+    @ObsoleteCoroutinesApi
     fun run() {
         TimeChecker.startTracking()
         val timeElapsedMillis = measureTimeMillis {
@@ -110,6 +112,7 @@ class Controller {
     /**
      * Function to run branch-and-price algorithm
      */
+    @ObsoleteCoroutinesApi
     private fun runBranchAndPrice() {
         logger.info("algorithm: branch and price")
         initCPLEX()

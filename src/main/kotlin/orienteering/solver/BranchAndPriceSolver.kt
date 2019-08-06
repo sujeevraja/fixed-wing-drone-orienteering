@@ -40,9 +40,16 @@ class BranchAndPriceSolver(
     var optimalityReached = false
         private set
 
-    @kotlinx.coroutines.ObsoleteCoroutinesApi
+    @ObsoleteCoroutinesApi
     fun solve() = runBlocking {
-        val actors = List(3) { solverActor() }
+        val threads = listOf(
+            newSingleThreadContext("0"),
+            newSingleThreadContext("1"),
+            newSingleThreadContext("2"))
+        val actors = listOf(
+            solverActor(context = threads[0]),
+            solverActor(context = threads[1]),
+            solverActor(context = threads[2]))
 
         solveRootNode()
         while (openNodes.isNotEmpty()) {
@@ -125,6 +132,8 @@ class BranchAndPriceSolver(
             it.send(Envelope(null, ClearCPLEX))
             it.close()
         }
+
+        threads.forEach { it.close() }
 
         numNodes = Node.nodeCount - 1
         if (!TimeChecker.timeLimitReached()) {
