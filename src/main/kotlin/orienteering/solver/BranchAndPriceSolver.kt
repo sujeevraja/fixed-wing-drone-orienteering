@@ -41,105 +41,102 @@ class BranchAndPriceSolver(
         private set
 
     @ObsoleteCoroutinesApi
-    fun solve() = runBlocking {
-        val threads = listOf(
-            newSingleThreadContext("0"),
-            newSingleThreadContext("1"),
-            newSingleThreadContext("2"))
-        val actors = listOf(
-            solverActor(context = threads[0]),
-            solverActor(context = threads[1]),
-            solverActor(context = threads[2]))
-
+    suspend fun solve() {
         solveRootNode()
-        while (openNodes.isNotEmpty()) {
-            if (TimeChecker.timeLimitReached()) {
-                break
+        val numActors = 3
+
+        withContext(Dispatchers.Default) {
+            val actors = (0 until numActors).map {
+                solverActor(coroutineContext)
             }
-
-            val node = openNodes.remove()
-            logger.debug("processing $node")
-            logger.debug("upper bound: $upperBound")
-            logger.debug("lower bound: $lowerBound")
-            node.logInfo()
-
-            if (pruneByOptimality(node)) {
-                continue
-            }
-
-            val childNodes = branch(node)
-            val responses = List(childNodes.size) { CompletableDeferred<Boolean>() }
-
-            childNodes.forEachIndexed { index, childNode ->
-                logger.debug("solving LP for child $childNode")
-                childNode.logInfo()
-
-                logger.debug("number of vertices before pre-processing: ${childNode.graph.numVertices()}")
-                preProcess(
-                    childNode.graph,
-                    instance.budget,
-                    instance.getVertices(instance.sourceTarget),
-                    instance.getVertices(instance.destinationTarget)
-                )
-                logger.debug("number of vertices after pre-processing: ${childNode.graph.numVertices()}")
-
-                if (!childNode.isFeasible(instance)) {
-                    logger.debug("$childNode pruned by infeasibility before solving")
-                    return@forEachIndexed
-                }
-
-                GlobalScope.launch(Dispatchers.Default) {
-                    actors[index].send(Envelope(Payload(childNode, instance), Solve(responses[index])))
-                }
-
-            }
-
-            responses.forEach {
-                logger.debug("actor solve status ${it.await()}")
-            }
-
-            for (childNode in childNodes) {
-                if (!childNode.feasible) {
-                    logger.debug("$childNode pruned by infeasibility after solving")
-                } else if (childNode.lpObjective <= lowerBound + Parameters.eps) {
-                    logger.debug("$childNode pruned by bound")
-                } else {
-                    if (childNode.mipObjective >= lowerBound + Parameters.eps) {
-                        lowerBound = childNode.mipObjective
-                        bestFeasibleSolution = childNode.mipSolution
-                        logger.debug("updated lower bound using open child node: $lowerBound")
-                    }
-                    openNodes.add(childNode)
-                    logger.debug("added $childNode to open nodes")
-                }
+            while (openNodes.isNotEmpty()) {
                 if (TimeChecker.timeLimitReached()) {
                     break
                 }
-            }
 
-            if (openNodes.isNotEmpty()) {
-                val newUpperBound = openNodes.peek().lpObjective
-                if (upperBound <= newUpperBound - Parameters.eps) {
-                    logger.error("existing upper bound: $upperBound")
-                    logger.error("open nodes upper bound: $newUpperBound")
-                    throw OrienteeringException("upper bound smaller than it should be")
+                val node = openNodes.remove()
+                logger.debug("processing $node")
+                logger.debug("upper bound: $upperBound")
+                logger.debug("lower bound: $lowerBound")
+                node.logInfo()
+
+                if (pruneByOptimality(node)) {
+                    continue
                 }
-                upperBound = newUpperBound
+
+                val childNodes = branch(node)
+                val responses = List(childNodes.size) { CompletableDeferred<Boolean>() }
+
+                childNodes.forEachIndexed { index, childNode ->
+                    logger.debug("solving LP for child $childNode")
+                    childNode.logInfo()
+
+                    logger.debug("number of vertices before pre-processing: ${childNode.graph.numVertices()}")
+                    preProcess(
+                        childNode.graph,
+                        instance.budget,
+                        instance.getVertices(instance.sourceTarget),
+                        instance.getVertices(instance.destinationTarget)
+                    )
+                    logger.debug("number of vertices after pre-processing: ${childNode.graph.numVertices()}")
+
+                    if (!childNode.isFeasible(instance)) {
+                        logger.debug("$childNode pruned by infeasibility before solving")
+                        return@forEachIndexed
+                    }
+
+                    actors[index].send(
+                        Envelope(
+                            Payload(childNode, instance),
+                            Solve(responses[index])
+                        )
+                    )
+                }
+
+                responses.forEach {
+                    logger.debug("actor solve status ${it.await()}")
+                }
+
+                for (childNode in childNodes) {
+                    if (!childNode.feasible) {
+                        logger.debug("$childNode pruned by infeasibility after solving")
+                    } else if (childNode.lpObjective <= lowerBound + Parameters.eps) {
+                        logger.debug("$childNode pruned by bound")
+                    } else {
+                        if (childNode.mipObjective >= lowerBound + Parameters.eps) {
+                            lowerBound = childNode.mipObjective
+                            bestFeasibleSolution = childNode.mipSolution
+                            logger.debug("updated lower bound using open child node: $lowerBound")
+                        }
+                        openNodes.add(childNode)
+                        logger.debug("added $childNode to open nodes")
+                    }
+                    if (TimeChecker.timeLimitReached()) {
+                        break
+                    }
+                }
+
+                if (openNodes.isNotEmpty()) {
+                    val newUpperBound = openNodes.peek().lpObjective
+                    if (upperBound <= newUpperBound - Parameters.eps) {
+                        logger.error("existing upper bound: $upperBound")
+                        logger.error("open nodes upper bound: $newUpperBound")
+                        throw OrienteeringException("upper bound smaller than it should be")
+                    }
+                    upperBound = newUpperBound
+                }
+            }
+
+            actors.forEach {
+                it.send(Envelope(null, ClearCPLEX))
+                it.close()
+            }
+
+            numNodes = Node.nodeCount - 1
+            if (!TimeChecker.timeLimitReached()) {
+                optimalityReached = true
             }
         }
-
-        actors.forEach {
-            it.send(Envelope(null, ClearCPLEX))
-            it.close()
-        }
-
-        threads.forEach { it.close() }
-
-        numNodes = Node.nodeCount - 1
-        if (!TimeChecker.timeLimitReached()) {
-            optimalityReached = true
-        }
-
     }
 
     private fun solveRootNode() {

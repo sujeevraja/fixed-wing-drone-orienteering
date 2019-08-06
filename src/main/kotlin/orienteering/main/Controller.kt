@@ -2,6 +2,7 @@ package orienteering.main
 
 import ilog.cplex.IloCplex
 import kotlinx.coroutines.ObsoleteCoroutinesApi
+import kotlinx.coroutines.runBlocking
 import mu.KLogging
 import org.yaml.snakeyaml.DumperOptions
 import org.yaml.snakeyaml.Yaml
@@ -93,6 +94,7 @@ class Controller {
         val timeInSeconds = timeElapsedMillis / 1000.0
         results["solution_time_in_seconds"] = timeInSeconds
         logger.info("run completed, time: $timeInSeconds seconds")
+        println("run completed, time: $timeInSeconds seconds")
     }
 
     /**
@@ -113,7 +115,7 @@ class Controller {
      * Function to run branch-and-price algorithm
      */
     @ObsoleteCoroutinesApi
-    private fun runBranchAndPrice() {
+    private fun runBranchAndPrice() = runBlocking {
         logger.info("algorithm: branch and price")
         initCPLEX()
         val bps = BranchAndPriceSolver(instance, cplex)
