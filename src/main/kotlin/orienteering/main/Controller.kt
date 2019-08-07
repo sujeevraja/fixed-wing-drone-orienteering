@@ -137,6 +137,7 @@ class Controller {
         results["final_lower_bound"] = bps.lowerBound
         results["final_upper_bound"] = bps.upperBound
         results["final_gap_percentage"] = computePercentGap(bps.lowerBound, bps.upperBound)
+        results["number_of_nodes"] = bps.numNodes
         results["optimality_reached"] = bps.optimalityReached
     }
 
