@@ -10,49 +10,38 @@ import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.EmptyCoroutineContext
 
 /**
- * Payload data class to send the encapsulate the data that needs to sent to the actor
- */
-data class Payload(val node: Node, val instance: Instance)
-
-/**
- * Result data class
- */
-
-
-/**
- *  Message types
+ *  Actor messages
  */
 sealed class Message
-class Solve(val response: CompletableDeferred<Boolean>) : Message()
-object ClearCPLEX: Message()
+
+data class Solve(
+    val index: Int,
+    val node: Node,
+    val instance: Instance,
+    val response: CompletableDeferred<Boolean>
+) : Message()
+
+object ClearCPLEX : Message()
 
 /**
- * Envelope data class that envelopes message with payload
+ * Builds an actor that owns a IloCplex instance and can solve LP/MIP models of a given node.
  */
-data class Envelope(val index: Int, val payload: Payload?, val message: Message)
-
-/**
- * This function launches the SolverActors
- */
-
 @ObsoleteCoroutinesApi
 fun CoroutineScope.solverActor(
     actorId: Int,
-    context: CoroutineContext = EmptyCoroutineContext) =
-    actor<Envelope>(context = context) {
-    val cplex = IloCplex()
-    for (envelope in channel) {
-        val payload = envelope.payload
-        when (envelope.message) {
-            is ClearCPLEX -> cplex.end()
-            is Solve -> {
-                println("actor $actorId received message ${envelope.index} in ${Thread.currentThread().name}")
-                val node = payload!!.node
-                val instance = payload.instance
-                node.solve(instance, cplex)
-                envelope.message.response.complete(true)
+    context: CoroutineContext = EmptyCoroutineContext
+) =
+    actor<Message>(context = context) {
+        val cplex = IloCplex()
+        for (message in channel) {
+            when (message) {
+                is ClearCPLEX -> cplex.end()
+                is Solve -> {
+                    println("actor $actorId received message ${message.index} in ${Thread.currentThread().name}")
+                    message.node.solve(message.instance, cplex)
+                    message.response.complete(true)
+                }
             }
         }
     }
-}
 

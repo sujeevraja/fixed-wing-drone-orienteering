@@ -100,11 +100,7 @@ class BranchAndPriceSolver(
                     select {
                         actors.forEach {
                             it.onSend(
-                                Envelope(
-                                    index,
-                                    Payload(childNode, instance),
-                                    Solve(responses[index])
-                                )
+                                Solve(index, childNode, instance, responses[index])
                             ) {
                                 logger.debug("sent message $index")
                             }
@@ -152,7 +148,7 @@ class BranchAndPriceSolver(
             }
 
             actors.forEach {
-                it.send(Envelope(0, null, ClearCPLEX))
+                it.send(ClearCPLEX)
                 // it.close()
             }
             coroutineContext.cancelChildren()
