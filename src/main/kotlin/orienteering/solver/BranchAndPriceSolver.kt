@@ -4,12 +4,12 @@ import ilog.cplex.IloCplex
 import kotlinx.coroutines.*
 import kotlinx.coroutines.selects.select
 import mu.KLogging
-import orienteering.main.OrienteeringException
 import orienteering.data.Instance
 import orienteering.data.Parameters
 import orienteering.data.Route
-import orienteering.main.preProcess
+import orienteering.main.OrienteeringException
 import orienteering.main.numVertices
+import orienteering.main.preProcess
 import java.util.*
 import kotlin.math.absoluteValue
 import kotlin.math.round
@@ -48,7 +48,7 @@ class BranchAndPriceSolver(
 
         withContext(Dispatchers.Default) {
             val actors = (0 until numActors).map {
-                solverActor(it, coroutineContext)
+                solverActor(coroutineContext)
             }
             while (openNodes.isNotEmpty()) {
                 if (TimeChecker.timeLimitReached()) {

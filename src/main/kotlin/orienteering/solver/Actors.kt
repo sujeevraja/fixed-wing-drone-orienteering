@@ -28,7 +28,6 @@ object ClearCPLEX : Message()
  */
 @ObsoleteCoroutinesApi
 fun CoroutineScope.solverActor(
-    actorId: Int,
     context: CoroutineContext = EmptyCoroutineContext
 ) =
     actor<Message>(context = context) {
@@ -37,7 +36,7 @@ fun CoroutineScope.solverActor(
             when (message) {
                 is ClearCPLEX -> cplex.end()
                 is Solve -> {
-                    println("actor $actorId received message ${message.index} in ${Thread.currentThread().name}")
+                    // println("received message ${message.index} in ${Thread.currentThread().name}")
                     message.node.solve(message.instance, cplex)
                     message.response.complete(true)
                 }
