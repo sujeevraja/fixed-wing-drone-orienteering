@@ -20,7 +20,7 @@ class Node private constructor(
     private val mustVisitTargetEdges: List<Pair<Int, Int>>,
     upperBound: Double
 ) : Comparable<Node> {
-    private val index = getNodeIndex()
+    val index = getNodeIndex()
 
     var feasible = true
         private set
@@ -40,11 +40,10 @@ class Node private constructor(
     var lpIntegral = false
         private set
 
-    lateinit var targetReducedCosts: List<Double>
-        private set
+    private lateinit var targetReducedCosts: List<Double>
 
     override fun toString(): String {
-        return "Node($index)"
+        return "Node($index, bound=$lpObjective, feasible=$feasible)"
     }
 
     fun logInfo() {

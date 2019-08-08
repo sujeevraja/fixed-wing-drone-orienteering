@@ -42,56 +42,39 @@ class BranchAndPriceSolver(
             return
         }
 
-        val numBranchingActors = 3
-        val numSolverActors = 3 * numBranchingActors
-        withContext(Dispatchers.Default) {
-            val monitorActor = monitorActor(coroutineContext, numBranchingActors)
-            val openNodeActor = openNodesActor(coroutineContext, instance, monitorActor)
-
+        val numSolverActors = 8
+        withContext(Dispatchers.Default + CoroutineName("BranchAndPrice_")) {
+            val newNodeActor = newNodeActor(coroutineContext, instance, numSolverActors)
             val solverActors = (0 until numSolverActors).map {
-                solverActor(it, coroutineContext)
+                newSolverActor(it, newNodeActor, instance, coroutineContext)
             }
 
-            val branchingActors = (0 until numBranchingActors).map {
-                branchingActor(it, monitorActor, coroutineContext, solverActors)
-            }
-
-            openNodeActor.send(StoreSolvedNodes(listOf(rootNode)))
+            newNodeActor.send(ProcessSolvedNode(rootNode))
             while (true) {
-                if (TimeChecker.timeLimitReached()) {
-                    solverActors.forEach { it.send(ClearCPLEX) }
-                    coroutineContext.cancelChildren()
+                val nodesAvailableMessage = CanRelease()
+                newNodeActor.send(nodesAvailableMessage)
+                val nodesAvailable =nodesAvailableMessage.response.await()
+                logger.info("nodes available: $nodesAvailable")
+                if (nodesAvailable) {
+                    newNodeActor.send(ReleaseOpenNode(solverActors))
+                    continue
+                }
+
+                val canStopMessage = CanStop()
+                newNodeActor.send(canStopMessage)
+                val canStop = canStopMessage.response.await()
+                logger.info("can stop: $canStop")
+                if (canStop) {
                     break
                 }
 
                 delay(1000L)
-                val algorithmStatus = AlgorithmStatus()
-                monitorActor.send(algorithmStatus)
-
-                // println("--------------------------------------------------------------------")
-                // println("optimality reached: ${algorithmStatus.optimalityReached.await()}")
-                // println("branching ongoing: ${algorithmStatus.branchingOngoing.await()}")
-                // println("open nodes available: ${algorithmStatus.openNodesAvailable.await()}")
-                // println("--------------------------------------------------------------------")
-                if (algorithmStatus.optimalityReached.await()) {
-                    break
-                }
-                if (!(algorithmStatus.branchingOngoing.await()) && !(algorithmStatus.openNodesAvailable.await())) {
-                    break
-                }
-                if (algorithmStatus.openNodesAvailable.await() && algorithmStatus.branchingActorAvailable.await()) {
-                    openNodeActor.send(ReleaseNode(branchingActors))
-                }
             }
 
-            logger.info("reached end of while loop")
-            numNodes = Node.nodeCount.get() - 1
-            if (!TimeChecker.timeLimitReached()) {
-                optimalityReached = true
+            newNodeActor.close()
+            for (solverActor in solverActors) {
+                solverActor.close()
             }
-
-            solverActors.forEach { it.send(ClearCPLEX) }
-            coroutineContext.cancelChildren()
         }
     }
 

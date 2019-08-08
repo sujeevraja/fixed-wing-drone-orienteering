@@ -120,7 +120,6 @@ class Controller {
         val bps = BranchAndPriceSolver(instance, cplex)
         bps.solve()
 
-        logger.info("final solution:")
         val solution = bps.bestFeasibleSolution
         for (route in solution) {
             logger.info(route.toString())
