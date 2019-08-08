@@ -1,14 +1,13 @@
 package orienteering.solver
 
-import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ObsoleteCoroutinesApi
 import kotlinx.coroutines.channels.SendChannel
 import kotlinx.coroutines.channels.actor
+import kotlinx.coroutines.channels.sendBlocking
 import kotlinx.coroutines.selects.select
 import orienteering.data.Instance
 import orienteering.data.Parameters
-import orienteering.data.Route
 import java.util.*
 import kotlin.coroutines.CoroutineContext
 
@@ -21,9 +20,9 @@ data class StoreSolvedNodes(val solvedNodes: List<Node>) : OpenNodesActorMessage
 
 @ObsoleteCoroutinesApi
 fun CoroutineScope.openNodesActor(
-    instance: Instance,
     context: CoroutineContext,
-    solving: CompletableDeferred<Boolean>
+    instance: Instance,
+    monitorActor: SendChannel<MonitorActorMessage>
 ) =
     actor<OpenNodesActorMessage>(context = context) {
         var upperBound: Double = Double.MAX_VALUE
@@ -35,15 +34,15 @@ fun CoroutineScope.openNodesActor(
                 is ReleaseNode -> {
                     println("openNodesActor ${Thread.currentThread().name}: received ReleaseNode message")
                     if (openNodes.isEmpty()) {
-                        println("openNodesActor ${Thread.currentThread().name}: openNode queue empty, stopping algorithm")
-                        solving.complete(true)
+                        println("openNodesActor ${Thread.currentThread().name}: openNode queue empty")
+                        monitorActor.sendBlocking(OpenNodesEmpty)
                     } else {
                         val node = openNodes.remove()
                         if (node.lpIntegral) {
                             println("$node pruned by integrality in open nodes actor in ${Thread.currentThread().name}")
                             channel.send(ReleaseNode(message.branchingActors))
                         } else {
-                            println("open nodes actor releasing node for branching in ${Thread.currentThread().name}")
+                            println("openNodesActor ${Thread.currentThread().name}: releasing $node for branching")
                             select<Unit> {
                                 message.branchingActors.forEach {
                                     it.onSend(ProcessOpenNode(node, instance, channel)) {}
@@ -65,13 +64,17 @@ fun CoroutineScope.openNodesActor(
                     }
                     if (openNodes.isNotEmpty()) {
                         upperBound = openNodes.peek().lpObjective
-                        if (upperBound - lowerBound <= Parameters.eps) {
-                            solving.complete(true)
-                        }
+                        monitorActor.sendBlocking(OpenNodesExist)
+                    }
+                    else {
+                        monitorActor.sendBlocking(OpenNodesEmpty)
                     }
                     println("openNodesActor ${Thread.currentThread().name}: lower bound: $lowerBound")
                     println("openNodesActor ${Thread.currentThread().name}: upper bound: $upperBound")
                     println("openNodesActor ${Thread.currentThread().name}: #nodes: ${openNodes.size}")
+                    if (upperBound - lowerBound <= Parameters.eps) {
+                        monitorActor.sendBlocking(TerminateAlgorithm)
+                    }
                 }
             }
         }

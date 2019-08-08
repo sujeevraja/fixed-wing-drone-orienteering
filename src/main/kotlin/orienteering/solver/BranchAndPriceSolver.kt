@@ -47,25 +47,43 @@ class BranchAndPriceSolver(
         val numSolverActors = 3
         val numBranchingActors = 2
         withContext(Dispatchers.Default) {
-            val solving = CompletableDeferred<Boolean>()
-            val openNodeActor = openNodesActor(instance, coroutineContext, solving)
+            val monitorActor = monitorActor(coroutineContext, numBranchingActors)
+            val openNodeActor = openNodesActor(coroutineContext, instance, monitorActor)
 
             val solverActors = (0 until numSolverActors).map {
                 solverActor(coroutineContext)
             }
 
             val branchingActors = (0 until numBranchingActors).map {
-                branchingActor(coroutineContext, solverActors)
+                branchingActor(it, monitorActor, coroutineContext, solverActors)
             }
 
             openNodeActor.send(StoreSolvedNodes(listOf(rootNode)))
-            while (!solving.isCompleted) {
+            while (true) {
                 if (TimeChecker.timeLimitReached()) {
                     solverActors.forEach { it.send(ClearCPLEX) }
                     coroutineContext.cancelChildren()
                     break
                 }
-                openNodeActor.send(ReleaseNode(branchingActors))
+
+                delay(1000L)
+                val algorithmStatus = AlgorithmStatus()
+                monitorActor.send(algorithmStatus)
+
+                println("--------------------------------------------------------------------")
+                println("optimality reached: ${algorithmStatus.optimalityReached.await()}")
+                println("branching ongoing: ${algorithmStatus.branchingOngoing.await()}")
+                println("open nodes available: ${algorithmStatus.openNodesAvailable.await()}")
+                println("--------------------------------------------------------------------")
+                if (algorithmStatus.optimalityReached.await()) {
+                    break
+                }
+                if (!(algorithmStatus.branchingOngoing.await()) && !(algorithmStatus.openNodesAvailable.await())) {
+                    break
+                }
+                if (algorithmStatus.openNodesAvailable.await()) {
+                    openNodeActor.send(ReleaseNode(branchingActors))
+                }
             }
 
             println("reached end of while loop")

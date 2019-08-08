@@ -6,6 +6,7 @@ import kotlinx.coroutines.ObsoleteCoroutinesApi
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.channels.SendChannel
 import kotlinx.coroutines.channels.actor
+import kotlinx.coroutines.channels.sendBlocking
 import kotlinx.coroutines.selects.select
 import orienteering.data.Instance
 import orienteering.data.Parameters
@@ -22,6 +23,8 @@ data class ProcessOpenNode(
 
 @ObsoleteCoroutinesApi
 fun CoroutineScope.branchingActor(
+    actorId: Int,
+    monitorActor: SendChannel<MonitorActorMessage>,
     context: CoroutineContext,
     solverActors: List<SendChannel<Message>>
 ) =
@@ -30,6 +33,7 @@ fun CoroutineScope.branchingActor(
             when (message) {
                 is ProcessOpenNode -> {
                     println("branchingActor ${Thread.currentThread().name}: processing ${message.node}")
+                    monitorActor.sendBlocking(BranchingStarted(actorId))
                     val instance = message.instance
                     val childNodes = message.node.branch(instance)
 
@@ -63,6 +67,7 @@ fun CoroutineScope.branchingActor(
                             message.openNodesActor.send(StoreSolvedNodes(solvedNodes))
                         }
                     }
+                    monitorActor.sendBlocking(BranchingCompleted(actorId))
                 }
             }
         }
