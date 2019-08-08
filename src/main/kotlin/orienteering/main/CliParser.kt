@@ -23,7 +23,7 @@ class CliParser : CliktCommand() {
      * name of the instance
      */
     val instanceName: String by option("-n", help = "instance name")
-        .default("p3.3.l.txt")
+        .default("p3.2.k.txt")
 
     /**
      * path to folder with instance file
@@ -60,7 +60,7 @@ class CliParser : CliktCommand() {
         "-d",
         help = "number of discretizations of the heading angle"
     )
-        .int().default(1).validate {
+        .int().default(2).validate {
             require(it >= 1) {
                 "number of discretizations has to be >= 1 and integral"
             }

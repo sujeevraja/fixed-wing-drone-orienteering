@@ -8,6 +8,7 @@ import kotlin.coroutines.CoroutineContext
 
 sealed class MonitorActorMessage
 class AlgorithmStatus: MonitorActorMessage() {
+    val branchingActorAvailable = CompletableDeferred<Boolean>()
     val branchingOngoing = CompletableDeferred<Boolean>()
     val openNodesAvailable = CompletableDeferred<Boolean>()
     val optimalityReached = CompletableDeferred<Boolean>()
@@ -29,6 +30,10 @@ fun CoroutineScope.monitorActor(context: CoroutineContext, numBranchingActors: I
         for (message in channel) {
             when (message) {
                 is AlgorithmStatus -> {
+                    println("monitorActor ${Thread.currentThread().name}: branchingActorRunning $branchingActorRunning")
+                    println("monitorActor ${Thread.currentThread().name}: openNodesExist $openNodesExist")
+                    println("monitorActor ${Thread.currentThread().name}: optimalityReached $optimalityReached")
+                    message.branchingActorAvailable.complete(branchingActorRunning.any { !it })
                     message.branchingOngoing.complete(branchingActorRunning.any { it })
                     message.openNodesAvailable.complete(openNodesExist)
                     message.optimalityReached.complete(optimalityReached)
@@ -36,10 +41,12 @@ fun CoroutineScope.monitorActor(context: CoroutineContext, numBranchingActors: I
                 is BranchingCompleted -> {
                     println("monitorActor ${Thread.currentThread().name}: received BranchingCompleted from ${message.branchingActorId}")
                     branchingActorRunning[message.branchingActorId] = false
+                    println("monitorActor ${Thread.currentThread().name}: branchingActorRunning $branchingActorRunning")
                 }
                 is BranchingStarted -> {
                     println("monitorActor ${Thread.currentThread().name}: received BranchingStarted from ${message.branchingActorId}")
                     branchingActorRunning[message.branchingActorId] = true
+                    println("monitorActor ${Thread.currentThread().name}: branchingActorRunning $branchingActorRunning")
                 }
                 is OpenNodesExist -> {
                     println("monitorActor ${Thread.currentThread().name}: received OpenNodesExist")

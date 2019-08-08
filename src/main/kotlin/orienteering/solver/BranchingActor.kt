@@ -67,6 +67,7 @@ fun CoroutineScope.branchingActor(
                             message.openNodesActor.send(StoreSolvedNodes(solvedNodes))
                         }
                     }
+                    println("branchingActor ${Thread.currentThread().name}: sending BranchingCompleted after processing ${message.node}")
                     monitorActor.sendBlocking(BranchingCompleted(actorId))
                 }
             }

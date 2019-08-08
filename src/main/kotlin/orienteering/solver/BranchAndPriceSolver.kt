@@ -44,8 +44,8 @@ class BranchAndPriceSolver(
             return
         }
 
-        val numSolverActors = 3
-        val numBranchingActors = 2
+        val numSolverActors = 8
+        val numBranchingActors = 8
         withContext(Dispatchers.Default) {
             val monitorActor = monitorActor(coroutineContext, numBranchingActors)
             val openNodeActor = openNodesActor(coroutineContext, instance, monitorActor)
@@ -81,7 +81,7 @@ class BranchAndPriceSolver(
                 if (!(algorithmStatus.branchingOngoing.await()) && !(algorithmStatus.openNodesAvailable.await())) {
                     break
                 }
-                if (algorithmStatus.openNodesAvailable.await()) {
+                if (algorithmStatus.openNodesAvailable.await() && algorithmStatus.branchingActorAvailable.await()) {
                     openNodeActor.send(ReleaseNode(branchingActors))
                 }
             }

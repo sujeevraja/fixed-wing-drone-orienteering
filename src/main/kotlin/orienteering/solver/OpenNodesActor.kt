@@ -45,7 +45,9 @@ fun CoroutineScope.openNodesActor(
                             println("openNodesActor ${Thread.currentThread().name}: releasing $node for branching")
                             select<Unit> {
                                 message.branchingActors.forEach {
-                                    it.onSend(ProcessOpenNode(node, instance, channel)) {}
+                                    it.onSend(ProcessOpenNode(node, instance, channel)) {
+                                        println("openNodesActor ${Thread.currentThread().name}: sent $node to branchingActor for branching")
+                                    }
                                 }
                             }
                         }
