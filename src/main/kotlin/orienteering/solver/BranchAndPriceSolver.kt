@@ -51,7 +51,7 @@ class BranchAndPriceSolver(
             val openNodeActor = openNodesActor(coroutineContext, instance, monitorActor)
 
             val solverActors = (0 until numSolverActors).map {
-                solverActor(coroutineContext)
+                solverActor(it, coroutineContext)
             }
 
             val branchingActors = (0 until numBranchingActors).map {

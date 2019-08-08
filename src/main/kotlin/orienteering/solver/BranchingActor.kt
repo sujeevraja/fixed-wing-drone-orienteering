@@ -18,7 +18,7 @@ data class ProcessOpenNode(
 class BranchingActorState(
     private val actorId: Int,
     private val monitorActor: SendChannel<MonitorActorMessage>,
-    private val solverActors: List<SendChannel<Message>>
+    private val solverActors: List<SendChannel<SolverActorMessage>>
 ) : ActorState<ProcessOpenNode>() {
     override suspend fun handle(message: ProcessOpenNode) {
         logger.info("starting to process ${message.node}")
@@ -69,10 +69,10 @@ fun CoroutineScope.branchingActor(
     actorId: Int,
     monitorActor: SendChannel<MonitorActorMessage>,
     context: CoroutineContext,
-    solverActors: List<SendChannel<Message>>
+    solverActors: List<SendChannel<SolverActorMessage>>
 ) =
     actor<ProcessOpenNode>(
-        context = context + CoroutineName("BranchingActor_$actorId")
+        context = context + CoroutineName("BranchingActor$actorId")
     ) {
         val state = BranchingActorState(actorId, monitorActor, solverActors)
         for (message in channel) {

@@ -2,6 +2,7 @@ package orienteering.solver
 
 import ilog.cplex.IloCplex
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ObsoleteCoroutinesApi
 import kotlinx.coroutines.channels.actor
@@ -12,35 +13,49 @@ import kotlin.coroutines.EmptyCoroutineContext
 /**
  *  Actor messages
  */
-sealed class Message
+sealed class SolverActorMessage
 
 data class Solve(
     val index: Int,
     val node: Node,
     val instance: Instance,
     val response: CompletableDeferred<Boolean>
-) : Message()
+) : SolverActorMessage()
 
-object ClearCPLEX : Message()
+object ClearCPLEX : SolverActorMessage()
+
+class SolverActorState: ActorState<SolverActorMessage>() {
+    private val cplex = IloCplex()
+
+    override suspend fun handle(message: SolverActorMessage) {
+        when (message) {
+            is ClearCPLEX -> {
+                cplex.end()
+                logger.info("CPLEX object ended")
+            }
+            is Solve -> {
+                logger.info("starting to solve ${message.node}")
+                message.node.solve(message.instance, cplex)
+                logger.info("completed solving ${message.node}")
+
+                message.response.complete(true)
+            }
+        }
+    }
+}
 
 /**
  * Builds an actor that owns a IloCplex instance and can solve LP/MIP models of a given node.
  */
 @ObsoleteCoroutinesApi
 fun CoroutineScope.solverActor(
+    actorId: Int,
     context: CoroutineContext = EmptyCoroutineContext
 ) =
-    actor<Message>(context = context) {
-        val cplex = IloCplex()
+    actor<SolverActorMessage>(context = context + CoroutineName("SolverActor$actorId")) {
+        val state = SolverActorState()
         for (message in channel) {
-            when (message) {
-                is ClearCPLEX -> cplex.end()
-                is Solve -> {
-                    // println("received message ${message.index} in ${Thread.currentThread().name}")
-                    message.node.solve(message.instance, cplex)
-                    message.response.complete(true)
-                }
-            }
+            state.handle(message)
         }
     }
 
