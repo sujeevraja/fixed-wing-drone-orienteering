@@ -12,6 +12,7 @@ import orienteering.data.Parameters
 import orienteering.solver.Node
 import java.util.*
 import kotlin.coroutines.CoroutineContext
+import kotlin.math.min
 
 sealed class OpenNodesActorMessage
 
@@ -31,58 +32,62 @@ class OpenNodesActorState(
 
     override suspend fun handle(message: OpenNodesActorMessage) {
         when (message) {
-            is ReleaseNode -> {
-                logger.info("received ReleaseNode message")
-                if (openNodes.isEmpty()) {
-                    logger.info("openNode queue empty")
-                    monitorActor.sendBlocking(OpenNodesEmpty)
-                } else {
-                    val node = openNodes.remove()
-                    if (node.lpIntegral) {
-                        logger.info("$node pruned by integrality")
-                        channel.send(ReleaseNode(message.branchingActors))
-                    } else {
-                        logger.info("releasing $node for branching")
-                        select<Unit> {
-                            message.branchingActors.forEach {
-                                it.onSend(
-                                    ProcessOpenNode(
-                                        node,
-                                        instance,
-                                        channel
-                                    )
-                                ) {
-                                    logger.info("sent $node to branchingActor for branching")
-                                }
-                            }
-                        }
-                    }
+            is ReleaseNode -> releaseNode(message)
+            is StoreSolvedNodes -> storeSolvedNodes(message.solvedNodes)
+        }
+    }
+
+    private suspend fun releaseNode(message: ReleaseNode) {
+        logger.info("received ReleaseNode message")
+        if (openNodes.isEmpty()) {
+            logger.info("openNode queue empty")
+            monitorActor.sendBlocking(OpenNodesEmpty)
+            return
+        }
+        val node = openNodes.remove()
+        if (node.lpIntegral) {
+            logger.info("$node pruned by integrality")
+            channel.send(ReleaseNode(message.branchingActors))
+            return
+        }
+        logger.info("releasing $node for branching")
+        select<Unit> {
+            message.branchingActors.forEach {
+                it.onSend(
+                    ProcessOpenNode(
+                        node,
+                        instance,
+                        channel
+                    )
+                ) {
+                    logger.info("sent $node to branchingActor for branching")
                 }
             }
-            is StoreSolvedNodes -> {
-                logger.info("received StoreSolvedNodes message")
-                for (node in message.solvedNodes) {
-                    if (!node.feasible || node.lpObjective <= lowerBound) {
-                        continue
-                    }
-                    if (node.mipObjective >= lowerBound + Parameters.eps) {
-                        lowerBound = node.mipObjective
-                    }
-                    openNodes.add(node)
-                }
-                if (openNodes.isNotEmpty()) {
-                    upperBound = openNodes.peek().lpObjective
-                    monitorActor.sendBlocking(OpenNodesExist)
-                } else {
-                    monitorActor.sendBlocking(OpenNodesEmpty)
-                }
-                logger.info("lower bound: $lowerBound")
-                logger.info("upper bound: $upperBound")
-                logger.info("number of nodes: ${openNodes.size}")
-                if (upperBound - lowerBound <= Parameters.eps) {
-                    monitorActor.sendBlocking(TerminateAlgorithm)
-                }
+        }
+    }
+
+    private fun storeSolvedNodes(solvedNodes: List<Node>) {
+        logger.info("received StoreSolvedNodes message")
+        for (node in solvedNodes) {
+            if (!node.feasible || node.lpObjective <= lowerBound) {
+                continue
             }
+            if (node.mipObjective >= lowerBound + Parameters.eps) {
+                lowerBound = node.mipObjective
+            }
+            openNodes.add(node)
+        }
+        if (openNodes.isNotEmpty()) {
+            upperBound = min(upperBound, openNodes.peek().lpObjective)
+            monitorActor.sendBlocking(OpenNodesExist)
+        } else {
+            monitorActor.sendBlocking(OpenNodesEmpty)
+        }
+        logger.info("lower bound: $lowerBound")
+        logger.info("upper bound: $upperBound")
+        logger.info("number of nodes: ${openNodes.size}")
+        if (upperBound - lowerBound <= Parameters.eps) {
+            monitorActor.sendBlocking(TerminateAlgorithm)
         }
     }
 }

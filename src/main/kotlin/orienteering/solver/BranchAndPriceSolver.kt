@@ -8,7 +8,6 @@ import orienteering.data.Parameters
 import orienteering.data.Route
 import orienteering.main.OrienteeringException
 import orienteering.solver.actor.*
-import java.util.*
 
 class BranchAndPriceSolver(
     private val instance: Instance,
@@ -28,8 +27,6 @@ class BranchAndPriceSolver(
 
     var upperBound: Double = Double.MAX_VALUE
         private set
-
-    private val openNodes = PriorityQueue<Node>()
 
     var numNodes = 0
         private set
