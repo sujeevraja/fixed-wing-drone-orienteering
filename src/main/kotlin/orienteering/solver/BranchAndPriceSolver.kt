@@ -44,8 +44,8 @@ class BranchAndPriceSolver(
             return
         }
 
-        val numSolverActors = 8
-        val numBranchingActors = 8
+        val numBranchingActors = 3
+        val numSolverActors = 3 * numBranchingActors
         withContext(Dispatchers.Default) {
             val monitorActor = monitorActor(coroutineContext, numBranchingActors)
             val openNodeActor = openNodesActor(coroutineContext, instance, monitorActor)
@@ -70,11 +70,11 @@ class BranchAndPriceSolver(
                 val algorithmStatus = AlgorithmStatus()
                 monitorActor.send(algorithmStatus)
 
-                println("--------------------------------------------------------------------")
-                println("optimality reached: ${algorithmStatus.optimalityReached.await()}")
-                println("branching ongoing: ${algorithmStatus.branchingOngoing.await()}")
-                println("open nodes available: ${algorithmStatus.openNodesAvailable.await()}")
-                println("--------------------------------------------------------------------")
+                // println("--------------------------------------------------------------------")
+                // println("optimality reached: ${algorithmStatus.optimalityReached.await()}")
+                // println("branching ongoing: ${algorithmStatus.branchingOngoing.await()}")
+                // println("open nodes available: ${algorithmStatus.openNodesAvailable.await()}")
+                // println("--------------------------------------------------------------------")
                 if (algorithmStatus.optimalityReached.await()) {
                     break
                 }
@@ -86,7 +86,7 @@ class BranchAndPriceSolver(
                 }
             }
 
-            println("reached end of while loop")
+            logger.info("reached end of while loop")
             numNodes = Node.nodeCount - 1
             if (!TimeChecker.timeLimitReached()) {
                 optimalityReached = true

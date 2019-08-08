@@ -40,10 +40,6 @@ class MonitorActorState(numBranchingActors: Int): ActorState<MonitorActorMessage
     }
 
     private fun provideAlgorithmStatus(algorithmStatus: AlgorithmStatus) {
-        logger.info("branchingActorRunning: $branchingActorRunning")
-        logger.info("openNodesExist: $openNodesExist")
-        logger.info("optimalityReached: $optimalityReached")
-
         algorithmStatus.branchingActorAvailable.complete(branchingActorRunning.any { !it })
         algorithmStatus.branchingOngoing.complete(branchingActorRunning.any { it })
         algorithmStatus.openNodesAvailable.complete(openNodesExist)
