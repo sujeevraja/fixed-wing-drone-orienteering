@@ -9,6 +9,7 @@ import orienteering.data.Parameters
 import orienteering.data.Route
 import orienteering.main.SetGraph
 import orienteering.main.getCopy
+import java.util.concurrent.atomic.AtomicInteger
 import kotlin.math.absoluteValue
 import kotlin.math.round
 
@@ -18,8 +19,6 @@ class Node private constructor(
     private val mustVisitTargetEdges: List<Pair<Int, Int>>
 ) : Comparable<Node> {
     private val index = getNodeIndex()
-
-    private val createdAt = System.currentTimeMillis()
 
     var feasible = true
         private set
@@ -276,8 +275,8 @@ class Node private constructor(
         return when {
             lpObjective >= other.lpObjective + Parameters.eps -> -1
             lpObjective <= other.lpObjective - Parameters.eps -> 1
-            createdAt < other.createdAt -> -1
-            createdAt > other.createdAt -> 1
+            index < other.index -> -1
+            index > other.index -> 1
             else -> 0
         }
     }
@@ -285,12 +284,11 @@ class Node private constructor(
     companion object : KLogging() {
         fun buildRootNode(graph: SetGraph): Node = Node(graph, intArrayOf(), listOf())
 
-        var nodeCount = 0
+        var nodeCount = AtomicInteger(0)
             private set
 
         fun getNodeIndex(): Int {
-            nodeCount++
-            return nodeCount - 1
+            return nodeCount.getAndIncrement()
         }
     }
 }

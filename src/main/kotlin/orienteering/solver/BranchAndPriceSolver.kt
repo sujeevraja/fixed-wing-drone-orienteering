@@ -85,7 +85,7 @@ class BranchAndPriceSolver(
             }
 
             logger.info("reached end of while loop")
-            numNodes = Node.nodeCount - 1
+            numNodes = Node.nodeCount.get() - 1
             if (!TimeChecker.timeLimitReached()) {
                 optimalityReached = true
             }
