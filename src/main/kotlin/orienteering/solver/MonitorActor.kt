@@ -6,6 +6,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ObsoleteCoroutinesApi
 import kotlinx.coroutines.channels.actor
 import mu.KLogging
+import javax.management.monitor.Monitor
 import kotlin.coroutines.CoroutineContext
 
 sealed class MonitorActorMessage
@@ -22,12 +23,12 @@ object OpenNodesExist : MonitorActorMessage()
 object OpenNodesEmpty : MonitorActorMessage()
 object TerminateAlgorithm : MonitorActorMessage()
 
-class MonitorActorState(numBranchingActors: Int) {
+class MonitorActorState(numBranchingActors: Int): ActorState<MonitorActorMessage>() {
     private val branchingActorRunning = MutableList(numBranchingActors) { false }
     private var openNodesExist = false
     private var optimalityReached = false
 
-    fun handle(message: MonitorActorMessage) {
+    override fun handle(message: MonitorActorMessage) {
         when (message) {
             is AlgorithmStatus -> provideAlgorithmStatus(message)
             is BranchingCompleted -> updateBranchingStatus(message.branchingActorId, busy = false)
@@ -58,8 +59,6 @@ class MonitorActorState(numBranchingActors: Int) {
         openNodesExist = exist
         logger.info("open nodes exist: $openNodesExist")
     }
-
-    companion object : KLogging()
 }
 
 @ObsoleteCoroutinesApi

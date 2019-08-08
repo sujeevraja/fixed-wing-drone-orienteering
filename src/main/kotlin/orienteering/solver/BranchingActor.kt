@@ -9,7 +9,6 @@ import kotlinx.coroutines.channels.actor
 import kotlinx.coroutines.channels.sendBlocking
 import kotlinx.coroutines.selects.select
 import orienteering.data.Instance
-import orienteering.data.Parameters
 import orienteering.main.preProcess
 import kotlin.coroutines.CoroutineContext
 
