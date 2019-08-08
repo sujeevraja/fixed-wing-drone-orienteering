@@ -4,10 +4,10 @@ import ilog.cplex.IloCplex
 import mu.KLogging
 import org.jgrapht.Graphs
 import org.jgrapht.graph.DefaultWeightedEdge
-import orienteering.main.SetGraph
 import orienteering.data.Instance
 import orienteering.data.Parameters
 import orienteering.data.Route
+import orienteering.main.SetGraph
 import orienteering.main.getCopy
 import kotlin.math.absoluteValue
 import kotlin.math.round
@@ -18,6 +18,8 @@ class Node private constructor(
     private val mustVisitTargetEdges: List<Pair<Int, Int>>
 ) : Comparable<Node> {
     private val index = getNodeIndex()
+
+    private val createdAt = System.currentTimeMillis()
 
     var feasible = true
         private set
@@ -186,7 +188,7 @@ class Node private constructor(
         return (num - round(num)).absoluteValue <= Parameters.eps
     }
 
-    fun branchOnTarget(target: Int, targetVertices: List<Int>): List<Node> {
+    private fun branchOnTarget(target: Int, targetVertices: List<Int>): List<Node> {
         logger.debug("branching $this on target $target")
         val noVisitNode = getChildWithoutTarget(targetVertices)
         logger.debug("child without $target: $noVisitNode")
@@ -197,7 +199,7 @@ class Node private constructor(
         return listOf(noVisitNode, mustVisitNode)
     }
 
-    fun branchOnTargetEdge(fromTarget: Int, toTarget: Int, instance: Instance): List<Node> {
+    private fun branchOnTargetEdge(fromTarget: Int, toTarget: Int, instance: Instance): List<Node> {
         val childNodes = mutableListOf<Node>()
         if (fromTarget in mustVisitTargets || toTarget in mustVisitTargets) {
             logger.debug("branching $this with target visit already enforced")
@@ -274,6 +276,8 @@ class Node private constructor(
         return when {
             lpObjective >= other.lpObjective + Parameters.eps -> -1
             lpObjective <= other.lpObjective - Parameters.eps -> 1
+            createdAt < other.createdAt -> -1
+            createdAt > other.createdAt -> 1
             else -> 0
         }
     }
