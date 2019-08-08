@@ -13,7 +13,7 @@ import kotlin.coroutines.CoroutineContext
 
 sealed class OpenNodesActorMessage
 
-data class ReleaseNode(val branchingActors: List<SendChannel<BranchingActorMessage>>) :
+data class ReleaseNode(val branchingActors: List<SendChannel<ProcessOpenNode>>) :
     OpenNodesActorMessage()
 
 data class StoreSolvedNodes(val solvedNodes: List<Node>) : OpenNodesActorMessage()

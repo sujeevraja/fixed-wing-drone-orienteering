@@ -28,7 +28,7 @@ class MonitorActorState(numBranchingActors: Int): ActorState<MonitorActorMessage
     private var openNodesExist = false
     private var optimalityReached = false
 
-    override fun handle(message: MonitorActorMessage) {
+    override suspend fun handle(message: MonitorActorMessage) {
         when (message) {
             is AlgorithmStatus -> provideAlgorithmStatus(message)
             is BranchingCompleted -> updateBranchingStatus(message.branchingActorId, busy = false)
