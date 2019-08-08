@@ -7,6 +7,7 @@ import org.jgrapht.graph.DefaultWeightedEdge
 import orienteering.data.Instance
 import orienteering.data.Parameters
 import orienteering.data.Route
+import orienteering.main.OrienteeringException
 import orienteering.main.SetGraph
 import orienteering.main.getCopy
 import java.util.concurrent.atomic.AtomicInteger
@@ -16,14 +17,15 @@ import kotlin.math.round
 class Node private constructor(
     val graph: SetGraph,
     private val mustVisitTargets: IntArray,
-    private val mustVisitTargetEdges: List<Pair<Int, Int>>
+    private val mustVisitTargetEdges: List<Pair<Int, Int>>,
+    upperBound: Double
 ) : Comparable<Node> {
     private val index = getNodeIndex()
 
     var feasible = true
         private set
 
-    var lpObjective = -Double.MAX_VALUE
+    var lpObjective = upperBound
         private set
 
     var lpSolution = listOf<Pair<Route, Double>>()
@@ -106,6 +108,9 @@ class Node private constructor(
         cgSolver.solve()
         feasible = !cgSolver.lpInfeasible
         if (feasible) {
+            if (lpObjective <= cgSolver.lpObjective - Parameters.eps) {
+                throw OrienteeringException("parent node LP objective smaller than child's")
+            }
             lpObjective = cgSolver.lpObjective
             lpSolution = cgSolver.lpSolution
             mipObjective = cgSolver.mipObjective
@@ -239,11 +244,11 @@ class Node private constructor(
         for (vertex in targetVertices) {
             reducedGraph.removeVertex(vertex)
         }
-        return Node(reducedGraph, mustVisitTargets, mustVisitTargetEdges)
+        return Node(reducedGraph, mustVisitTargets, mustVisitTargetEdges, lpObjective)
     }
 
     private fun getChildWithTarget(target: Int): Node {
-        return Node(graph, mustVisitTargets + target, mustVisitTargetEdges)
+        return Node(graph, mustVisitTargets + target, mustVisitTargetEdges, lpObjective)
     }
 
     private fun getChildWithoutTargetEdge(
@@ -262,13 +267,13 @@ class Node private constructor(
 
             edgesToRemove.forEach { graph.removeEdge(it) }
         }
-        return Node(reducedGraph, mustVisitTargets, mustVisitTargetEdges)
+        return Node(reducedGraph, mustVisitTargets, mustVisitTargetEdges, lpObjective)
     }
 
     private fun getChildWithTargetEdge(fromTarget: Int, toTarget: Int): Node {
         val newMustVisitTargetEdges = mustVisitTargetEdges.toMutableList()
         newMustVisitTargetEdges.add(Pair(fromTarget, toTarget))
-        return Node(graph, mustVisitTargets, newMustVisitTargetEdges)
+        return Node(graph, mustVisitTargets, newMustVisitTargetEdges, lpObjective)
     }
 
     override fun compareTo(other: Node): Int {
@@ -282,7 +287,8 @@ class Node private constructor(
     }
 
     companion object : KLogging() {
-        fun buildRootNode(graph: SetGraph): Node = Node(graph, intArrayOf(), listOf())
+        fun buildRootNode(graph: SetGraph): Node =
+            Node(graph, intArrayOf(), listOf(), Double.MAX_VALUE)
 
         var nodeCount = AtomicInteger(0)
             private set
