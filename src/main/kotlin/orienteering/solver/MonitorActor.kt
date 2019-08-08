@@ -1,6 +1,7 @@
 package orienteering.solver
 
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ObsoleteCoroutinesApi
 import kotlinx.coroutines.channels.actor
@@ -38,9 +39,9 @@ class MonitorActorState(numBranchingActors: Int) {
     }
 
     private fun provideAlgorithmStatus(algorithmStatus: AlgorithmStatus) {
-        logger.debug("branchingActorRunning: $branchingActorRunning")
-        logger.debug("openNodesExist: $openNodesExist")
-        logger.debug("optimalityReached: $optimalityReached")
+        logger.info("branchingActorRunning: $branchingActorRunning")
+        logger.info("openNodesExist: $openNodesExist")
+        logger.info("optimalityReached: $optimalityReached")
 
         algorithmStatus.branchingActorAvailable.complete(branchingActorRunning.any { !it })
         algorithmStatus.branchingOngoing.complete(branchingActorRunning.any { it })
@@ -50,12 +51,12 @@ class MonitorActorState(numBranchingActors: Int) {
 
     private fun updateBranchingStatus(branchingActorId: Int, busy: Boolean) {
         branchingActorRunning[branchingActorId] = busy
-        logger.debug("branchingActorRunning $branchingActorRunning")
+        logger.info("branchingActorRunning $branchingActorRunning")
     }
 
     private fun markOpenNodesExist(exist: Boolean) {
         openNodesExist = exist
-        logger.debug("open nodes exist: $openNodesExist")
+        logger.info("open nodes exist: $openNodesExist")
     }
 
     companion object : KLogging()
@@ -63,7 +64,7 @@ class MonitorActorState(numBranchingActors: Int) {
 
 @ObsoleteCoroutinesApi
 fun CoroutineScope.monitorActor(context: CoroutineContext, numBranchingActors: Int) =
-    actor<MonitorActorMessage>(context = context) {
+    actor<MonitorActorMessage>(context = context + CoroutineName("MonitorActor")) {
         val state = MonitorActorState(numBranchingActors)
         for (message in channel) {
             state.handle(message)
