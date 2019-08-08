@@ -9,6 +9,8 @@ import orienteering.data.Instance
 import orienteering.data.Parameters
 import orienteering.data.Route
 import orienteering.main.getCopy
+import kotlin.math.absoluteValue
+import kotlin.math.round
 
 class Node private constructor(
     val graph: SetGraph,
@@ -30,6 +32,9 @@ class Node private constructor(
         private set
 
     var mipSolution = listOf<Route>()
+        private set
+
+    var lpIntegral = false
         private set
 
     lateinit var targetReducedCosts: List<Double>
@@ -105,7 +110,80 @@ class Node private constructor(
             mipObjective = cgSolver.mipObjective
             mipSolution = cgSolver.mipSolution
             targetReducedCosts = cgSolver.targetReducedCosts
+            lpIntegral = lpSolution.all {
+                it.second >= 1.0 - Parameters.eps
+            }
         }
+    }
+
+    fun branch(instance: Instance): List<Node> {
+        // Find flows to each target and on edges between targets.
+        val targetFlows = MutableList(instance.numTargets) { 0.0 }
+        val targetEdgeFlows: MutableMap<Int, MutableMap<Int, Double>> = mutableMapOf()
+
+        for ((route, slnVal) in lpSolution) {
+            val path = route.vertexPath
+            for (i in 0 until path.size - 1) {
+                val currTarget = route.targetPath[i]
+                val nextTarget = route.targetPath[i + 1]
+                targetFlows[nextTarget] += slnVal
+
+                targetEdgeFlows.putIfAbsent(currTarget, hashMapOf())
+
+                val outFlowMap = targetEdgeFlows[currTarget]!!
+                val edgeFlow = slnVal + outFlowMap.getOrDefault(nextTarget, 0.0)
+                outFlowMap[nextTarget] = edgeFlow
+            }
+        }
+
+        // Try to find a target for branching.
+        var bestTarget: Int? = null
+        var leastReducedCost: Double? = null
+        for (i in 0 until targetFlows.size) {
+            if (i == instance.sourceTarget ||
+                i == instance.destinationTarget ||
+                isInteger(targetFlows[i])
+            ) {
+                continue
+            }
+
+            if (bestTarget == null ||
+                targetReducedCosts[i] <= leastReducedCost!! - Parameters.eps
+            ) {
+                bestTarget = i
+                leastReducedCost = targetReducedCosts[i]
+            }
+        }
+
+        // If a target is found, branch on it.
+        if (bestTarget != null) {
+            return branchOnTarget(bestTarget, instance.getVertices(bestTarget))
+        }
+
+        // Otherwise, find a target edge to branch. Among fractional flow edges, we select the one
+        // with a starting vertex that has least reduced cost.
+        var bestEdge: Pair<Int, Int>? = null
+        for ((fromTarget, flowMap) in targetEdgeFlows) {
+            for ((toTarget, flow) in flowMap) {
+                if (isInteger(flow)) {
+                    continue
+                }
+                if (bestEdge == null ||
+                    targetReducedCosts[fromTarget] <= leastReducedCost!! - Parameters.eps
+                ) {
+                    bestEdge = Pair(fromTarget, toTarget)
+                    leastReducedCost = targetReducedCosts[fromTarget]
+                }
+            }
+        }
+
+        val bestFromTarget = bestEdge!!.first
+        val bestToTarget = bestEdge.second
+        return branchOnTargetEdge(bestFromTarget, bestToTarget, instance)
+    }
+
+    private fun isInteger(num: Double): Boolean {
+        return (num - round(num)).absoluteValue <= Parameters.eps
     }
 
     fun branchOnTarget(target: Int, targetVertices: List<Int>): List<Node> {
