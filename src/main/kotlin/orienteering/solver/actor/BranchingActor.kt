@@ -1,4 +1,4 @@
-package orienteering.solver
+package orienteering.solver.actor
 
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.SendChannel
@@ -7,6 +7,7 @@ import kotlinx.coroutines.channels.sendBlocking
 import kotlinx.coroutines.selects.select
 import orienteering.data.Instance
 import orienteering.main.preProcess
+import orienteering.solver.*
 import kotlin.coroutines.CoroutineContext
 
 data class ProcessOpenNode(
@@ -43,7 +44,12 @@ class BranchingActorState(
                 select<Unit> {
                     solverActors.forEach {
                         it.onSend(
-                            Solve(index, childNode, instance, responses.last())
+                            Solve(
+                                index,
+                                childNode,
+                                instance,
+                                responses.last()
+                            )
                         ) {
                             logger.info("sent $childNode for solving LP")
                         }
@@ -72,9 +78,10 @@ fun CoroutineScope.branchingActor(
     solverActors: List<SendChannel<SolverActorMessage>>
 ) =
     actor<ProcessOpenNode>(
-        context = context + CoroutineName("BranchingActor$actorId")
+        context = context + CoroutineName("BranchingActor_${actorId}_")
     ) {
-        val state = BranchingActorState(actorId, monitorActor, solverActors)
+        val state =
+            BranchingActorState(actorId, monitorActor, solverActors)
         for (message in channel) {
             state.handle(message)
         }

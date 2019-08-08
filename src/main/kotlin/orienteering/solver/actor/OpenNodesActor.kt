@@ -1,4 +1,4 @@
-package orienteering.solver
+package orienteering.solver.actor
 
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
@@ -9,6 +9,7 @@ import kotlinx.coroutines.channels.sendBlocking
 import kotlinx.coroutines.selects.select
 import orienteering.data.Instance
 import orienteering.data.Parameters
+import orienteering.solver.Node
 import java.util.*
 import kotlin.coroutines.CoroutineContext
 
@@ -44,7 +45,13 @@ class OpenNodesActorState(
                         logger.info("releasing $node for branching")
                         select<Unit> {
                             message.branchingActors.forEach {
-                                it.onSend(ProcessOpenNode(node, instance, channel)) {
+                                it.onSend(
+                                    ProcessOpenNode(
+                                        node,
+                                        instance,
+                                        channel
+                                    )
+                                ) {
                                     logger.info("sent $node to branchingActor for branching")
                                 }
                             }
@@ -87,7 +94,7 @@ fun CoroutineScope.openNodesActor(
     monitorActor: SendChannel<MonitorActorMessage>
 ) =
     actor<OpenNodesActorMessage>(
-        context = context + CoroutineName("OpenNodesActor")
+        context = context + CoroutineName("OpenNodesActor_")
     ) {
         val state = OpenNodesActorState(instance, monitorActor, channel)
         for (message in channel) {

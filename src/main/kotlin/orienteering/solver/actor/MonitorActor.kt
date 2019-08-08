@@ -1,12 +1,10 @@
-package orienteering.solver
+package orienteering.solver.actor
 
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ObsoleteCoroutinesApi
 import kotlinx.coroutines.channels.actor
-import mu.KLogging
-import javax.management.monitor.Monitor
 import kotlin.coroutines.CoroutineContext
 
 sealed class MonitorActorMessage
@@ -59,7 +57,7 @@ class MonitorActorState(numBranchingActors: Int): ActorState<MonitorActorMessage
 
 @ObsoleteCoroutinesApi
 fun CoroutineScope.monitorActor(context: CoroutineContext, numBranchingActors: Int) =
-    actor<MonitorActorMessage>(context = context + CoroutineName("MonitorActor")) {
+    actor<MonitorActorMessage>(context = context + CoroutineName("MonitorActor_")) {
         val state = MonitorActorState(numBranchingActors)
         for (message in channel) {
             state.handle(message)

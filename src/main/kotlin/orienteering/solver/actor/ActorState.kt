@@ -1,4 +1,4 @@
-package orienteering.solver
+package orienteering.solver.actor
 
 import mu.KLogging
 

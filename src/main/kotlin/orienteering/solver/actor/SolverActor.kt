@@ -1,4 +1,4 @@
-package orienteering.solver
+package orienteering.solver.actor
 
 import ilog.cplex.IloCplex
 import kotlinx.coroutines.CompletableDeferred
@@ -7,6 +7,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ObsoleteCoroutinesApi
 import kotlinx.coroutines.channels.actor
 import orienteering.data.Instance
+import orienteering.solver.Node
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.EmptyCoroutineContext
 
@@ -52,7 +53,7 @@ fun CoroutineScope.solverActor(
     actorId: Int,
     context: CoroutineContext = EmptyCoroutineContext
 ) =
-    actor<SolverActorMessage>(context = context + CoroutineName("SolverActor$actorId")) {
+    actor<SolverActorMessage>(context = context + CoroutineName("SolverActor_${actorId}_")) {
         val state = SolverActorState()
         for (message in channel) {
             state.handle(message)

@@ -7,6 +7,7 @@ import orienteering.data.Instance
 import orienteering.data.Parameters
 import orienteering.data.Route
 import orienteering.main.OrienteeringException
+import orienteering.solver.actor.*
 import java.util.*
 
 class BranchAndPriceSolver(
