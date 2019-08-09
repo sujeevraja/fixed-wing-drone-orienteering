@@ -51,6 +51,11 @@ object Parameters {
      */
     const val numElementaryRoutesForExit = 10
     /**
+     * Number of solver actors to use in branch-and-price (1 means sequential).
+     */
+    var numSolverActors: Int = 8
+        private set
+    /**
      * Tolerance used to compare double values.
      */
     const val eps = 1e-5
@@ -67,7 +72,8 @@ object Parameters {
         numDiscretizations: Int,
         numReducedCostColumns: Int,
         timeLimitInSeconds: Int,
-        useNumTargetsForDominance: Boolean
+        useNumTargetsForDominance: Boolean,
+        numSolverActors: Int
     ) {
         Parameters.instanceName = instanceName
         Parameters.instancePath = instancePath
@@ -77,6 +83,7 @@ object Parameters {
         Parameters.numReducedCostColumns = numReducedCostColumns
         Parameters.timeLimitInSeconds = timeLimitInSeconds
         Parameters.useNumTargetsForDominance = useNumTargetsForDominance
+        Parameters.numSolverActors = numSolverActors
     }
 }
 

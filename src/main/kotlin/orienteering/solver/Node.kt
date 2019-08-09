@@ -4,23 +4,28 @@ import ilog.cplex.IloCplex
 import mu.KLogging
 import org.jgrapht.Graphs
 import org.jgrapht.graph.DefaultWeightedEdge
-import orienteering.main.SetGraph
 import orienteering.data.Instance
 import orienteering.data.Parameters
 import orienteering.data.Route
+import orienteering.main.OrienteeringException
+import orienteering.main.SetGraph
 import orienteering.main.getCopy
+import java.util.concurrent.atomic.AtomicInteger
+import kotlin.math.absoluteValue
+import kotlin.math.round
 
 class Node private constructor(
     val graph: SetGraph,
     private val mustVisitTargets: IntArray,
-    private val mustVisitTargetEdges: List<Pair<Int, Int>>
+    private val mustVisitTargetEdges: List<Pair<Int, Int>>,
+    upperBound: Double
 ) : Comparable<Node> {
-    private val index = getNodeIndex()
+    val index = getNodeIndex()
 
     var feasible = true
         private set
 
-    var lpObjective = -Double.MAX_VALUE
+    var lpObjective = upperBound
         private set
 
     var lpSolution = listOf<Pair<Route, Double>>()
@@ -32,11 +37,13 @@ class Node private constructor(
     var mipSolution = listOf<Route>()
         private set
 
-    lateinit var targetReducedCosts: List<Double>
+    var lpIntegral = false
         private set
 
+    private lateinit var targetReducedCosts: List<Double>
+
     override fun toString(): String {
-        return "Node($index)"
+        return "Node($index, bound=$lpObjective, feasible=$feasible)"
     }
 
     fun logInfo() {
@@ -100,15 +107,91 @@ class Node private constructor(
         cgSolver.solve()
         feasible = !cgSolver.lpInfeasible
         if (feasible) {
+            if (lpObjective <= cgSolver.lpObjective - Parameters.eps) {
+                throw OrienteeringException("parent node LP objective smaller than child's")
+            }
             lpObjective = cgSolver.lpObjective
             lpSolution = cgSolver.lpSolution
             mipObjective = cgSolver.mipObjective
             mipSolution = cgSolver.mipSolution
             targetReducedCosts = cgSolver.targetReducedCosts
+            lpIntegral = lpSolution.all {
+                it.second >= 1.0 - Parameters.eps
+            }
         }
     }
 
-    fun branchOnTarget(target: Int, targetVertices: List<Int>): List<Node> {
+    fun branch(instance: Instance): List<Node> {
+        // Find flows to each target and on edges between targets.
+        val targetFlows = MutableList(instance.numTargets) { 0.0 }
+        val targetEdgeFlows: MutableMap<Int, MutableMap<Int, Double>> = mutableMapOf()
+
+        for ((route, slnVal) in lpSolution) {
+            val path = route.vertexPath
+            for (i in 0 until path.size - 1) {
+                val currTarget = route.targetPath[i]
+                val nextTarget = route.targetPath[i + 1]
+                targetFlows[nextTarget] += slnVal
+
+                targetEdgeFlows.putIfAbsent(currTarget, hashMapOf())
+
+                val outFlowMap = targetEdgeFlows[currTarget]!!
+                val edgeFlow = slnVal + outFlowMap.getOrDefault(nextTarget, 0.0)
+                outFlowMap[nextTarget] = edgeFlow
+            }
+        }
+
+        // Try to find a target for branching.
+        var bestTarget: Int? = null
+        var leastReducedCost: Double? = null
+        for (i in 0 until targetFlows.size) {
+            if (i == instance.sourceTarget ||
+                i == instance.destinationTarget ||
+                isInteger(targetFlows[i])
+            ) {
+                continue
+            }
+
+            if (bestTarget == null ||
+                targetReducedCosts[i] <= leastReducedCost!! - Parameters.eps
+            ) {
+                bestTarget = i
+                leastReducedCost = targetReducedCosts[i]
+            }
+        }
+
+        // If a target is found, branch on it.
+        if (bestTarget != null) {
+            return branchOnTarget(bestTarget, instance.getVertices(bestTarget))
+        }
+
+        // Otherwise, find a target edge to branch. Among fractional flow edges, we select the one
+        // with a starting vertex that has least reduced cost.
+        var bestEdge: Pair<Int, Int>? = null
+        for ((fromTarget, flowMap) in targetEdgeFlows) {
+            for ((toTarget, flow) in flowMap) {
+                if (isInteger(flow)) {
+                    continue
+                }
+                if (bestEdge == null ||
+                    targetReducedCosts[fromTarget] <= leastReducedCost!! - Parameters.eps
+                ) {
+                    bestEdge = Pair(fromTarget, toTarget)
+                    leastReducedCost = targetReducedCosts[fromTarget]
+                }
+            }
+        }
+
+        val bestFromTarget = bestEdge!!.first
+        val bestToTarget = bestEdge.second
+        return branchOnTargetEdge(bestFromTarget, bestToTarget, instance)
+    }
+
+    private fun isInteger(num: Double): Boolean {
+        return (num - round(num)).absoluteValue <= Parameters.eps
+    }
+
+    private fun branchOnTarget(target: Int, targetVertices: List<Int>): List<Node> {
         logger.debug("branching $this on target $target")
         val noVisitNode = getChildWithoutTarget(targetVertices)
         logger.debug("child without $target: $noVisitNode")
@@ -119,7 +202,7 @@ class Node private constructor(
         return listOf(noVisitNode, mustVisitNode)
     }
 
-    fun branchOnTargetEdge(fromTarget: Int, toTarget: Int, instance: Instance): List<Node> {
+    private fun branchOnTargetEdge(fromTarget: Int, toTarget: Int, instance: Instance): List<Node> {
         val childNodes = mutableListOf<Node>()
         if (fromTarget in mustVisitTargets || toTarget in mustVisitTargets) {
             logger.debug("branching $this with target visit already enforced")
@@ -160,11 +243,11 @@ class Node private constructor(
         for (vertex in targetVertices) {
             reducedGraph.removeVertex(vertex)
         }
-        return Node(reducedGraph, mustVisitTargets, mustVisitTargetEdges)
+        return Node(reducedGraph, mustVisitTargets, mustVisitTargetEdges, lpObjective)
     }
 
     private fun getChildWithTarget(target: Int): Node {
-        return Node(graph, mustVisitTargets + target, mustVisitTargetEdges)
+        return Node(graph, mustVisitTargets + target, mustVisitTargetEdges, lpObjective)
     }
 
     private fun getChildWithoutTargetEdge(
@@ -183,32 +266,34 @@ class Node private constructor(
 
             edgesToRemove.forEach { graph.removeEdge(it) }
         }
-        return Node(reducedGraph, mustVisitTargets, mustVisitTargetEdges)
+        return Node(reducedGraph, mustVisitTargets, mustVisitTargetEdges, lpObjective)
     }
 
     private fun getChildWithTargetEdge(fromTarget: Int, toTarget: Int): Node {
         val newMustVisitTargetEdges = mustVisitTargetEdges.toMutableList()
         newMustVisitTargetEdges.add(Pair(fromTarget, toTarget))
-        return Node(graph, mustVisitTargets, newMustVisitTargetEdges)
+        return Node(graph, mustVisitTargets, newMustVisitTargetEdges, lpObjective)
     }
 
     override fun compareTo(other: Node): Int {
         return when {
             lpObjective >= other.lpObjective + Parameters.eps -> -1
             lpObjective <= other.lpObjective - Parameters.eps -> 1
+            index < other.index -> -1
+            index > other.index -> 1
             else -> 0
         }
     }
 
     companion object : KLogging() {
-        fun buildRootNode(graph: SetGraph): Node = Node(graph, intArrayOf(), listOf())
+        fun buildRootNode(graph: SetGraph): Node =
+            Node(graph, intArrayOf(), listOf(), Double.MAX_VALUE)
 
-        var nodeCount = 0
+        var nodeCount = AtomicInteger(0)
             private set
 
         fun getNodeIndex(): Int {
-            nodeCount++
-            return nodeCount - 1
+            return nodeCount.getAndIncrement()
         }
     }
 }

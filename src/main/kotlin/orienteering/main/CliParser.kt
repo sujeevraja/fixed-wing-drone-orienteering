@@ -23,7 +23,7 @@ class CliParser : CliktCommand() {
      * name of the instance
      */
     val instanceName: String by option("-n", help = "instance name")
-        .default("p3.3.l.txt")
+        .default("p3.2.k.txt")
 
     /**
      * path to folder with instance file
@@ -48,7 +48,7 @@ class CliParser : CliktCommand() {
 
     val numReducedCostColumns: Int by option(
         "-c",
-        help = "limit on number of reduced columns to collect during pricing"
+        help = "limit on number of reduced cost columns to collect during pricing"
     )
         .int().default(500).validate {
             require(it >= 1) {
@@ -60,7 +60,7 @@ class CliParser : CliktCommand() {
         "-d",
         help = "number of discretizations of the heading angle"
     )
-        .int().default(1).validate {
+        .int().default(2).validate {
             require(it >= 1) {
                 "number of discretizations has to be >= 1 and integral"
             }
@@ -70,6 +70,13 @@ class CliParser : CliktCommand() {
         .double().default(1.0).validate {
             require(it > 0.0) {
                 "turn radius has to be a positive number"
+            }
+        }
+
+    val numSolverActors: Int by option("-s", help="number of concurrent solver actors")
+        .int().default(8).validate {
+            require(it > 0) {
+                "number of actors should be a strictly positive integer"
             }
         }
 

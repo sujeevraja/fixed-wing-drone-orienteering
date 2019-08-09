@@ -6,6 +6,7 @@ import orienteering.data.Parameters
 object TimeChecker: KLogging() {
     private var startTime = 0L
 
+    @Volatile
     private var limitHit = false
 
     fun startTracking() {
