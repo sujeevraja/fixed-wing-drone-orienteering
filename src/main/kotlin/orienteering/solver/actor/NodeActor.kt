@@ -17,19 +17,19 @@ import java.util.*
 import kotlin.coroutines.CoroutineContext
 import kotlin.math.max
 
-sealed class NewNodeActorMessage
-data class ReleaseOpenNode(val newSolverActors: List<NewSolverActor>) : NewNodeActorMessage()
-data class ProcessSolvedNode(val node: Node) : NewNodeActorMessage()
-class CanRelease : NewNodeActorMessage() {
+sealed class NodeActorMessage
+data class ReleaseOpenNode(val solverActors: List<SolverActor>) : NodeActorMessage()
+data class ProcessSolvedNode(val node: Node) : NodeActorMessage()
+class CanRelease : NodeActorMessage() {
     val response = CompletableDeferred<Boolean>()
 }
 
-class CanStop : NewNodeActorMessage() {
+class CanStop : NodeActorMessage() {
     val response = CompletableDeferred<Boolean>()
 }
 
-class NewNodeActorState(private val instance: Instance, private val numSolvers: Int) :
-    ActorState<NewNodeActorMessage>() {
+class NodeActorState(private val instance: Instance, private val numSolvers: Int) :
+    ActorState<NodeActorMessage>() {
     private var lowerBound = -Double.MAX_VALUE
     private var upperBound = Double.MAX_VALUE
     private var bestFeasibleSolution = listOf<Route>()
@@ -38,7 +38,7 @@ class NewNodeActorState(private val instance: Instance, private val numSolvers: 
     private val numSolving: Int
         get() = solvingNodes.size
 
-    override suspend fun handle(message: NewNodeActorMessage) {
+    override suspend fun handle(message: NodeActorMessage) {
         when (message) {
             is ReleaseOpenNode -> {
                 val node = openNodes.remove()
@@ -49,7 +49,7 @@ class NewNodeActorState(private val instance: Instance, private val numSolvers: 
                 logger.info("numSolving: $numSolving")
 
                 select<Unit> {
-                    message.newSolverActors.forEachIndexed { index, actor ->
+                    message.solverActors.forEachIndexed { index, actor ->
                         actor.onSend(SolveNode(node)) {
                             logger.info("sent $node to solver actor $index")
                         }
@@ -70,16 +70,16 @@ class NewNodeActorState(private val instance: Instance, private val numSolvers: 
                 updateUpperBound()
             }
             is CanRelease -> {
-                logger.info("received CanRelease")
-                logger.info("numNodes ${openNodes.size}")
-                logger.info("numSolving: $numSolving")
-                logger.info("numIdle: $numSolving")
+                // logger.info("received CanRelease")
+                // logger.info("numNodes ${openNodes.size}")
+                // logger.info("numSolving: $numSolving")
+                // logger.info("numIdle: $numSolving")
                 message.response.complete(openNodes.isNotEmpty() && numSolving < numSolvers)
             }
             is CanStop -> {
-                logger.info("received CanStop")
-                logger.info("numNodes ${openNodes.size}")
-                logger.info("numNodesSolving: $numSolving")
+                // logger.info("received CanStop")
+                // logger.info("numNodes ${openNodes.size}")
+                // logger.info("numNodesSolving: $numSolving")
                 var stop = false
                 if (canStop()) {
                     printFinalSolution()
@@ -124,17 +124,21 @@ class NewNodeActorState(private val instance: Instance, private val numSolvers: 
         val ubFromSolvingNodes = solvingNodes.values.max() ?: -Double.MAX_VALUE
         val newUpperBound = max(ubFromUnsolvedNodes, ubFromSolvingNodes)
 
-        logger.info("solving node bounds")
-        for ((index, bound) in solvingNodes) {
-            logger.info("$index -> $bound")
+        if (solvingNodes.isNotEmpty()) {
+            logger.info("solving node bounds")
+            for ((index, bound) in solvingNodes) {
+                logger.info("$index -> $bound")
+            }
         }
-        logger.info("unsolved node bounds")
-        for (node in openNodes) {
-            logger.info("${node.index} -> ${node.lpObjective}")
+        if (openNodes.isNotEmpty()) {
+            logger.info("unsolved node bounds")
+            for (node in openNodes) {
+                logger.info("${node.index} -> ${node.lpObjective}")
+            }
         }
+        logger.info("existing upper bound: $upperBound")
+        logger.info("upper bound from solving/unsolved nodes: $newUpperBound")
         if (upperBound <= newUpperBound - Parameters.eps) {
-            logger.error("existing upper bound: $upperBound")
-            logger.error("upper bound from openNodes: $newUpperBound")
             throw OrienteeringException("upper bound not monotonic")
         }
         upperBound = newUpperBound
@@ -179,12 +183,12 @@ class NewNodeActorState(private val instance: Instance, private val numSolvers: 
 }
 
 @ObsoleteCoroutinesApi
-fun CoroutineScope.newNodeActor(context: CoroutineContext, instance: Instance, numSolvers: Int) =
-    actor<NewNodeActorMessage>(context = context + CoroutineName("NewNodeActor_")) {
-        val state = NewNodeActorState(instance, numSolvers)
+fun CoroutineScope.nodeActor(context: CoroutineContext, instance: Instance, numSolvers: Int) =
+    actor<NodeActorMessage>(context = context + CoroutineName("NodeActor_")) {
+        val state = NodeActorState(instance, numSolvers)
         for (message in channel) {
             state.handle(message)
         }
     }
 
-typealias NewNodeActor = SendChannel<NewNodeActorMessage>
+typealias NodeActor = SendChannel<NodeActorMessage>

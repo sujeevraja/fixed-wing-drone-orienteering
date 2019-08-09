@@ -44,34 +44,34 @@ class BranchAndPriceSolver(
 
         val numSolverActors = 8
         withContext(Dispatchers.Default + CoroutineName("BranchAndPrice_")) {
-            val newNodeActor = newNodeActor(coroutineContext, instance, numSolverActors)
+            val nodeActor = nodeActor(coroutineContext, instance, numSolverActors)
             val solverActors = (0 until numSolverActors).map {
-                newSolverActor(it, newNodeActor, instance, coroutineContext)
+                solverActor(it, nodeActor, instance, coroutineContext)
             }
 
-            newNodeActor.send(ProcessSolvedNode(rootNode))
+            nodeActor.send(ProcessSolvedNode(rootNode))
             while (true) {
                 val nodesAvailableMessage = CanRelease()
-                newNodeActor.send(nodesAvailableMessage)
+                nodeActor.send(nodesAvailableMessage)
                 val nodesAvailable =nodesAvailableMessage.response.await()
-                logger.info("nodes available: $nodesAvailable")
+                // logger.info("nodes available: $nodesAvailable")
                 if (nodesAvailable) {
-                    newNodeActor.send(ReleaseOpenNode(solverActors))
+                    nodeActor.send(ReleaseOpenNode(solverActors))
                     continue
                 }
 
                 val canStopMessage = CanStop()
-                newNodeActor.send(canStopMessage)
+                nodeActor.send(canStopMessage)
                 val canStop = canStopMessage.response.await()
-                logger.info("can stop: $canStop")
+                // logger.info("can stop: $canStop")
                 if (canStop) {
                     break
                 }
 
-                delay(1000L)
+                delay(100L)
             }
 
-            newNodeActor.close()
+            nodeActor.close()
             for (solverActor in solverActors) {
                 solverActor.close()
             }
