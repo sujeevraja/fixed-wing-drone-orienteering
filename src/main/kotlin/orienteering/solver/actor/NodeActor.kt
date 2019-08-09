@@ -37,6 +37,9 @@ class NodeActorState(private val instance: Instance, private val numSolvers: Int
     private var solvingNodes = mutableMapOf<Int, Double>()
     private val numSolving: Int
         get() = solvingNodes.size
+    private var maxConcurrentSolves = 0
+    private var numNodesSolved = 1
+    private var averageConcurrentSolves = 0.0
 
     override suspend fun handle(message: NodeActorMessage) {
         when (message) {
@@ -52,6 +55,11 @@ class NodeActorState(private val instance: Instance, private val numSolvers: Int
                     message.solverActors.forEachIndexed { index, actor ->
                         actor.onSend(SolveNode(node)) {
                             logger.info("sent $node to solver actor $index")
+                            if (maxConcurrentSolves < numSolving) {
+                                maxConcurrentSolves = numSolving
+                            }
+                            numNodesSolved++
+                            averageConcurrentSolves += numSolving
                         }
                     }
                 }
@@ -173,6 +181,10 @@ class NodeActorState(private val instance: Instance, private val numSolvers: Int
     }
 
     private fun printFinalSolution() {
+        averageConcurrentSolves /= numNodesSolved
+        logger.info("number of nodes solved: $numNodesSolved")
+        logger.info("average concurrent solves: $averageConcurrentSolves")
+        logger.info("maximum concurrent solves: $maxConcurrentSolves")
         logger.info("final upper bound: $upperBound")
         logger.info("final lower bound: $lowerBound")
         logger.info("final solution:")
