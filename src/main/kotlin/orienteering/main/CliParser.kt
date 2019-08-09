@@ -19,23 +19,6 @@ class CliParser : CliktCommand() {
      */
     companion object : KLogging()
 
-    /**
-     * name of the instance
-     */
-    val instanceName: String by option("-n", help = "instance name")
-        .default("p3.2.k.txt")
-
-    /**
-     * path to folder with instance file
-     */
-    val instancePath: String by option("-p", help = "instance path")
-        .default("./data/Set_33_234/")
-        .validate {
-            require(File(instancePath + instanceName).exists()) {
-                "file does not exist, check the file path and name"
-            }
-        }
-
     val algorithm: Int by option(
         "-a",
         help = "1 for branch-and-cut, 2 for branch-and-price"
@@ -48,7 +31,7 @@ class CliParser : CliktCommand() {
 
     val numReducedCostColumns: Int by option(
         "-c",
-        help = "limit on number of reduced columns to collect during pricing"
+        help = "limit on number of reduced cost columns to collect during pricing"
     )
         .int().default(500).validate {
             require(it >= 1) {
@@ -66,10 +49,34 @@ class CliParser : CliktCommand() {
             }
         }
 
+    /**
+     * name of the instance
+     */
+    val instanceName: String by option("-n", help = "instance name")
+        .default("p3.2.k.txt")
+
+    /**
+     * path to folder with instance file
+     */
+    val instancePath: String by option("-p", help = "instance path")
+        .default("./data/Set_33_234/")
+        .validate {
+            require(File(instancePath + instanceName).exists()) {
+                "file does not exist, check the file path and name"
+            }
+        }
+
     val turnRadius: Double by option("-r", help = "turn radius of the vehicle")
         .double().default(1.0).validate {
             require(it > 0.0) {
                 "turn radius has to be a positive number"
+            }
+        }
+
+    val numSolverActors: Int by option("-s", help="number of concurrent solver actors")
+        .int().default(8).validate {
+            require(it > 0) {
+                "number of actors should be a strictly positive integer"
             }
         }
 

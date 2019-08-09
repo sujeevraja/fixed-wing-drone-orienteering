@@ -37,7 +37,8 @@ class Controller {
             numDiscretizations = parser.numDiscretizations,
             numReducedCostColumns = parser.numReducedCostColumns,
             timeLimitInSeconds = parser.timeLimitInSeconds,
-            useNumTargetsForDominance = parser.useNumTargetsForDominance == 1
+            useNumTargetsForDominance = parser.useNumTargetsForDominance == 1,
+            numSolverActors = parser.numSolverActors
         )
 
         results["instance_name"] = parser.instanceName
@@ -47,6 +48,7 @@ class Controller {
         results["turn_radius"] = parser.turnRadius
         results["number_of_discretizations"] = parser.numDiscretizations
         results["number_of_reduced_cost_columns"] = parser.numReducedCostColumns
+        results["number of solver_actors"] = parser.numSolverActors
         logger.debug("finished parsing command line arguments and populating parameters")
     }
 

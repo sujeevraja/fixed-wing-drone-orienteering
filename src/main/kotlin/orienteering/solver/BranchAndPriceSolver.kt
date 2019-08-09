@@ -29,7 +29,7 @@ class BranchAndPriceSolver(
             return
         }
 
-        val numSolverActors = 8
+        val numSolverActors = Parameters.numSolverActors
         withContext(Dispatchers.Default + CoroutineName("BranchAndPrice_")) {
             val nodeActor = nodeActor(coroutineContext, instance, numSolverActors)
             val solverActors = (0 until numSolverActors).map {
