@@ -5,7 +5,6 @@ import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ObsoleteCoroutinesApi
 import kotlinx.coroutines.channels.SendChannel
-import kotlinx.coroutines.channels.actor
 import orienteering.data.Instance
 import orienteering.main.preProcess
 import orienteering.solver.Node
@@ -54,14 +53,9 @@ fun CoroutineScope.solverActor(
     nodeActor: NodeActor,
     instance: Instance,
     context: CoroutineContext
-) =
-    actor<SolverActorMessage>(
-        context = context + CoroutineName("SolverActor_${actorId}_")
-    ) {
-        val state = SolverActorState(nodeActor, instance)
-        for (message in channel) {
-            state.handle(message)
-        }
-    }
+) = statefulActor(
+    context + CoroutineName("SolverActor_${actorId}_"),
+    SolverActorState(nodeActor, instance)
+)
 
 typealias SolverActor = SendChannel<SolverActorMessage>

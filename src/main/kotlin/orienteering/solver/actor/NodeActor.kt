@@ -5,7 +5,6 @@ import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ObsoleteCoroutinesApi
 import kotlinx.coroutines.channels.SendChannel
-import kotlinx.coroutines.channels.actor
 import kotlinx.coroutines.selects.select
 import orienteering.data.Instance
 import orienteering.data.Parameters
@@ -209,11 +208,9 @@ class NodeActorState(private val instance: Instance, private val numSolvers: Int
 
 @ObsoleteCoroutinesApi
 fun CoroutineScope.nodeActor(context: CoroutineContext, instance: Instance, numSolvers: Int) =
-    actor<NodeActorMessage>(context = context + CoroutineName("NodeActor_")) {
-        val state = NodeActorState(instance, numSolvers)
-        for (message in channel) {
-            state.handle(message)
-        }
-    }
+    statefulActor(
+        context + CoroutineName("NodeActor_"),
+        NodeActorState(instance, numSolvers)
+    )
 
 typealias NodeActor = SendChannel<NodeActorMessage>

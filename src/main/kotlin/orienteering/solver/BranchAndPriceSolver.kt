@@ -24,7 +24,7 @@ class BranchAndPriceSolver(
     @ObsoleteCoroutinesApi
     suspend fun solve() {
         val rootNode = solveRootNode()
-        if (rootUpperBound - rootLowerBound <= Parameters.eps) {
+        if (finalSolution.optimalityReached) {
             logger.info("gap closed in root node")
             return
         }
@@ -38,10 +38,11 @@ class BranchAndPriceSolver(
 
             nodeActor.send(ProcessSolvedNode(rootNode))
             while (true) {
+                delay(100L)
+
                 val nodesAvailableMessage = CanRelease()
                 nodeActor.send(nodesAvailableMessage)
-                val nodesAvailable =nodesAvailableMessage.response.await()
-                // logger.info("nodes available: $nodesAvailable")
+                val nodesAvailable = nodesAvailableMessage.response.await()
                 if (nodesAvailable) {
                     nodeActor.send(ReleaseOpenNode(solverActors))
                     continue
@@ -54,14 +55,8 @@ class BranchAndPriceSolver(
                     finalSolution = solution
                     break
                 }
-
-                delay(100L)
             }
-
-            for (solverActor in solverActors) {
-                solverActor.close()
-            }
-            nodeActor.close()
+            coroutineContext.cancelChildren()
         }
     }
 

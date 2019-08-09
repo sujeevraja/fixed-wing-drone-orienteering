@@ -19,6 +19,23 @@ class CliParser : CliktCommand() {
      */
     companion object : KLogging()
 
+    /**
+     * name of the instance
+     */
+    val instanceName: String by option("-n", help = "instance name")
+        .default("p3.2.k.txt")
+
+    /**
+     * path to folder with instance file
+     */
+    val instancePath: String by option("-p", help = "instance path")
+        .default("./data/Set_33_234/")
+        .validate {
+            require(File(instancePath + instanceName).exists()) {
+                "file does not exist, check the file path and name"
+            }
+        }
+
     val algorithm: Int by option(
         "-a",
         help = "1 for branch-and-cut, 2 for branch-and-price"
@@ -46,23 +63,6 @@ class CliParser : CliktCommand() {
         .int().default(2).validate {
             require(it >= 1) {
                 "number of discretizations has to be >= 1 and integral"
-            }
-        }
-
-    /**
-     * name of the instance
-     */
-    val instanceName: String by option("-n", help = "instance name")
-        .default("p3.2.k.txt")
-
-    /**
-     * path to folder with instance file
-     */
-    val instancePath: String by option("-p", help = "instance path")
-        .default("./data/Set_33_234/")
-        .validate {
-            require(File(instancePath + instanceName).exists()) {
-                "file does not exist, check the file path and name"
             }
         }
 
