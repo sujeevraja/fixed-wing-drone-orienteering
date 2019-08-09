@@ -5,7 +5,6 @@ import kotlinx.coroutines.*
 import mu.KLogging
 import orienteering.data.Instance
 import orienteering.data.Parameters
-import orienteering.data.Route
 import orienteering.main.OrienteeringException
 import orienteering.solver.actor.*
 
@@ -19,19 +18,7 @@ class BranchAndPriceSolver(
     var rootUpperBound: Double = Double.MAX_VALUE
         private set
 
-    var lowerBound: Double = -Double.MAX_VALUE
-        private set
-
-    var bestFeasibleSolution = listOf<Route>()
-        private set
-
-    var upperBound: Double = Double.MAX_VALUE
-        private set
-
-    var numNodes = 0
-        private set
-
-    var optimalityReached = false
+    lateinit var finalSolution: BranchAndPriceSolution
         private set
 
     @ObsoleteCoroutinesApi
@@ -60,56 +47,43 @@ class BranchAndPriceSolver(
                     continue
                 }
 
-                val canStopMessage = CanStop()
-                nodeActor.send(canStopMessage)
-                val canStop = canStopMessage.response.await()
-                // logger.info("can stop: $canStop")
-                if (canStop) {
+                val terminateMessage = Terminate()
+                nodeActor.send(terminateMessage)
+                val solution = terminateMessage.response.await()
+                if (solution != null) {
+                    finalSolution = solution
                     break
                 }
 
                 delay(100L)
             }
 
-            nodeActor.close()
             for (solverActor in solverActors) {
                 solverActor.close()
             }
+            nodeActor.close()
         }
     }
 
     private fun solveRootNode(): Node {
         val rootNode = Node.buildRootNode(instance.graph)
         rootNode.solve(instance, cplex)
-        rootUpperBound = upperBound
-        rootLowerBound = lowerBound
-        bestFeasibleSolution = rootNode.mipSolution
-        if (lowerBound >= upperBound + Parameters.eps) {
+        rootUpperBound = rootNode.lpObjective
+        rootLowerBound = rootNode.mipObjective
+        if (rootLowerBound >= rootUpperBound + Parameters.eps) {
             throw OrienteeringException("lower bound overshoots upper bound")
         }
+
+        val optimalityReached = rootUpperBound - rootLowerBound <= Parameters.eps
+
+        finalSolution = BranchAndPriceSolution(
+            optimalityReached = optimalityReached,
+            lowerBound = rootLowerBound,
+            upperBound = rootUpperBound,
+            bestFeasibleSolution = rootNode.mipSolution
+        )
+
         return rootNode
-    }
-
-    /**
-     * Prunes [node] by optimality if possible and returns true, returns false otherwise.
-     */
-    private fun pruneByOptimality(node: Node): Boolean {
-        if (!isIntegral(node.lpSolution)) {
-            return false
-        }
-        if (node.lpObjective >= lowerBound + Parameters.eps) {
-            lowerBound = node.lpObjective
-            bestFeasibleSolution = node.lpSolution.map { it.first }
-            logger.debug("updating lower bound based on MIP solution of $node")
-        }
-        logger.debug("$node pruned by optimality (integral LP solution)")
-        return true
-    }
-
-    private fun isIntegral(columnsAndValues: List<Pair<Route, Double>>): Boolean {
-        return columnsAndValues.all {
-            it.second >= 1.0 - Parameters.eps
-        }
     }
 
     companion object : KLogging()

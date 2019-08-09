@@ -37,7 +37,7 @@ class Controller {
             numDiscretizations = parser.numDiscretizations,
             numReducedCostColumns = parser.numReducedCostColumns,
             timeLimitInSeconds = parser.timeLimitInSeconds,
-            useNumTargetsForDominance =  parser.useNumTargetsForDominance == 1
+            useNumTargetsForDominance = parser.useNumTargetsForDominance == 1
         )
 
         results["instance_name"] = parser.instanceName
@@ -120,12 +120,7 @@ class Controller {
         val bps = BranchAndPriceSolver(instance, cplex)
         bps.solve()
 
-        val solution = bps.bestFeasibleSolution
-        for (route in solution) {
-            logger.info(route.toString())
-        }
-        val totalScore = solution.sumByDouble { it.score }
-        logger.info("final score: $totalScore")
+        val bpSolution = bps.finalSolution
         clearCPLEX()
 
         results["root_lower_bound"] = bps.rootLowerBound
@@ -133,11 +128,15 @@ class Controller {
         results["root_gap_percentage"] =
             computePercentGap(bps.rootLowerBound, bps.rootUpperBound)
 
-        results["final_lower_bound"] = bps.lowerBound
-        results["final_upper_bound"] = bps.upperBound
-        results["final_gap_percentage"] = computePercentGap(bps.lowerBound, bps.upperBound)
-        results["number_of_nodes"] = bps.numNodes
-        results["optimality_reached"] = bps.optimalityReached
+        results["final_lower_bound"] = bpSolution.lowerBound
+        results["final_upper_bound"] = bpSolution.upperBound
+        results["final_gap_percentage"] =
+            computePercentGap(bpSolution.lowerBound, bpSolution.upperBound)
+
+        results["optimality_reached"] = bpSolution.optimalityReached
+        results["number_of_nodes_solved"] = bpSolution.numNodesSolved
+        results["maximum_concurrent_solves"] = bpSolution.maxConcurrentSolves
+        results["average_concurrent_solves"] = bpSolution.averageConcurrentSolves
     }
 
     private fun computePercentGap(lb: Double, ub: Double): Double {
