@@ -1,7 +1,6 @@
 package orienteering.solver.actor
 
 import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ObsoleteCoroutinesApi
 import kotlinx.coroutines.channels.SendChannel
@@ -14,7 +13,6 @@ import orienteering.solver.BranchAndPriceSolution
 import orienteering.solver.Node
 import orienteering.solver.TimeChecker
 import java.util.*
-import kotlin.coroutines.CoroutineContext
 import kotlin.math.max
 
 sealed class NodeActorMessage
@@ -208,9 +206,6 @@ class NodeActorState(private val instance: Instance, private val numSolvers: Int
 
 @ObsoleteCoroutinesApi
 fun CoroutineScope.nodeActor(instance: Instance, numSolvers: Int) =
-    statefulActor(
-        coroutineContext + CoroutineName("NodeActor_"),
-        NodeActorState(instance, numSolvers)
-    )
+    statefulActor("NodeActor_", NodeActorState(instance, numSolvers))
 
 typealias NodeActor = SendChannel<NodeActorMessage>

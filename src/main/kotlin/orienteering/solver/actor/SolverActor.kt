@@ -1,14 +1,12 @@
 package orienteering.solver.actor
 
 import ilog.cplex.IloCplex
-import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ObsoleteCoroutinesApi
 import kotlinx.coroutines.channels.SendChannel
 import orienteering.data.Instance
 import orienteering.main.preProcess
 import orienteering.solver.Node
-import kotlin.coroutines.CoroutineContext
 
 sealed class SolverActorMessage
 data class SolveNode(val node: Node) : SolverActorMessage()
@@ -52,9 +50,6 @@ fun CoroutineScope.solverActor(
     actorId: Int,
     nodeActor: NodeActor,
     instance: Instance
-) = statefulActor(
-    coroutineContext + CoroutineName("SolverActor_${actorId}_"),
-    SolverActorState(nodeActor, instance)
-)
+) = statefulActor("SolverActor_${actorId}_", SolverActorState(nodeActor, instance))
 
 typealias SolverActor = SendChannel<SolverActorMessage>
