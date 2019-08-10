@@ -31,9 +31,9 @@ class BranchAndPriceSolver(
 
         val numSolverActors = Parameters.numSolverActors
         withContext(Dispatchers.Default + CoroutineName("BranchAndPrice_")) {
-            val nodeActor = nodeActor(coroutineContext, instance, numSolverActors)
+            val nodeActor = nodeActor(instance, numSolverActors)
             val solverActors = (0 until numSolverActors).map {
-                solverActor(it, nodeActor, instance, coroutineContext)
+                solverActor(it, nodeActor, instance)
             }
 
             nodeActor.send(ProcessSolvedNode(rootNode))

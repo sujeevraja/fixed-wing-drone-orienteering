@@ -207,9 +207,9 @@ class NodeActorState(private val instance: Instance, private val numSolvers: Int
 }
 
 @ObsoleteCoroutinesApi
-fun CoroutineScope.nodeActor(context: CoroutineContext, instance: Instance, numSolvers: Int) =
+fun CoroutineScope.nodeActor(instance: Instance, numSolvers: Int) =
     statefulActor(
-        context + CoroutineName("NodeActor_"),
+        coroutineContext + CoroutineName("NodeActor_"),
         NodeActorState(instance, numSolvers)
     )
 

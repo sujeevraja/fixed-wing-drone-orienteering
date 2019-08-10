@@ -51,10 +51,9 @@ class SolverActorState(private val nodeActor: NodeActor, private val instance: I
 fun CoroutineScope.solverActor(
     actorId: Int,
     nodeActor: NodeActor,
-    instance: Instance,
-    context: CoroutineContext
+    instance: Instance
 ) = statefulActor(
-    context + CoroutineName("SolverActor_${actorId}_"),
+    coroutineContext + CoroutineName("SolverActor_${actorId}_"),
     SolverActorState(nodeActor, instance)
 )
 
