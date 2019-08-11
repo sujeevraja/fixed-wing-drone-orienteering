@@ -2,6 +2,7 @@ package orienteering.solver
 
 import ilog.cplex.IloCplex
 import kotlinx.coroutines.*
+import kotlinx.coroutines.channels.Channel
 import mu.KLogging
 import orienteering.data.Instance
 import orienteering.data.Parameters
@@ -31,7 +32,22 @@ class BranchAndPriceSolver(
 
         val numSolverActors = Parameters.numSolverActors
         withContext(Dispatchers.Default + CoroutineName("BranchAndPrice_")) {
+            val unsolvedNodes = Channel<Node>()
+            val solvedNodes = Channel<Node>()
+            logger.info("launching solver coroutines")
+            repeat(numSolverActors) {
+                solver(it, instance, unsolvedNodes, solvedNodes)
+            }
+            logger.info("launched solver coroutines")
+
+            logger.info("creating solver actor")
             val nodeActor = nodeActor(instance, numSolverActors)
+            logger.info("created solver actor")
+
+
+        }
+        /*
+        withContext(Dispatchers.Default + CoroutineName("BranchAndPrice_")) {
             val solverActors = (0 until numSolverActors).map {
                 solverActor(it, nodeActor, instance)
             }
@@ -58,6 +74,7 @@ class BranchAndPriceSolver(
             }
             coroutineContext.cancelChildren()
         }
+         */
     }
 
     private fun solveRootNode(): Node {

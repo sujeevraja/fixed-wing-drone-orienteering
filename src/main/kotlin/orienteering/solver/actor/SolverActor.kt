@@ -1,9 +1,14 @@
 package orienteering.solver.actor
 
 import ilog.cplex.IloCplex
+import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ObsoleteCoroutinesApi
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.channels.ReceiveChannel
 import kotlinx.coroutines.channels.SendChannel
+import kotlinx.coroutines.launch
+import mu.KLogging
 import orienteering.data.Instance
 import orienteering.main.preProcess
 import orienteering.solver.Node
@@ -53,3 +58,41 @@ fun CoroutineScope.solverActor(
 ) = statefulActor("SolverActor_${actorId}_", SolverActorState(nodeActor, instance))
 
 typealias SolverActor = SendChannel<SolverActorMessage>
+
+
+class SolverState(private val instance: Instance, private val solvedNodes: SendChannel<Node>) {
+    private val cplex = IloCplex()
+
+    suspend fun solveNode(node: Node) {
+        logger.info("$node solve starting")
+        preProcess(
+            node.graph,
+            instance.budget,
+            instance.getVertices(instance.sourceTarget),
+            instance.getVertices(instance.destinationTarget)
+        )
+        if (!node.isFeasible(instance)) {
+            logger.info("$node infeasible before solving")
+            return
+        }
+        node.solve(instance, cplex)
+        logger.info("$node sending to solvedNodes channel after solving")
+        solvedNodes.send(node)
+        logger.info("$node sent to solvedNodes channel after solving")
+    }
+
+    companion object: KLogging()
+}
+
+@ObsoleteCoroutinesApi
+fun CoroutineScope.solver(
+    solverId: Int,
+    instance: Instance,
+    unsolvedNodes: ReceiveChannel<Node>,
+    solvedNodes: SendChannel<Node>
+    ) = launch(coroutineContext + CoroutineName("SolverActor_${solverId}_")) {
+    val actorState = SolverState(instance, solvedNodes)
+    for (unsolvedNode in unsolvedNodes) {
+        actorState.solveNode(unsolvedNode)
+    }
+}
