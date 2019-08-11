@@ -1,41 +1,20 @@
-package orienteering.solver.actor
+package orienteering.solver
 
 import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.ObsoleteCoroutinesApi
 import kotlinx.coroutines.channels.SendChannel
-import kotlinx.coroutines.selects.select
+import mu.KLogging
 import orienteering.data.Instance
 import orienteering.data.Parameters
 import orienteering.data.Route
 import orienteering.main.OrienteeringException
-import orienteering.solver.BranchAndPriceSolution
-import orienteering.solver.Node
-import orienteering.solver.TimeChecker
 import java.util.*
 import kotlin.math.max
 
-sealed class NodeActorMessage
-data class ReleaseOpenNode(val solverActors: List<SolverActor>) : NodeActorMessage()
-data class ProcessSolvedNode(
-    val node: Node,
-    val unsolvedNodes: SendChannel<Node>,
-    val solutionChannel: SendChannel<BranchAndPriceSolution>
-) :
-    NodeActorMessage()
-
-class CanRelease : NodeActorMessage() {
-    val response = CompletableDeferred<Boolean>()
-}
-
-class Terminate : NodeActorMessage() {
-    val response = CompletableDeferred<BranchAndPriceSolution?>()
-}
-
-data class NewReleaseOpenNode(val unsolvedNodes: SendChannel<Node>) : NodeActorMessage()
-
-class NodeActorState(private val instance: Instance, private val numSolvers: Int) :
-    ActorState<NodeActorMessage>() {
+class NodeProcessor(
+    private val instance: Instance,
+    private val numSolvers: Int,
+    private val deferredSolution: CompletableDeferred<BranchAndPriceSolution>
+) {
     private var optimalityReached = false
     private var lowerBound = -Double.MAX_VALUE
     private var upperBound = Double.MAX_VALUE
@@ -48,51 +27,22 @@ class NodeActorState(private val instance: Instance, private val numSolvers: Int
     private var numNodesSolved = 0
     private var averageConcurrentSolves = 0.0
 
-    override suspend fun handle(message: NodeActorMessage) {
-        when (message) {
-            is NewReleaseOpenNode -> {
-                if (openNodes.isEmpty()) {
-                    if (numSolving == 0) {
-                        message.unsolvedNodes.close()
-                    }
-                } else if (numSolving < numSolvers) {
-                    releaseNodesForSolving(message.unsolvedNodes)
-                }
-            }
-            is ReleaseOpenNode -> releaseOpenNode(message.solverActors)
-            is ProcessSolvedNode -> {
-                val node = message.node
-                solvingNodes.remove(node.index)
+    suspend fun processSolvedNode(node: Node, unsolvedNodes: SendChannel<Node>) {
+        solvingNodes.remove(node.index)
 
-                logger.info("received solved node $node")
-                logger.info("numNodes ${openNodes.size}")
-                logger.info("numSolving: $numSolving")
+        logger.info("received solved node $node")
+        logger.info("numNodes ${openNodes.size}")
+        logger.info("numSolving: $numSolving")
 
-                if (!prune(message.node)) {
-                    branch(message.node)
-                }
-                updateUpperBound()
-                releaseNodesForSolving(message.unsolvedNodes)
-                if (shouldStop()) {
-                    logger.info("should terminate, building solution")
-                    message.solutionChannel.send(buildFinalSolution())
-                    logger.info("final solution sent")
-                }
-            }
-            is CanRelease -> {
-                // logger.info("received CanRelease")
-                // logger.info("numNodes ${openNodes.size}")
-                // logger.info("numSolving: $numSolving")
-                // logger.info("numIdle: $numSolving")
-                message.response.complete(openNodes.isNotEmpty() && numSolving < numSolvers)
-            }
-            is Terminate -> {
-                // logger.info("received CanStop")
-                // logger.info("numNodes ${openNodes.size}")
-                // logger.info("numNodesSolving: $numSolving")
-                val solution = if (shouldStop()) buildFinalSolution() else null
-                message.response.complete(solution)
-            }
+        if (!prune(node)) {
+            branch(node)
+        }
+        updateUpperBound()
+        releaseNodesForSolving(unsolvedNodes)
+        if (shouldStop()) {
+            logger.info("should terminate, building solution")
+            deferredSolution.complete(buildFinalSolution())
+            logger.info("final solution sent")
         }
     }
 
@@ -113,28 +63,6 @@ class NodeActorState(private val instance: Instance, private val numSolvers: Int
             numNodesSolved++
             averageConcurrentSolves += numSolving
             logger.info("released open node to unsolvedNodes channel")
-        }
-    }
-
-    private suspend fun releaseOpenNode(solverActors: List<SolverActor>) {
-        val node = openNodes.remove()
-        solvingNodes[node.index] = node.lpObjective
-
-        logger.info("received ReleaseOpenNode")
-        logger.info("numNodes ${openNodes.size}")
-        logger.info("numSolving: $numSolving")
-
-        select<Unit> {
-            solverActors.forEachIndexed { index, actor ->
-                actor.onSend(SolveNode(node)) {
-                    logger.info("sent $node to solver actor $index")
-                    if (maxConcurrentSolves < numSolving) {
-                        maxConcurrentSolves = numSolving
-                    }
-                    numNodesSolved++
-                    averageConcurrentSolves += numSolving
-                }
-            }
         }
     }
 
@@ -244,10 +172,7 @@ class NodeActorState(private val instance: Instance, private val numSolvers: Int
             averageConcurrentSolves = averageConcurrentSolves
         )
     }
+
+    companion object: KLogging()
 }
 
-@ObsoleteCoroutinesApi
-fun CoroutineScope.nodeActor(instance: Instance, numSolvers: Int) =
-    statefulActor("NodeActor_", NodeActorState(instance, numSolvers))
-
-typealias NodeActor = SendChannel<NodeActorMessage>
