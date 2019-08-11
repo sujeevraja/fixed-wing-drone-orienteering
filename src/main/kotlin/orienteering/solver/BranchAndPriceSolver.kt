@@ -53,27 +53,31 @@ class BranchAndPriceSolver(
             }
             logger.info("launched root node send")
 
+            val solutionChannel = Channel<BranchAndPriceSolution>()
             var solvedNode: Node? = null
-            while (!unsolvedNodes.isClosedForSend) {
+
+            while (true) {
                 logger.info("while loop resumes...")
-                select<Unit> {
+                val finish = select<Boolean> {
+                    solutionChannel.onReceive {
+                        finalSolution = it
+                        true
+                    }
                     if (solvedNode != null) {
-                        nodeActor.onSend(ProcessSolvedNode(solvedNode!!, unsolvedNodes)) {
+                        nodeActor.onSend(ProcessSolvedNode(solvedNode!!, unsolvedNodes, solutionChannel)) {
                             solvedNode = null
+                            false
                         }
                     } else {
                         solvedNodes.onReceive {
                             solvedNode = it
+                            false
                         }
                     }
                 }
-            }
-
-            val terminateMessage = Terminate()
-            nodeActor.send(terminateMessage)
-            val solution = terminateMessage.response.await()
-            if (solution != null) {
-                finalSolution = solution
+                if (finish) {
+                    break
+                }
             }
             coroutineContext.cancelChildren()
         }
