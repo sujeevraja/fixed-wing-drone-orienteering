@@ -44,9 +44,12 @@ class SolverActorState(private val nodeActor: NodeActor, private val instance: I
         }
         node.solve(instance, cplex)
 
+        /*
         logger.info("$node sending to NodeActor after solving")
         nodeActor.send(ProcessSolvedNode(node))
         logger.info("$node sent to NodeActor after solving")
+
+         */
     }
 }
 

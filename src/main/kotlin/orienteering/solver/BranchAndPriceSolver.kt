@@ -3,6 +3,7 @@ package orienteering.solver
 import ilog.cplex.IloCplex
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.selects.select
 import mu.KLogging
 import orienteering.data.Instance
 import orienteering.data.Parameters
@@ -22,6 +23,7 @@ class BranchAndPriceSolver(
     lateinit var finalSolution: BranchAndPriceSolution
         private set
 
+    @ExperimentalCoroutinesApi
     @ObsoleteCoroutinesApi
     suspend fun solve() {
         val rootNode = solveRootNode()
@@ -44,7 +46,36 @@ class BranchAndPriceSolver(
             val nodeActor = nodeActor(instance, numSolverActors)
             logger.info("created solver actor")
 
+            logger.info("launching root node send")
+            launch {
+                solvedNodes.send(rootNode)
+                logger.info("sent root node")
+            }
+            logger.info("launched root node send")
 
+            var solvedNode: Node? = null
+            while (!unsolvedNodes.isClosedForSend) {
+                logger.info("while loop resumes...")
+                select<Unit> {
+                    if (solvedNode != null) {
+                        nodeActor.onSend(ProcessSolvedNode(solvedNode!!, unsolvedNodes)) {
+                            solvedNode = null
+                        }
+                    } else {
+                        solvedNodes.onReceive {
+                            solvedNode = it
+                        }
+                    }
+                }
+            }
+
+            val terminateMessage = Terminate()
+            nodeActor.send(terminateMessage)
+            val solution = terminateMessage.response.await()
+            if (solution != null) {
+                finalSolution = solution
+            }
+            coroutineContext.cancelChildren()
         }
         /*
         withContext(Dispatchers.Default + CoroutineName("BranchAndPrice_")) {

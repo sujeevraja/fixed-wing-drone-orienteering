@@ -17,7 +17,7 @@ import kotlin.math.max
 
 sealed class NodeActorMessage
 data class ReleaseOpenNode(val solverActors: List<SolverActor>) : NodeActorMessage()
-data class ProcessSolvedNode(val node: Node) : NodeActorMessage()
+data class ProcessSolvedNode(val node: Node, val unsolvedNodes: SendChannel<Node>) : NodeActorMessage()
 
 class CanRelease : NodeActorMessage() {
     val response = CompletableDeferred<Boolean>()
@@ -26,6 +26,8 @@ class CanRelease : NodeActorMessage() {
 class Terminate : NodeActorMessage() {
     val response = CompletableDeferred<BranchAndPriceSolution?>()
 }
+
+data class NewReleaseOpenNode(val unsolvedNodes: SendChannel<Node>): NodeActorMessage()
 
 class NodeActorState(private val instance: Instance, private val numSolvers: Int) :
     ActorState<NodeActorMessage>() {
@@ -43,6 +45,15 @@ class NodeActorState(private val instance: Instance, private val numSolvers: Int
 
     override suspend fun handle(message: NodeActorMessage) {
         when (message) {
+            is NewReleaseOpenNode -> {
+                if (openNodes.isEmpty()) {
+                    if (numSolving == 0) {
+                        message.unsolvedNodes.close()
+                    }
+                } else if (numSolving < numSolvers) {
+                    newReleaseOpenNode(message.unsolvedNodes)
+                }
+            }
             is ReleaseOpenNode -> releaseOpenNode(message.solverActors)
             is ProcessSolvedNode -> {
                 val node = message.node
@@ -56,6 +67,18 @@ class NodeActorState(private val instance: Instance, private val numSolvers: Int
                     branch(message.node)
                 }
                 updateUpperBound()
+
+                val unsolvedNodes = message.unsolvedNodes
+                while (openNodes.isNotEmpty() && numSolving < numSolvers) {
+                    newReleaseOpenNode(unsolvedNodes)
+                }
+                logger.info("termination check starting")
+                if (openNodes.isEmpty() && numSolving == 0) {
+                    logger.info("should terminate")
+                    unsolvedNodes.close()
+                    logger.info("unsolvedNodes channel closed")
+                }
+                logger.info("termination not needed")
             }
             is CanRelease -> {
                 // logger.info("received CanRelease")
@@ -72,6 +95,19 @@ class NodeActorState(private val instance: Instance, private val numSolvers: Int
                 message.response.complete(solution)
             }
         }
+    }
+
+    private suspend fun newReleaseOpenNode(unsolvedNodes: SendChannel<Node>) {
+        logger.info("releasing open node to unsolvedNodes channel")
+        val node = openNodes.remove()
+        solvingNodes[node.index] = node.lpObjective
+
+        logger.info("received ReleaseOpenNode")
+        logger.info("numNodes ${openNodes.size}")
+        logger.info("numSolving: $numSolving")
+
+        unsolvedNodes.send(node)
+        logger.info("released open node to unsolvedNodes channel")
     }
 
     private suspend fun releaseOpenNode(solverActors: List<SolverActor>) {
