@@ -5,27 +5,27 @@ import kotlinx.coroutines.channels.SendChannel
 import mu.KLogging
 import orienteering.data.Instance
 import orienteering.data.Parameters
-import orienteering.data.Route
 import orienteering.main.OrienteeringException
 import java.util.*
 import kotlin.math.max
 
 class NodeProcessor(
+    solvedRootNode: Node,
     private val instance: Instance,
     private val numSolvers: Int,
     private val deferredSolution: CompletableDeferred<BranchAndPriceSolution>
 ) {
     private var optimalityReached = false
-    private var lowerBound = -Double.MAX_VALUE
-    private var upperBound = Double.MAX_VALUE
-    private var bestFeasibleSolution = listOf<Route>()
+    private var lowerBound = solvedRootNode.mipObjective
+    private var upperBound = solvedRootNode.lpObjective
+    private var bestFeasibleSolution = solvedRootNode.mipSolution
     private val openNodes = PriorityQueue<Node>()
     private var solvingNodes = mutableMapOf<Int, Double>()
     private val numSolving: Int
         get() = solvingNodes.size
-    private var maxConcurrentSolves = 0
+    private var maxConcurrentSolves = 1
     private var numNodesSolved = 0
-    private var averageConcurrentSolves = 0.0
+    private var averageConcurrentSolves = 1.0
 
     suspend fun processSolvedNode(node: Node, unsolvedNodes: SendChannel<Node>) {
         solvingNodes.remove(node.index)
@@ -151,7 +151,11 @@ class NodeProcessor(
     }
 
     private fun buildFinalSolution(): BranchAndPriceSolution {
-        averageConcurrentSolves /= numNodesSolved
+        if (numNodesSolved == 0) {
+            averageConcurrentSolves = 1.0
+        } else {
+            averageConcurrentSolves /= numNodesSolved
+        }
         logger.info("number of nodes solved: $numNodesSolved")
         logger.info("average concurrent solves: $averageConcurrentSolves")
         logger.info("maximum concurrent solves: $maxConcurrentSolves")

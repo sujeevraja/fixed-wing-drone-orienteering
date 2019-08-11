@@ -1,6 +1,8 @@
 package orienteering.main
 
 import ilog.cplex.IloCplex
+import kotlinx.coroutines.CoroutineName
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.ObsoleteCoroutinesApi
 import kotlinx.coroutines.runBlocking
 import mu.KLogging
@@ -82,6 +84,7 @@ class Controller {
     /**
      * Function to start the solver
      */
+    @ExperimentalCoroutinesApi
     @ObsoleteCoroutinesApi
     fun run() {
         TimeChecker.startTracking()
@@ -115,15 +118,13 @@ class Controller {
     /**
      * Function to run branch-and-price algorithm
      */
+    @ExperimentalCoroutinesApi
     @ObsoleteCoroutinesApi
-    private fun runBranchAndPrice() = runBlocking {
+    private fun runBranchAndPrice() = runBlocking(CoroutineName("runBranchAndPrice_")) {
         logger.info("algorithm: branch and price")
-        initCPLEX()
-        val bps = BranchAndPriceSolver(instance, cplex)
+        val bps = BranchAndPriceSolver(instance)
         bps.solve()
-
         val bpSolution = bps.finalSolution
-        clearCPLEX()
 
         results["root_lower_bound"] = bps.rootLowerBound
         results["root_upper_bound"] = bps.rootUpperBound

@@ -1,8 +1,9 @@
 package orienteering.main
 
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.ObsoleteCoroutinesApi
 
-
+@ExperimentalCoroutinesApi
 @ObsoleteCoroutinesApi
 fun main(args: Array<String>) {
 
