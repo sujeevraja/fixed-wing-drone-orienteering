@@ -6,9 +6,9 @@ import ilog.concert.IloNumVarType
 import ilog.concert.IloRange
 import ilog.cplex.IloCplex
 import mu.KLogging
-import orienteering.main.OrienteeringException
 import orienteering.data.Instance
 import orienteering.data.Route
+import orienteering.main.OrienteeringException
 
 /**
  * Class that formulates the set-cover formulation given a list of routes
@@ -165,13 +165,19 @@ class SetCoverModel(private var cplex: IloCplex) {
          * mustVisitTargetEdge constraints { sum(r in route) I(route contains targetEdge) * z(r) + w >= 1 }
          */
         mustVisitTargetEdges.forEach {
-            val expr:IloLinearNumExpr = cplex.linearNumExpr()
+            val expr: IloLinearNumExpr = cplex.linearNumExpr()
             targetEdgeRoutes.getValue(it).forEach { it1 ->
                 expr.addTerm(1.0, routeVariable[it1])
             }
             expr.addTerm(1.0, auxiliaryVariable)
             mustVisitTargetEdgeConstraintId[it] = constraints.size
-            constraints.add(cplex.addGe(expr, 1.0, "must_visit_target_edge_${it.first}_${it.second}"))
+            constraints.add(
+                cplex.addGe(
+                    expr,
+                    1.0,
+                    "must_visit_target_edge_${it.first}_${it.second}"
+                )
+            )
         }
 
         /**
@@ -186,13 +192,19 @@ class SetCoverModel(private var cplex: IloCplex) {
         }
 
         mustVisitVertexEdges.forEach {
-            val expr:IloLinearNumExpr = cplex.linearNumExpr()
+            val expr: IloLinearNumExpr = cplex.linearNumExpr()
             vertexEdgeRoutes.getValue(it).forEach { it1 ->
                 expr.addTerm(1.0, routeVariable[it1])
             }
             expr.addTerm(1.0, auxiliaryVariable)
             mustVisitVertexEdgeConstraintId[it] = constraints.size
-            constraints.add(cplex.addGe(expr, 1.0, "must_visit_vertex_edge_${it.first}_${it.second}"))
+            constraints.add(
+                cplex.addGe(
+                    expr,
+                    1.0,
+                    "must_visit_vertex_edge_${it.first}_${it.second}"
+                )
+            )
         }
 
     }
@@ -207,17 +219,6 @@ class SetCoverModel(private var cplex: IloCplex) {
             throw OrienteeringException("Set covering problem infeasible")
         }
         objective = cplex.objValue
-        /*
-        logger.debug("set cover objective: $objective")
-        logger.debug("----- lpSolution print start")
-        for (i in 0 until routeVariable.size) {
-            val solutionValue = cplex.getValue(routeVariable[i])
-            if (solutionValue >= Parameters.EPS) {
-                logger.debug("column $i: $solutionValue")
-            }
-        }
-        logger.debug("----- lpSolution print end")
-         */
     }
 
     fun getSolution(): List<Double> {
@@ -241,10 +242,10 @@ class SetCoverModel(private var cplex: IloCplex) {
      * Function to get the dual value of constraint corresponding to the targets
      * @return a list of dual values with a default of 0.0 if a target constraint is not present.
      */
-    fun getTargetDuals(): List<Double> =  (0 until hasTargetCoverConstraint.size).map {
-            if (hasTargetCoverConstraint[it])
-                cplex.getDual(constraints[targetCoverConstraintId[it]!!]) else 0.0
-        }
+    fun getTargetDuals(): List<Double> = (0 until hasTargetCoverConstraint.size).map {
+        if (hasTargetCoverConstraint[it])
+            cplex.getDual(constraints[targetCoverConstraintId[it]!!]) else 0.0
+    }
 
 
     /**
@@ -252,8 +253,8 @@ class SetCoverModel(private var cplex: IloCplex) {
      * @return map of dual values keyed by target id
      */
     fun getMustVisitTargetDuals(): Map<Int, Double> = mustVisitTargetConstraintId.map {
-            it.key to cplex.getDual(constraints[it.value])
-        }.toMap()
+        it.key to cplex.getDual(constraints[it.value])
+    }.toMap()
 
     /**
      * Function to get dual of must visit vertex constraints
@@ -268,9 +269,9 @@ class SetCoverModel(private var cplex: IloCplex) {
      * @return map of dual values keyed by target edge pairs
      */
     fun getMustVisitTargetEdgeDuals(): Map<Pair<Int, Int>, Double> =
-            mustVisitTargetEdgeConstraintId.map {
-                it.key to cplex.getDual(constraints[it.value])
-            }.toMap()
+        mustVisitTargetEdgeConstraintId.map {
+            it.key to cplex.getDual(constraints[it.value])
+        }.toMap()
 
     /**
      * Function to get dual of must visit targetEdges

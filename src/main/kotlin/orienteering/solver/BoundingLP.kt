@@ -5,8 +5,8 @@ import ilog.concert.IloNumVar
 import ilog.cplex.IloCplex
 import mu.KLogging
 import org.jgrapht.Graphs
-import orienteering.main.SetGraph
 import orienteering.data.Instance
+import orienteering.main.SetGraph
 
 class BoundingLP(
     private val instance: Instance,
@@ -248,8 +248,8 @@ class BoundingLP(
 
     }
 
-    /** Function to visit mandatory vertices
-     *
+    /**
+     * Function to visit mandatory vertices
      */
     private fun addEdgeVisitConstraints() {
         mustVisitEdges.forEach { cplex.addEq(edgeVariable[it.first]!![it.second], 1.0) }

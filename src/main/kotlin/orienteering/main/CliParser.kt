@@ -73,10 +73,10 @@ class CliParser : CliktCommand() {
             }
         }
 
-    val numSolverActors: Int by option("-s", help="number of concurrent solver actors")
+    val numSolverCoroutines: Int by option("-s", help="number of concurrent solves")
         .int().default(8).validate {
             require(it > 0) {
-                "number of actors should be a strictly positive integer"
+                "number should be a strictly positive integer"
             }
         }
 

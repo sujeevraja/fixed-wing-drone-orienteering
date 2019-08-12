@@ -177,6 +177,6 @@ class NodeProcessor(
         )
     }
 
-    companion object: KLogging()
+    companion object : KLogging()
 }
 
