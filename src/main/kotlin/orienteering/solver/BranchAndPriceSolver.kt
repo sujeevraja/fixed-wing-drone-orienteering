@@ -23,12 +23,12 @@ class BranchAndPriceSolver(private val instance: Instance) {
 
     fun solve() {
         runBlocking(Dispatchers.Default + CoroutineName("BranchAndPriceSolver_")) {
-            val numSolverActors = Parameters.numSolverActors
+            val numSolvers = Parameters.numSolverCoroutines
             val unsolvedNodes = Channel<Node>()
             val solvedNodes = Channel<Node>()
             val solution = CompletableDeferred<BranchAndPriceSolution>()
 
-            repeat(numSolverActors) {
+            repeat(numSolvers) {
                 launch {
                     val cplex = IloCplex()
                     for (node in unsolvedNodes) {
@@ -44,7 +44,7 @@ class BranchAndPriceSolver(private val instance: Instance) {
             }
             launch {
                 val nodeProcessor =
-                    NodeProcessor(solvedRootNode, instance, numSolverActors, solution)
+                    NodeProcessor(solvedRootNode, instance, numSolvers, solution)
                 for (node in solvedNodes) {
                     logger.info("received $node in solvedNodes channel for nodeProcessor")
                     nodeProcessor.processSolvedNode(node, unsolvedNodes)

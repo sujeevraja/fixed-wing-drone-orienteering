@@ -1,10 +1,6 @@
 package orienteering.main
 
 import ilog.cplex.IloCplex
-import kotlinx.coroutines.CoroutineName
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.ObsoleteCoroutinesApi
-import kotlinx.coroutines.runBlocking
 import mu.KLogging
 import org.yaml.snakeyaml.DumperOptions
 import org.yaml.snakeyaml.Yaml
@@ -40,7 +36,7 @@ class Controller {
             numReducedCostColumns = parser.numReducedCostColumns,
             timeLimitInSeconds = parser.timeLimitInSeconds,
             useNumTargetsForDominance = parser.useNumTargetsForDominance == 1,
-            numSolverActors = parser.numSolverActors
+            numSolverCoroutines = parser.numSolverCoroutines
         )
 
         results["instance_name"] = parser.instanceName
@@ -50,7 +46,7 @@ class Controller {
         results["turn_radius"] = parser.turnRadius
         results["number_of_discretizations"] = parser.numDiscretizations
         results["number_of_reduced_cost_columns"] = parser.numReducedCostColumns
-        results["number of solver_actors"] = parser.numSolverActors
+        results["number_of_solver_coroutines"] = parser.numSolverCoroutines
         logger.debug("finished parsing command line arguments and populating parameters")
     }
 
