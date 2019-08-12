@@ -141,7 +141,6 @@ class ColumnGenSolver(
                 }
             }
             mipSolution = selectedRoutes
-            // logger.info("solved restricted master MIP")
         } else {
             // Collect dual of num-vehicles constraint.
             vehicleCoverDual = setCoverModel.getRouteDual()
@@ -174,7 +173,6 @@ class ColumnGenSolver(
                 }
             }
             lpInfeasible = setCoverModel.getAuxiliaryVariableSolution() >= Parameters.eps
-            // logger.info("solved restricted master LP")
         }
         cplex.clearModel()
     }
