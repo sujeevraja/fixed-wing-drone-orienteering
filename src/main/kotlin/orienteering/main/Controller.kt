@@ -84,8 +84,6 @@ class Controller {
     /**
      * Function to start the solver
      */
-    @ExperimentalCoroutinesApi
-    @ObsoleteCoroutinesApi
     fun run() {
         TimeChecker.startTracking()
         val timeElapsedMillis = measureTimeMillis {
@@ -118,9 +116,7 @@ class Controller {
     /**
      * Function to run branch-and-price algorithm
      */
-    @ExperimentalCoroutinesApi
-    @ObsoleteCoroutinesApi
-    private fun runBranchAndPrice() = runBlocking(CoroutineName("runBranchAndPrice_")) {
+    private fun runBranchAndPrice() {
         logger.info("algorithm: branch and price")
         val bps = BranchAndPriceSolver(instance)
         bps.solve()
