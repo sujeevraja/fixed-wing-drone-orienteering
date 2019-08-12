@@ -22,39 +22,37 @@ class BranchAndPriceSolver(private val instance: Instance) {
         private set
 
     fun solve() {
-        runBlocking {
+        runBlocking(Dispatchers.Default + CoroutineName("BranchAndPriceSolver_")) {
             val numSolverActors = Parameters.numSolverActors
-            withContext(Dispatchers.Default + CoroutineName("BranchAndPriceSolver_")) {
-                val unsolvedNodes = Channel<Node>()
-                val solvedNodes = Channel<Node>()
-                val solution = CompletableDeferred<BranchAndPriceSolution>()
+            val unsolvedNodes = Channel<Node>()
+            val solvedNodes = Channel<Node>()
+            val solution = CompletableDeferred<BranchAndPriceSolution>()
 
-                repeat(numSolverActors) {
-                    launch {
-                        val cplex = IloCplex()
-                        for (node in unsolvedNodes) {
-                            solveNode(cplex, node, solvedNodes)
-                        }
+            repeat(numSolverActors) {
+                launch {
+                    val cplex = IloCplex()
+                    for (node in unsolvedNodes) {
+                        solveNode(cplex, node, solvedNodes)
                     }
                 }
-
-                val solvedRootNode = solveRootNode(unsolvedNodes, solvedNodes)
-                launch {
-                    logger.info("sending solvedRootNode $solvedRootNode back into solvedNodes")
-                    solvedNodes.send(solvedRootNode)
-                }
-                launch {
-                    val nodeProcessor =
-                        NodeProcessor(solvedRootNode, instance, numSolverActors, solution)
-                    for (node in solvedNodes) {
-                        logger.info("received $node in solvedNodes channel for nodeProcessor")
-                        nodeProcessor.processSolvedNode(node, unsolvedNodes)
-                    }
-                }
-
-                finalSolution = solution.await()
-                coroutineContext.cancelChildren()
             }
+
+            val solvedRootNode = solveRootNode(unsolvedNodes, solvedNodes)
+            launch {
+                logger.info("sending solvedRootNode $solvedRootNode back into solvedNodes")
+                solvedNodes.send(solvedRootNode)
+            }
+            launch {
+                val nodeProcessor =
+                    NodeProcessor(solvedRootNode, instance, numSolverActors, solution)
+                for (node in solvedNodes) {
+                    logger.info("received $node in solvedNodes channel for nodeProcessor")
+                    nodeProcessor.processSolvedNode(node, unsolvedNodes)
+                }
+            }
+
+            finalSolution = solution.await()
+            coroutineContext.cancelChildren()
         }
     }
 
