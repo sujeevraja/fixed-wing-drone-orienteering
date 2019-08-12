@@ -2,16 +2,16 @@ package orienteering.solver
 
 import ilog.cplex.IloCplex
 import kotlinx.coroutines.*
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.channels.ReceiveChannel
+import kotlinx.coroutines.channels.SendChannel
 import mu.KLogging
 import orienteering.data.Instance
 import orienteering.data.Parameters
 import orienteering.main.OrienteeringException
-import orienteering.solver.actor.*
+import orienteering.main.preProcess
 
-class BranchAndPriceSolver(
-    private val instance: Instance,
-    private val cplex: IloCplex
-) {
+class BranchAndPriceSolver(private val instance: Instance) {
     var rootLowerBound: Double = -Double.MAX_VALUE
         private set
 
@@ -21,48 +21,50 @@ class BranchAndPriceSolver(
     lateinit var finalSolution: BranchAndPriceSolution
         private set
 
+    @ExperimentalCoroutinesApi
     @ObsoleteCoroutinesApi
     suspend fun solve() {
-        val rootNode = solveRootNode()
-        if (finalSolution.optimalityReached) {
-            logger.info("gap closed in root node")
-            return
-        }
-
         val numSolverActors = Parameters.numSolverActors
-        withContext(Dispatchers.Default + CoroutineName("BranchAndPrice_")) {
-            val nodeActor = nodeActor(instance, numSolverActors)
-            val solverActors = (0 until numSolverActors).map {
-                solverActor(it, nodeActor, instance)
-            }
+        withContext(Dispatchers.Default + CoroutineName("BranchAndPriceSolver_")) {
+            val unsolvedNodes = Channel<Node>()
+            val solvedNodes = Channel<Node>()
+            val solution = CompletableDeferred<BranchAndPriceSolution>()
 
-            nodeActor.send(ProcessSolvedNode(rootNode))
-            while (true) {
-                delay(100L)
-
-                val nodesAvailableMessage = CanRelease()
-                nodeActor.send(nodesAvailableMessage)
-                val nodesAvailable = nodesAvailableMessage.response.await()
-                if (nodesAvailable) {
-                    nodeActor.send(ReleaseOpenNode(solverActors))
-                    continue
-                }
-
-                val terminateMessage = Terminate()
-                nodeActor.send(terminateMessage)
-                val solution = terminateMessage.response.await()
-                if (solution != null) {
-                    finalSolution = solution
-                    break
+            repeat(numSolverActors) {
+                launch {
+                    val cplex = IloCplex()
+                    for (node in unsolvedNodes) {
+                        solveNode(cplex, node, solvedNodes)
+                    }
                 }
             }
+
+            val solvedRootNode = solveRootNode(unsolvedNodes, solvedNodes)
+            launch {
+                logger.info("sending solvedRootNode $solvedRootNode back into solvedNodes")
+                solvedNodes.send(solvedRootNode)
+            }
+            launch {
+                val nodeProcessor =
+                    NodeProcessor(solvedRootNode, instance, numSolverActors, solution)
+                for (node in solvedNodes) {
+                    logger.info("received $node in solvedNodes channel for nodeProcessor")
+                    nodeProcessor.processSolvedNode(node, unsolvedNodes)
+                }
+            }
+
+            finalSolution = solution.await()
             coroutineContext.cancelChildren()
         }
     }
 
-    private fun solveRootNode(): Node {
-        val rootNode = Node.buildRootNode(instance.graph)
-        rootNode.solve(instance, cplex)
+    private suspend fun solveRootNode(
+        unsolvedNodes: SendChannel<Node>,
+        solvedNodes: ReceiveChannel<Node>
+    ): Node {
+        unsolvedNodes.send(Node.buildRootNode(instance.graph))
+        val rootNode = solvedNodes.receive()
+        logger.info("received $rootNode in solveRootNode")
         rootUpperBound = rootNode.lpObjective
         rootLowerBound = rootNode.mipObjective
         if (rootLowerBound >= rootUpperBound + Parameters.eps) {
@@ -79,6 +81,28 @@ class BranchAndPriceSolver(
         )
 
         return rootNode
+    }
+
+    private suspend fun solveNode(
+        cplex: IloCplex,
+        node: Node,
+        solvedNodes: SendChannel<Node>
+    ) {
+        logger.info("$node solve starting")
+        preProcess(
+            node.graph,
+            instance.budget,
+            instance.getVertices(instance.sourceTarget),
+            instance.getVertices(instance.destinationTarget)
+        )
+        if (!node.isFeasible(instance)) {
+            logger.info("$node infeasible before solving")
+            return
+        }
+        node.solve(instance, cplex)
+        logger.info("$node sending to solvedNodes channel after solving")
+        solvedNodes.send(node)
+        logger.info("$node sent to solvedNodes channel after solving")
     }
 
     companion object : KLogging()
