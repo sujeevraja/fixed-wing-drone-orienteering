@@ -9,6 +9,14 @@ import orienteering.data.Parameters
 import orienteering.main.OrienteeringException
 import orienteering.main.preProcess
 
+/**
+ * BranchAndPriceSolver implements the Coroutine scope using the CoroutineScope() factory so that
+ *
+ * 1. channels can be made class members,
+ *
+ * 2. coroutines can be directly launched from functions instead of creating new contexts using
+ *    "withContext(Dispatchers.Default)" every time a coroutine needs to be launched.
+ */
 class BranchAndPriceSolver(private val instance: Instance) :
     CoroutineScope by CoroutineScope(Dispatchers.Default) {
     var rootLowerBound: Double = -Double.MAX_VALUE
@@ -20,7 +28,14 @@ class BranchAndPriceSolver(private val instance: Instance) :
     lateinit var finalSolution: BranchAndPriceSolution
         private set
 
+    /**
+     * Channel that sends nodes from the node processor to solver coroutines for solving.
+     */
     private val unsolvedNodes = Channel<Node>()
+    /**
+     * Channel that sends nodes from solver coroutines to node processor for bounding updating,
+     * pruning and/or branching.
+     */
     private val solvedNodes = Channel<Node>()
 
     fun solve() = runBlocking(
