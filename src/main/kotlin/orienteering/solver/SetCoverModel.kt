@@ -16,29 +16,45 @@ import orienteering.main.OrienteeringException
  * @param cplex Cplex class object
  */
 class SetCoverModel(private var cplex: IloCplex) {
-
     /**
-     * @property routeConstraintId route constraint id
-     * @property hasTargetCoverConstraint Boolean list indicating if the model has a target cover constraint
-     * @property targetCoverConstraintId list of constraint ids for target cover constraints
-     * @property mustVisitTargetConstraintId map of target to constraint id
-     * @property mustVisitTargetEdgeConstraintId map of target-edge to constraint id
-     * @property mustVisitVertexConstraintId map of vertex to constraint id
-     * @property mustVisitVertexEdgeConstraintId map of vertex-edge constraint id
-     * @property routeVariable list of route variables
-     * @property auxiliaryVariable for infeasibility
-     * @property constraints list of constraints
-     * @property objective objective
+     * route constraint id
      */
     private var routeConstraintId: Int = 0
+    /**
+     * Boolean list indicating if the model has a target cover constraint.
+     */
     private lateinit var hasTargetCoverConstraint: MutableList<Boolean>
+    /**
+     * list of constraint ids for target cover constraints
+     */
     private lateinit var targetCoverConstraintId: MutableList<Int?>
+    /**
+     * map of must-visit target to constraint id
+     */
     private var mustVisitTargetConstraintId: MutableMap<Int, Int> = mutableMapOf()
+    /**
+     * map of must-visit target-edge to constraint id
+     */
     private var mustVisitTargetEdgeConstraintId: MutableMap<Pair<Int, Int>, Int> = mutableMapOf()
+    /**
+     * map of must-visit vertex to constraint id
+     */
     private var mustVisitVertexConstraintId: MutableMap<Int, Int> = mutableMapOf()
+    /**
+     * map of must-visit vertex edge to constraint id
+     */
     private var mustVisitVertexEdgeConstraintId: MutableMap<Pair<Int, Int>, Int> = mutableMapOf()
+    /**
+     * list of route variables
+     */
     private var routeVariable: ArrayList<IloNumVar> = arrayListOf()
+    /**
+     * auxiliary variable to detect infeasibility
+     */
     private lateinit var auxiliaryVariable: IloNumVar
+    /**
+     * list of all constraints
+     */
     private var constraints: ArrayList<IloRange> = arrayListOf()
 
     /**
@@ -51,6 +67,11 @@ class SetCoverModel(private var cplex: IloCplex) {
      * Function to create the Set-Covering model
      * @param instance object of the Instance Class
      * @param routes list of route objects
+     * @param binary if true, the model is created as a MIP and as a LP otherwise.
+     * @param mustVisitTargets targets to which visits are enforced.
+     * @param mustVisitTargetEdges target-edges to which visits are enforced.
+     * @param mustVisitVertices vertices to which visits are enforced.
+     * @param mustVisitVertexEdges actual edges between vertices to which visits are enforced.
      */
     fun createModel(
         instance: Instance,
@@ -221,12 +242,20 @@ class SetCoverModel(private var cplex: IloCplex) {
         objective = cplex.objValue
     }
 
+    /**
+     * Returns solution of set cover model.
+     */
     fun getSolution(): List<Double> {
         return (0 until routeVariable.size).map {
             cplex.getValue(routeVariable[it])
         }
     }
 
+    /**
+     * Returns solution value of auxiliary variable.
+     *
+     * If this value is non-zero, the solution is infeasible and needs more columns.
+     */
     fun getAuxiliaryVariableSolution(): Double {
         return cplex.getValue(auxiliaryVariable)
     }
