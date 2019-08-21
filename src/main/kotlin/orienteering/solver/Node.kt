@@ -14,45 +14,81 @@ import java.util.concurrent.atomic.AtomicInteger
 import kotlin.math.absoluteValue
 import kotlin.math.round
 
+/**
+ * Class to store solution and constraint data at nodes of a branch-and-bound tree.
+ *
+ * @param graph graph with usable vertices and edges to build routes.
+ * @param mustVisitTargets targets that must be visited by at least 1 route in any feasible solution.
+ * @param mustVisitTargetEdges target connections necessary to be present in at least 1 route in any feasible solution.
+ * @param upperBound upper bound of parent node that will be used to initialize [lpSolution].
+ */
 class Node private constructor(
     val graph: SetGraph,
     private val mustVisitTargets: IntArray,
     private val mustVisitTargetEdges: List<Pair<Int, Int>>,
     upperBound: Double
 ) : Comparable<Node> {
+    /**
+     * Unique index of node.
+     */
     val index = getNodeIndex()
 
+    /**
+     * True if LP solution is feasible, i.e. visits all targets in [mustVisitTargets] and uses
+     * all direct target connections specified in [mustVisitTargetEdges].
+     */
     var feasible = true
         private set
 
+    /**
+     * LP objective value.
+     */
     var lpObjective = upperBound
         private set
 
-    var lpSolution = listOf<Pair<Route, Double>>()
-        private set
+    /**
+     * Routes in LP solution with non-zero values and corresponding solution values.
+     */
+    private var lpSolution = listOf<Pair<Route, Double>>()
 
+    /**
+     * MIP objective value.
+     */
     var mipObjective = -Double.MAX_VALUE
         private set
 
+    /**
+     * Routes selected in MIP solution (i.e. solution value of 1.0).
+     */
     var mipSolution = listOf<Route>()
         private set
 
+    /**
+     * True if all decision variables have binary values in LP solution, false otherwise.
+     */
     var lpIntegral = false
         private set
 
+    /**
+     * Holds reduced costs for each target after LP is solved.
+     */
     private lateinit var targetReducedCosts: List<Double>
 
+    /**
+     * String representation.
+     */
     override fun toString(): String {
         return "Node($index, bound=$lpObjective, feasible=$feasible)"
     }
 
-    fun logInfo() {
-        logger.debug("index: $index")
-        logger.debug("vertices: ${graph.vertexSet()}")
-        logger.debug("must visit targets: ${mustVisitTargets.toList()}")
-        logger.debug("must visit target edges: $mustVisitTargetEdges")
-    }
-
+    /**
+     * Checks whether source, destination and must-visit targets are connected to the node's graph.
+     * This can be useful to avoid solving LPs if the node's data fails these feasibility checks.
+     *
+     * @param instance class that provides vertices of each target.
+     *
+     * @return true if feasibility checks are satisfied, false otherwise.
+     */
     fun isFeasible(instance: Instance): Boolean {
         // Check if source target has at least 1 outgoing edge.
         val sourceEdgeExists = instance.getVertices(instance.sourceTarget).any {
@@ -89,12 +125,23 @@ class Node private constructor(
         return requiredEdgesExist
     }
 
+    /**
+     * Checks whether [vertex] has at least one incoming edge and one outgoing edge.
+     *
+     * @return true if specified edges exist, false otherwise.
+     */
     private fun isVertexConnected(vertex: Int): Boolean {
         return (graph.containsVertex(vertex) &&
                 Graphs.vertexHasPredecessors(graph, vertex) &&
                 Graphs.vertexHasSuccessors(graph, vertex))
     }
 
+    /**
+     * Solves LP to optimality and MIP using the LP columns to get a feasible solution.
+     *
+     * @param instance provides problem information
+     * @param cplex IloCplex object used to solve the models.
+     */
     fun solve(instance: Instance, cplex: IloCplex) {
         logger.debug("solving node number $index")
         val cgSolver = ColumnGenSolver(
@@ -121,6 +168,12 @@ class Node private constructor(
         }
     }
 
+    /**
+     * Creates child nodes based on fractional values of LP solution.
+     *
+     * @param instance problem data
+     * @return list of nodes that prohibit the current node's LP solution
+     */
     fun branch(instance: Instance): List<Node> {
         // Find flows to each target and on edges between targets.
         val targetFlows = MutableList(instance.numTargets) { 0.0 }
@@ -187,10 +240,18 @@ class Node private constructor(
         return branchOnTargetEdge(bestFromTarget, bestToTarget, instance)
     }
 
+    /**
+     * Checks if [num] is close to an integer value.
+     */
     private fun isInteger(num: Double): Boolean {
         return (num - round(num)).absoluteValue <= Parameters.eps
     }
 
+    /**
+     * Creates child nodes by branching on visits to [target].
+     *
+     * @return list of child nodes
+     */
     private fun branchOnTarget(target: Int, targetVertices: List<Int>): List<Node> {
         logger.debug("branching $this on target $target")
         val noVisitNode = getChildWithoutTarget(targetVertices)
@@ -202,6 +263,11 @@ class Node private constructor(
         return listOf(noVisitNode, mustVisitNode)
     }
 
+    /**
+     * Creates child nodes by branching on the direct connection between [fromTarget] and [toTarget].
+     *
+     * @return list of child nodes.
+     */
     private fun branchOnTargetEdge(fromTarget: Int, toTarget: Int, instance: Instance): List<Node> {
         val childNodes = mutableListOf<Node>()
         if (fromTarget in mustVisitTargets || toTarget in mustVisitTargets) {
@@ -238,6 +304,11 @@ class Node private constructor(
         return childNodes
     }
 
+    /**
+     * Creates a node by removing all vertices in [targetVertices] from the current node's graph.
+     *
+     * @return node with modified graph
+     */
     private fun getChildWithoutTarget(targetVertices: List<Int>): Node {
         val reducedGraph = graph.getCopy()
         for (vertex in targetVertices) {
@@ -246,10 +317,21 @@ class Node private constructor(
         return Node(reducedGraph, mustVisitTargets, mustVisitTargetEdges, lpObjective)
     }
 
+    /**
+     * Creates a node by adding [target] to the list of must-visit targets.
+     *
+     * @return node with updated must-visit target list.
+     */
     private fun getChildWithTarget(target: Int): Node {
         return Node(graph, mustVisitTargets + target, mustVisitTargetEdges, lpObjective)
     }
 
+    /**
+     * Creates a node by removing all edges between vertices of [fromTarget] and [toTarget].
+     * Vertices are found using the given [instance] data.
+     *
+     * @return node with removed edges.
+     */
     private fun getChildWithoutTargetEdge(
         fromTarget: Int,
         toTarget: Int,
@@ -269,12 +351,21 @@ class Node private constructor(
         return Node(reducedGraph, mustVisitTargets, mustVisitTargetEdges, lpObjective)
     }
 
+    /**
+     * Creates a node by adding the pair ([fromTarget], [toTarget]) to the list of must-visit
+     * target edges of the current node.
+     *
+     * @return node with enforced target edges.
+     */
     private fun getChildWithTargetEdge(fromTarget: Int, toTarget: Int): Node {
         val newMustVisitTargetEdges = mustVisitTargetEdges.toMutableList()
         newMustVisitTargetEdges.add(Pair(fromTarget, toTarget))
         return Node(graph, mustVisitTargets, newMustVisitTargetEdges, lpObjective)
     }
 
+    /**
+     * Comparator to to store node with the highest LP objective at the top of a priority queue.
+     */
     override fun compareTo(other: Node): Int {
         return when {
             lpObjective >= other.lpObjective + Parameters.eps -> -1
@@ -285,13 +376,24 @@ class Node private constructor(
         }
     }
 
+    /**
+     * Companion object for logging, a factory constructor and node index management.
+     */
     companion object : KLogging() {
+        /**
+         * Factory constructor to build root node without any restrictions.
+         */
         fun buildRootNode(graph: SetGraph): Node =
             Node(graph, intArrayOf(), listOf(), Double.MAX_VALUE)
 
-        var nodeCount = AtomicInteger(0)
-            private set
+        /**
+         * Thread-safe variable to provide unique index to each newly created node.
+         */
+        private var nodeCount = AtomicInteger(0)
 
+        /**
+         * Thread-safe function to get the existing [nodeCount] value and increment it afterward.
+         */
         fun getNodeIndex(): Int {
             return nodeCount.getAndIncrement()
         }
