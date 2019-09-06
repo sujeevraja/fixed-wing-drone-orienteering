@@ -36,6 +36,14 @@ class CliParser : CliktCommand() {
             }
         }
 
+    val outputPath: String by option("-o", help="path to file with output KPIs")
+        .default("./logs/results.yaml")
+        .validate {
+            require(it.length > 5 && it.endsWith(".yaml")) {
+                "output path should end with a non-empty file name and .yaml extension"
+            }
+        }
+
     val algorithm: Int by option(
         "-a",
         help = "1 for branch-and-cut, 2 for branch-and-price"
