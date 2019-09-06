@@ -1,7 +1,9 @@
 # Project specific
 logs/
 out/
+regression_testing/
 *.lp
+python-scripts/exhaustive_runs.txt
 
 # Intellij
 .idea/
