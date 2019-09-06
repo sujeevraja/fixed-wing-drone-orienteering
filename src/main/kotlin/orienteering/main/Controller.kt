@@ -19,6 +19,7 @@ import kotlin.system.measureTimeMillis
 class Controller {
     private lateinit var instance: Instance
     private lateinit var cplex: IloCplex
+    private lateinit var resultsPath: String
     private val results = sortedMapOf<String, Any>()
 
     /**
@@ -27,6 +28,8 @@ class Controller {
     fun parseArgs(args: Array<String>) {
         val parser = CliParser()
         parser.main(args)
+        resultsPath = parser.outputPath
+
         Parameters.initialize(
             instanceName = parser.instanceName,
             instancePath = parser.instancePath,
@@ -104,7 +107,7 @@ class Controller {
         dumperOptions.isPrettyFlow = true
 
         val yaml = Yaml(dumperOptions)
-        val writer = File("logs/results.yaml").bufferedWriter()
+        val writer = File(resultsPath).bufferedWriter()
         yaml.dump(results, writer)
         writer.close()
     }
