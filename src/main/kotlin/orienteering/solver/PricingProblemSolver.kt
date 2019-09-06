@@ -103,8 +103,6 @@ class PricingProblemSolver(
 
     /**
      * Generates negative reduced cost elementaryRoutes.
-     *
-     * @return list of elementaryRoutes with negative reduced cost.
      */
     fun generateColumns() {
         // Store source states.
@@ -505,8 +503,6 @@ class PricingProblemSolver(
     /**
      * Adds [newState] to [existingStates] if it is not dominated by any state in [existingStates].
      * Also removes states in [existingStates] dominated by [newState].
-     *
-     * @return true if newState is a non-dominated state and false otherwise.
      */
     private fun updateNonDominatedStates(
         existingStates: MutableList<State>,

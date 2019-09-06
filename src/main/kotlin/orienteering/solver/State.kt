@@ -2,14 +2,41 @@ package orienteering.solver
 
 import orienteering.data.Parameters
 
+/**
+ * Stores forward/backward partial path information for the DSSR labeling procedure.
+ */
 class State private constructor(
+    /**
+     * True if forward state, false if backward.
+     */
     val isForward: Boolean,
+    /**
+     * Predecessor state in case of forward paths, successor in case of backward paths.
+     */
     val parent: State?,
+    /**
+     * Incident vertex of state.
+     */
     val vertex: Int,
+    /**
+     * Sum of edge lengths on partial path.
+     */
     val pathLength: Double,
+    /**
+     * Total score of targets visited on partial path.
+     */
     val score: Double,
+    /**
+     * Reduced cost of partial path.
+     */
     val reducedCost: Double,
+    /**
+     * Number of targets visited on partial path.
+     */
     val numTargetsVisited: Int,
+    /**
+     * Numbers whose bits are used to track target visits using bitwise operations.
+     */
     private val visitedBits: LongArray
 ) : Comparable<State> {
     /**
@@ -25,11 +52,17 @@ class State private constructor(
      */
     var dominated = false
 
+    /**
+     * Readable string representation of object
+     */
     override fun toString(): String {
         val typeStr = if (isForward) "forward" else "backward"
         return "State($typeStr,v=$vertex,l=$pathLength,s=$score,r=$reducedCost)"
     }
 
+    /**
+     * Comparator based on reduced cost per unit length used to store states in a priority queue.
+     */
     override fun compareTo(other: State): Int {
         return when {
             bangForBuck <= other.bangForBuck - Parameters.eps -> -1
@@ -46,6 +79,16 @@ class State private constructor(
          */
     }
 
+    /**
+     * Extends a state further along the partial path and generates a new state.
+     *
+     * @param newVertex vertex to extend the state to
+     * @param newTarget target of [newVertex]
+     * @param isCritical if true, visit to [newTarget] will be tracked
+     * @param edgeLength length of edge from [vertex] to [newVertex]
+     * @param vertexScore score of [newTarget]
+     * @param reducedCostChange change in reduced cost due to the extension
+     */
     fun extend(
         newVertex: Int,
         newTarget: Int,
@@ -72,7 +115,11 @@ class State private constructor(
     }
 
     /**
-     * Assumes that this and other have the same incident vertex.
+     * Returns true if the current state dominates the [other] state and false otherwise.
+     *
+     * We assume that this and other have the same incident vertex.
+     *
+     * @param useVisitCondition if true, a stricter dominance check is enforced.
      */
     fun dominates(other: State, useVisitCondition: Boolean): Boolean {
         var strict = false
@@ -145,6 +192,9 @@ class State private constructor(
         return visitedBits[quotient] and (1L shl remainder) != 0L
     }
 
+    /**
+     * Returns true if any critical target is visited both by this and [other], false otherwise.
+     */
     fun hasCommonVisits(other: State): Boolean {
         for (i in 0 until visitedBits.size) {
             if (visitedBits[i] and other.visitedBits[i] != 0L) {
@@ -158,6 +208,13 @@ class State private constructor(
      * Companion object to provide a factory constructor for terminal states.
      */
     companion object {
+        /**
+         * Factory constructor to build forward (backward) states and source (sink) target.
+         *
+         * @param isForward true if state should be forward and false for backward.
+         * @param vertex vertex of the source/sink target.
+         * @param numTargets number of available targets (to determine sizes of some containers).
+         */
         fun buildTerminalState(
             isForward: Boolean,
             vertex: Int,
@@ -168,6 +225,9 @@ class State private constructor(
                 0, LongArray(size) { 0L })
         }
 
+        /**
+         * Helper function to mark visit to [target] in the given [visitedBits] numbers.
+         */
         private fun markVisited(visitedBits: LongArray, target: Int) {
             val quotient: Int = target / Parameters.numBits
             val remainder: Int = target % Parameters.numBits
