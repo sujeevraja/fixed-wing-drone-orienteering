@@ -99,8 +99,7 @@ application {
     applicationDefaultJvmArgs = listOf(
             "-Xms32m",
             "-Xmx22g",
-            "-Djava.library.path=$cplexLibPath",
-            "-Dkotlinx.coroutines.debug")
+            "-Djava.library.path=$cplexLibPath")
 }
 
 
