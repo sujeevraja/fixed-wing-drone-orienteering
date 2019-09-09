@@ -164,14 +164,14 @@ class PricingProblemSolver(
 
     private fun initializeIteration() {
         // Update critical vertices.
-        for (i in 0 until isCritical.size) {
+        for (i in isCritical.indices) {
             if (!isCritical[i]) {
                 isCritical[i] = isVisitedMultipleTimes[i]
             }
         }
 
         // Clear all states except source and destination.
-        for (i in 0 until forwardStates.size) {
+        for (i in forwardStates.indices) {
             if (i !in srcVertices) {
                 forwardStates[i].clear()
             }

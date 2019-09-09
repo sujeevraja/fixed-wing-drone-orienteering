@@ -135,7 +135,7 @@ class ColumnGenSolver(
             logger.debug("MIP objective: $mipObjective")
             val setCoverSolution = setCoverModel.getSolution()
             val selectedRoutes = mutableListOf<Route>()
-            for (i in 0 until setCoverSolution.size) {
+            for (i in setCoverSolution.indices) {
                 if (setCoverSolution[i] >= Parameters.eps) {
                     selectedRoutes.add(columns[i])
                 }
@@ -147,7 +147,7 @@ class ColumnGenSolver(
 
             // Store reduced costs of all targets using their coverage constraint duals and scores.
             val targetDuals = setCoverModel.getTargetDuals()
-            for (i in 0 until targetDuals.size) {
+            for (i in targetDuals.indices) {
                 targetReducedCosts[i] = targetDuals[i] - instance.targetScores[i]
             }
 
@@ -167,7 +167,7 @@ class ColumnGenSolver(
             logger.debug("LP objective: $lpObjective")
             lpSolution.clear()
             val setCoverSolution = setCoverModel.getSolution()
-            for (i in 0 until setCoverSolution.size) {
+            for (i in setCoverSolution.indices) {
                 if (setCoverSolution[i] >= Parameters.eps) {
                     lpSolution.add(Pair(columns[i], setCoverSolution[i]))
                 }

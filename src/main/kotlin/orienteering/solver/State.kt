@@ -196,7 +196,7 @@ class State private constructor(
      * Returns true if any critical target is visited both by this and [other], false otherwise.
      */
     fun hasCommonVisits(other: State): Boolean {
-        for (i in 0 until visitedBits.size) {
+        for (i in visitedBits.indices) {
             if (visitedBits[i] and other.visitedBits[i] != 0L) {
                 return true
             }
