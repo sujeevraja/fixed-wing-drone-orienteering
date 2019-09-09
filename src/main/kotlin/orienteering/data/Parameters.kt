@@ -55,6 +55,11 @@ object Parameters {
     var numSolverCoroutines: Int = 8
         private set
     /**
+     * Use I-DSSR if true and original DSSR (from Righini, Salani paper) if false
+     */
+    var useInterleavedSearch: Boolean = true
+        private set
+    /**
      * If the most negative reduced cost column of a DSSR search iteration is not elementary, but
      * the number of elementary routes with negative reduced cost collected during the search is
      * greater than or equal to this value, that DSSR iteration will be terminated.
@@ -77,6 +82,7 @@ object Parameters {
         numDiscretizations: Int,
         numReducedCostColumns: Int,
         timeLimitInSeconds: Int,
+        useInterleavedSearch: Boolean,
         useNumTargetsForDominance: Boolean,
         relaxDominanceRules: Boolean,
         numSolverCoroutines: Int
@@ -88,6 +94,7 @@ object Parameters {
         Parameters.numDiscretizations = numDiscretizations
         Parameters.numReducedCostColumns = numReducedCostColumns
         Parameters.timeLimitInSeconds = timeLimitInSeconds
+        Parameters.useInterleavedSearch = useInterleavedSearch
         Parameters.useNumTargetsForDominance = useNumTargetsForDominance
         Parameters.relaxDominanceRules = relaxDominanceRules
         Parameters.numSolverCoroutines = numSolverCoroutines

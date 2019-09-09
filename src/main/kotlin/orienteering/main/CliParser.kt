@@ -22,13 +22,19 @@ class CliParser : CliktCommand() {
     /**
      * name of the instance
      */
-    val instanceName: String by option("-n", help = "instance name")
+    val instanceName: String by option(
+        "-n",
+        help = "instance name"
+    )
         .default("p3.2.k.txt")
 
     /**
      * path to folder with instance file
      */
-    val instancePath: String by option("-p", help = "instance path")
+    val instancePath: String by option(
+        "-p",
+        help = "instance path"
+    )
         .default("./data/Set_33_234/")
         .validate {
             require(File(instancePath + instanceName).exists()) {
@@ -36,7 +42,10 @@ class CliParser : CliktCommand() {
             }
         }
 
-    val outputPath: String by option("-o", help="path to file with output KPIs")
+    val outputPath: String by option(
+        "-o",
+        help = "path to file with output KPIs"
+    )
         .default("./logs/results.yaml")
         .validate {
             require(it.length > 5 && it.endsWith(".yaml")) {
@@ -74,21 +83,49 @@ class CliParser : CliktCommand() {
             }
         }
 
-    val turnRadius: Double by option("-r", help = "turn radius of the vehicle")
+    val useInterleavedSearch: Int by option(
+        "-i",
+        help = "use inter-leaved search (1) or simple search (0)"
+    )
+        .int().default(1).validate {
+            require(it == 1 || it == 0) {
+                "should be 1 or 0"
+            }
+        }
+
+    val turnRadius: Double by option(
+        "-r",
+        help = "turn radius of the vehicle"
+    )
         .double().default(1.0).validate {
             require(it > 0.0) {
                 "turn radius has to be a positive number"
             }
         }
 
-    val numSolverCoroutines: Int by option("-s", help="number of concurrent solves")
+    val relaxDominanceRules: Int by option(
+        "-rd",
+        help = "relax dominance rules (1) or not (0)"
+    ).int().default(1).validate {
+        require(it == 1 || it == 0) {
+            "should be 1 or 0"
+        }
+    }
+
+    val numSolverCoroutines: Int by option(
+        "-s",
+        help = "number of concurrent solves"
+    )
         .int().default(8).validate {
             require(it > 0) {
                 "number should be a strictly positive integer"
             }
         }
 
-    val timeLimitInSeconds: Int by option("-t", help = "time limit in seconds")
+    val timeLimitInSeconds: Int by option(
+        "-t",
+        help = "time limit in seconds"
+    )
         .int().default(3600).validate {
             require(it > 0) {
                 "time limit should be a strictly positive integer"
@@ -104,15 +141,6 @@ class CliParser : CliktCommand() {
                 "should be 1 or 0"
             }
         }
-
-    val relaxDominanceRules: Int by option(
-        "-rd",
-        help= "relax dominance rules (1) or not (0)"
-    ).int().default(1).validate {
-        require(it == 1 || it == 0) {
-            "should be 1 or 0"
-        }
-    }
 
     override fun run() {
         logger.debug("reading command line arguments...")
