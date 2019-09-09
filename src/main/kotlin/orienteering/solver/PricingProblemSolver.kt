@@ -99,7 +99,7 @@ class PricingProblemSolver(
      *
      * State s1 dominates s2 iff critical targets visited by s1 is a subset of those visited by s2.
      */
-    private var useVisitCondition = false
+    private var useVisitCondition = !Parameters.relaxDominanceRules
 
     /**
      * Generates negative reduced cost elementaryRoutes.
@@ -107,12 +107,16 @@ class PricingProblemSolver(
     fun generateColumns() {
         // Store source states.
         for (srcVertex in srcVertices) {
-            forwardStates[srcVertex].add(State.buildTerminalState(true, srcVertex, numTargets))
+            forwardStates[srcVertex].add(
+                State.buildTerminalState(true, srcVertex, numTargets)
+            )
         }
 
         // Store destination state.
         for (dstVertex in dstVertices) {
-            backwardStates[dstVertex].add(State.buildTerminalState(false, dstVertex, numTargets))
+            backwardStates[dstVertex].add(
+                State.buildTerminalState(false, dstVertex, numTargets)
+            )
         }
 
         var searchIteration = 0
