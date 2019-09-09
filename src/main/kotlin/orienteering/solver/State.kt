@@ -145,7 +145,7 @@ class State private constructor(
                     strict = true
                 }
             }
-            for (i in 0 until visitedBits.size) {
+            for (i in visitedBits.indices) {
                 // Following condition is satisfied when "this" visits a critical target and
                 // "other" does not. So, "this" does not dominate the "other".
                 if (visitedBits[i] and other.visitedBits[i].inv() != 0L) {
