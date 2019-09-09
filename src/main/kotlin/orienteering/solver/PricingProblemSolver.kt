@@ -125,23 +125,9 @@ class PricingProblemSolver(
             logger.debug("----- START search iteration $searchIteration")
             initializeIteration()
 
-            // Extend source states.
-            for (srcVertex in srcVertices) {
-                for (state in forwardStates[srcVertex]) {
-                    state.extended = false
-                    extendForward(state)
-                }
-            }
+            val stopSearch = if (Parameters.useInterleavedSearch) interleavedSearch()
+            else simpleSearch()
 
-            // Extend destination state.
-            for (dstVertex in dstVertices) {
-                for (state in backwardStates[dstVertex]) {
-                    state.extended = false
-                    extendBackward(state)
-                }
-            }
-
-            val stopSearch = search()
             if (stopSearch) {
                 logger.debug("----- STOP column search as search() stopped")
                 break
@@ -195,9 +181,29 @@ class PricingProblemSolver(
         }
     }
 
-    private fun search(): Boolean {
+    private fun interleavedSearch(): Boolean {
         val criticalTargets = (0 until numTargets).filter { isCritical[it] }
         logger.debug("critical targets: $criticalTargets")
+
+        // Extend source states.
+        for (srcVertex in srcVertices) {
+            for (state in forwardStates[srcVertex]) {
+                state.extended = false
+                extendForward(state) {
+                    unprocessedForwardStates.add(it)
+                }
+            }
+        }
+
+        // Extend destination state.
+        for (dstVertex in dstVertices) {
+            for (state in backwardStates[dstVertex]) {
+                state.extended = false
+                extendBackward(state) {
+                    unprocessedBackwardStates.add(it)
+                }
+            }
+        }
 
         while (unprocessedForwardStates.isNotEmpty() || unprocessedBackwardStates.isNotEmpty()) {
             if (TimeChecker.timeLimitReached()) {
@@ -237,7 +243,9 @@ class PricingProblemSolver(
                 }
 
                 if (Graphs.vertexHasSuccessors(graph, vertex)) {
-                    extendForward(state)
+                    extendForward(state) {
+                        unprocessedForwardStates.add(it)
+                    }
                 }
             } else {
                 // Join with all forward states.
@@ -254,7 +262,54 @@ class PricingProblemSolver(
                 }
 
                 if (Graphs.vertexHasPredecessors(graph, vertex)) {
-                    extendBackward(state)
+                    extendBackward(state) {
+                        unprocessedBackwardStates.add(it)
+                    }
+                }
+            }
+        }
+
+        return false
+    }
+
+    private fun simpleSearch(): Boolean {
+        val candidateVertices = mutableSetOf<Int>()
+        candidateVertices.addAll(srcVertices)
+        candidateVertices.addAll(dstVertices)
+
+        while (candidateVertices.isNotEmpty()) {
+            val vertex = candidateVertices.first()
+
+            // Complete all forward extensions.
+            for (state in forwardStates[vertex]) {
+                extendForward(state) {
+                    candidateVertices.add(it.vertex)
+                }
+            }
+
+            // Complete all backward extensions.
+            for (state in backwardStates[vertex]) {
+                extendBackward(state) {
+                    candidateVertices.add(it.vertex)
+                }
+            }
+
+            candidateVertices.remove(vertex)
+        }
+
+        // Join forward and backward paths.
+        for (i in 0 until numVertices) {
+            for (j in 0 until numVertices) {
+                if (j == i || !graph.containsEdge(i, j)) {
+                    continue
+                }
+                for (fs in forwardStates[i]) {
+                    for (bs in backwardStates[j]) {
+                        val shouldExit = save(fs, bs)
+                        if (shouldExit) {
+                            return true
+                        }
+                    }
                 }
             }
         }
@@ -300,7 +355,7 @@ class PricingProblemSolver(
         return false
     }
 
-    private fun extendForward(state: State) {
+    private fun extendForward(state: State, onExtend: (State) -> Unit) {
         if (state.extended) {
             return
         }
@@ -319,11 +374,11 @@ class PricingProblemSolver(
             }
             val edgeLength = graph.getEdgeWeight(vertex, nextVertex)
             val extension = extendIfFeasible(state, nextVertex, edgeLength) ?: continue
-            updateNonDominatedStates(forwardStates[nextVertex], extension)
+            updateNonDominatedStates(forwardStates[nextVertex], extension, onExtend)
         }
     }
 
-    private fun extendBackward(state: State) {
+    private fun extendBackward(state: State, onExtend: (State) -> Unit) {
         if (state.extended) {
             return
         }
@@ -342,7 +397,7 @@ class PricingProblemSolver(
             }
             val edgeLength = graph.getEdgeWeight(prevVertex, vertex)
             val extension = extendIfFeasible(state, prevVertex, edgeLength) ?: continue
-            updateNonDominatedStates(backwardStates[prevVertex], extension)
+            updateNonDominatedStates(backwardStates[prevVertex], extension, onExtend)
         }
     }
 
@@ -510,7 +565,8 @@ class PricingProblemSolver(
      */
     private fun updateNonDominatedStates(
         existingStates: MutableList<State>,
-        newState: State
+        newState: State,
+        onExtend: (State) -> Unit
     ) {
         var i = 0
         while (i < existingStates.size) {
@@ -527,11 +583,7 @@ class PricingProblemSolver(
             }
         }
         existingStates.add(newState)
-        if (newState.isForward) {
-            unprocessedForwardStates.add(newState)
-        } else {
-            unprocessedBackwardStates.add(newState)
-        }
+        onExtend(newState)
     }
 
     /**

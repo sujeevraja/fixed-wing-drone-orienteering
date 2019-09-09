@@ -125,7 +125,7 @@ class Controller {
     private fun runBranchAndPrice() {
         logger.info("algorithm: branch and price")
         val context = (if (Parameters.numSolverCoroutines == 1)
-            newSingleThreadContext("OneThread_") else Dispatchers.Default)
+            newSingleThreadContext("OneThread") else Dispatchers.Default)
         val bps = BranchAndPriceSolver(instance, context)
         bps.solve()
         val bpSolution = bps.finalSolution
