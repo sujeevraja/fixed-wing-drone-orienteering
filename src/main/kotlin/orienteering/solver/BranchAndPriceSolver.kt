@@ -44,48 +44,49 @@ class BranchAndPriceSolver(private val instance: Instance, context: CoroutineCon
     ) {
         val numSolvers = Parameters.numSolverCoroutines
         val solution = CompletableDeferred<BranchAndPriceSolution>()
-
-        // Prepare a set of coroutines to consume nodes from the unsolvedNodes channel, solve
-        // them and send back the solved nodes to the solvedNodes channel. Each coroutine is
-        // created by the "launch" command and remains suspended at the for loop line, i.e.
-        // waiting for the iterator of the unsolvedNodes channel to release a node.
-        repeat(numSolvers) {
-            launch {
-                // This CPLEX object will be created just once and be re-used for all nodes
-                // released by the iterator in the loop below. This is because the scope
-                // (together with the CPLEX object and the solveNode() function call will
-                // persist as long as the for loop is suspended. We will go out of scope only
-                // when the unsolvedNodes channel is closed.
-                val cplex = IloCplex()
-                for (node in unsolvedNodes) {
-                    solveNode(cplex, node)
+        val solvingJob = launch {
+            // Prepare a set of coroutines to consume nodes from the unsolvedNodes channel, solve
+            // them and send back the solved nodes to the solvedNodes channel. Each coroutine is
+            // created by the "launch" command and remains suspended at the for loop line, i.e.
+            // waiting for the iterator of the unsolvedNodes channel to release a node.
+            repeat(numSolvers) {
+                launch {
+                    // This CPLEX object will be created just once and be re-used for all nodes
+                    // released by the iterator in the loop below. This is because the scope
+                    // (together with the CPLEX object and the solveNode() function call will
+                    // persist as long as the for loop is suspended. We will go out of scope only
+                    // when the unsolvedNodes channel is closed.
+                    val cplex = IloCplex()
+                    for (node in unsolvedNodes) {
+                        solveNode(cplex, node)
+                    }
                 }
             }
-        }
 
-        // Solve the root node by sending it to the unsolvedNodes channel and consuming it
-        // immediately from the solvedNodes channel to collect root nodes bounds and an initial
-        // solution.
-        val solvedRootNode = solveRootNode()
+            // Solve the root node by sending it to the unsolvedNodes channel and consuming it
+            // immediately from the solvedNodes channel to collect root nodes bounds and an initial
+            // solution.
+            val solvedRootNode = solveRootNode()
 
-        // Prepare to send the root node back into the solvedNodes channel so that the node
-        // processor can branch on it if needed.
-        launch {
-            logger.info("sending solvedRootNode $solvedRootNode back into solvedNodes")
-            solvedNodes.send(solvedRootNode)
-        }
+            // Prepare to send the root node back into the solvedNodes channel so that the node
+            // processor can branch on it if needed.
+            launch {
+                logger.info("sending solvedRootNode $solvedRootNode back into solvedNodes")
+                solvedNodes.send(solvedRootNode)
+            }
 
-        // Prepare a coroutine to consume nodes from the solvedNodes channel and use their
-        // LP/MIP objective and solution values to update global bounds, prune them or branch
-        // on them. If branched, new unsolved nodes will be stored in the node processor's
-        // open node queue and released to the unsolvedNodes channel whenever solvers are
-        // available.
-        launch {
-            val nodeProcessor =
-                NodeProcessor(solvedRootNode, instance, numSolvers, solution)
-            for (node in solvedNodes) {
-                logger.info("received $node in solvedNodes channel for nodeProcessor")
-                nodeProcessor.processSolvedNode(node, unsolvedNodes)
+            // Prepare a coroutine to consume nodes from the solvedNodes channel and use their
+            // LP/MIP objective and solution values to update global bounds, prune them or branch
+            // on them. If branched, new unsolved nodes will be stored in the node processor's
+            // open node queue and released to the unsolvedNodes channel whenever solvers are
+            // available.
+            launch {
+                val nodeProcessor =
+                    NodeProcessor(solvedRootNode, instance, numSolvers, solution)
+                for (node in solvedNodes) {
+                    logger.info("received $node in solvedNodes channel for nodeProcessor")
+                    nodeProcessor.processSolvedNode(node, unsolvedNodes)
+                }
             }
         }
 
@@ -100,8 +101,10 @@ class BranchAndPriceSolver(private val instance: Instance, context: CoroutineCon
         // As explained above, the only termination condition now is that the "solution"
         // completes. We simply wait for it here.
         finalSolution = solution.await()
-        unsolvedNodes.close()
-        solvedNodes.close()
+
+        // Once the solution is available, no further processing is needed. So, the solving
+        // coroutine can be cancelled.
+        solvingJob.cancelAndJoin()
     }
 
     private suspend fun solveRootNode(): Node {
