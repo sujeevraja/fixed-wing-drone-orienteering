@@ -154,7 +154,7 @@ class NodeProcessor(
         if (numNodesSolved == 0) {
             averageConcurrentSolves = 1.0
         } else {
-            averageConcurrentSolves /= numNodesSolved
+            averageConcurrentSolves /= (numNodesSolved + 1)
         }
         logger.info("number of nodes solved: $numNodesSolved")
         logger.info("average concurrent solves: $averageConcurrentSolves")

@@ -8,6 +8,7 @@ import orienteering.data.Instance
 import orienteering.data.Parameters
 import orienteering.main.OrienteeringException
 import orienteering.main.preProcess
+import kotlin.coroutines.CoroutineContext
 
 /**
  * BranchAndPriceSolver implements the Coroutine scope using the CoroutineScope() factory so that
@@ -17,8 +18,8 @@ import orienteering.main.preProcess
  * 2. coroutines can be directly launched from functions instead of creating new contexts using
  *    "withContext(Dispatchers.Default)" every time a coroutine needs to be launched.
  */
-class BranchAndPriceSolver(private val instance: Instance) :
-    CoroutineScope by CoroutineScope(Dispatchers.Default) {
+class BranchAndPriceSolver(private val instance: Instance, context: CoroutineContext) :
+    CoroutineScope by CoroutineScope(context) {
     var rootLowerBound: Double = -Double.MAX_VALUE
         private set
 

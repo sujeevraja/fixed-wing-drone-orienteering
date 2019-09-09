@@ -1,6 +1,9 @@
 package orienteering.main
 
 import ilog.cplex.IloCplex
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ObsoleteCoroutinesApi
+import kotlinx.coroutines.newSingleThreadContext
 import mu.KLogging
 import org.yaml.snakeyaml.DumperOptions
 import org.yaml.snakeyaml.Yaml
@@ -84,6 +87,7 @@ class Controller {
     /**
      * Function to start the solver
      */
+    @ObsoleteCoroutinesApi
     fun run() {
         TimeChecker.startTracking()
         val timeElapsedMillis = measureTimeMillis {
@@ -116,9 +120,12 @@ class Controller {
     /**
      * Function to run branch-and-price algorithm
      */
+    @ObsoleteCoroutinesApi
     private fun runBranchAndPrice() {
         logger.info("algorithm: branch and price")
-        val bps = BranchAndPriceSolver(instance)
+        val context = (if (Parameters.numSolverCoroutines == 1)
+            newSingleThreadContext("OneThread_") else Dispatchers.Default)
+        val bps = BranchAndPriceSolver(instance, context)
         bps.solve()
         val bpSolution = bps.finalSolution
 
