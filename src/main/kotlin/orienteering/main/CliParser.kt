@@ -105,6 +105,15 @@ class CliParser : CliktCommand() {
             }
         }
 
+    val relaxDominanceRules: Int by option(
+        "-rd",
+        help= "relax dominance rules (1) or not (0)"
+    ).int().default(1).validate {
+        require(it == 1 || it == 0) {
+            "should be 1 or 0"
+        }
+    }
+
     override fun run() {
         logger.debug("reading command line arguments...")
     }

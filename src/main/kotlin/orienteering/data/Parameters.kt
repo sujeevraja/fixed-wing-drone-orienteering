@@ -45,16 +45,21 @@ object Parameters {
     var useNumTargetsForDominance = false
         private set
     /**
-     * If the most negative reduced cost column of a DSSR search iteration is not elementary, but
-     * the number of elementary routes with negative reduced cost collected during the search is
-     * greater than or equal to this value, that DSSR iteration will be terminated.
+     * If true, dominance rules will be relaxed in early iterations of DSSR.
      */
-    const val numElementaryRoutesForExit = 10
+    var relaxDominanceRules = true
+        private set
     /**
      * Number of solver coroutines to use in branch-and-price (1 means sequential).
      */
     var numSolverCoroutines: Int = 8
         private set
+    /**
+     * If the most negative reduced cost column of a DSSR search iteration is not elementary, but
+     * the number of elementary routes with negative reduced cost collected during the search is
+     * greater than or equal to this value, that DSSR iteration will be terminated.
+     */
+    const val numElementaryRoutesForExit = 10
     /**
      * Tolerance used to compare double values.
      */
@@ -73,6 +78,7 @@ object Parameters {
         numReducedCostColumns: Int,
         timeLimitInSeconds: Int,
         useNumTargetsForDominance: Boolean,
+        relaxDominanceRules: Boolean,
         numSolverCoroutines: Int
     ) {
         Parameters.instanceName = instanceName
@@ -83,6 +89,7 @@ object Parameters {
         Parameters.numReducedCostColumns = numReducedCostColumns
         Parameters.timeLimitInSeconds = timeLimitInSeconds
         Parameters.useNumTargetsForDominance = useNumTargetsForDominance
+        Parameters.relaxDominanceRules = relaxDominanceRules
         Parameters.numSolverCoroutines = numSolverCoroutines
     }
 }
