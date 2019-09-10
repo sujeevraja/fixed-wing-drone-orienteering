@@ -255,11 +255,17 @@ class PricingProblemSolver(
                         }
                     }
                 }
+                if (TimeChecker.timeLimitReached()) {
+                    return true
+                }
 
                 if (Graphs.vertexHasSuccessors(graph, vertex)) {
                     extendForward(state) {
                         unprocessedForwardStates.add(it)
                     }
+                }
+                if (TimeChecker.timeLimitReached()) {
+                    return true
                 }
             } else {
                 // Join with all forward states.
@@ -274,11 +280,17 @@ class PricingProblemSolver(
                         }
                     }
                 }
+                if (TimeChecker.timeLimitReached()) {
+                    return true
+                }
 
                 if (Graphs.vertexHasPredecessors(graph, vertex)) {
                     extendBackward(state) {
                         unprocessedBackwardStates.add(it)
                     }
+                }
+                if (TimeChecker.timeLimitReached()) {
+                    return true
                 }
             }
         }
