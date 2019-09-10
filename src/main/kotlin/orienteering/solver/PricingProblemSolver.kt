@@ -137,7 +137,9 @@ class PricingProblemSolver(
                 break
             }
 
-            if (elementaryRoutes.size >= Parameters.numElementaryRoutesForExit) {
+            if (Parameters.useInterleavedSearch &&
+                elementaryRoutes.size >= Parameters.numElementaryRoutesForExit
+            ) {
                 logger.debug("----- STOP column search due to elementary route existence")
                 break
             }
@@ -168,8 +170,7 @@ class PricingProblemSolver(
         for (i in forwardStates.indices) {
             if (i !in srcVertices) {
                 forwardStates[i].clear()
-            }
-            else {
+            } else {
                 for (state in forwardStates[i]) {
                     state.extended = false
                     state.dominated = false
@@ -203,7 +204,6 @@ class PricingProblemSolver(
         // Extend source states.
         for (srcVertex in srcVertices) {
             for (state in forwardStates[srcVertex]) {
-                state.extended = false
                 extendForward(state) {
                     unprocessedForwardStates.add(it)
                 }
@@ -213,7 +213,6 @@ class PricingProblemSolver(
         // Extend destination state.
         for (dstVertex in dstVertices) {
             for (state in backwardStates[dstVertex]) {
-                state.extended = false
                 extendBackward(state) {
                     unprocessedBackwardStates.add(it)
                 }
