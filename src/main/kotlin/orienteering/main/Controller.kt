@@ -134,6 +134,7 @@ class Controller {
 
         results["root_lower_bound"] = bps.rootLowerBound
         results["root_upper_bound"] = bps.rootUpperBound
+        results["root_lp_optimal"] = bps.rootLpOptimal
         results["root_gap_percentage"] =
             computePercentGap(bps.rootLowerBound, bps.rootUpperBound)
 

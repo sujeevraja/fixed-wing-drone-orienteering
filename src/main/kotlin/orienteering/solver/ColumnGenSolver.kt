@@ -52,6 +52,11 @@ class ColumnGenSolver(
     var lpInfeasible = true
         private set
     /**
+     * Will be set to true if optimality is proved.
+     */
+    var lpOptimal = false
+        private set
+    /**
      * Final MIP objective value
      */
     var mipObjective = 0.0
@@ -82,6 +87,7 @@ class ColumnGenSolver(
             val newColumns = generateColumns()
             if (newColumns.isEmpty()) {
                 logger.debug("----- TERMINATE due to optimality")
+                lpOptimal = true
                 break
             }
             columns.addAll(newColumns)

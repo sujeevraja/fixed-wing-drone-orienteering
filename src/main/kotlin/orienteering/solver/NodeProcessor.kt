@@ -67,7 +67,7 @@ class NodeProcessor(
     }
 
     private fun prune(node: Node): Boolean {
-        if (!node.feasible) {
+        if (!node.lpFeasible) {
             logger.info("$node pruned by infeasibility after solving")
             return true
         }
