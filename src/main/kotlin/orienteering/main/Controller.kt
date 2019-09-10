@@ -133,13 +133,15 @@ class Controller {
         val bpSolution = bps.finalSolution
 
         results["root_lower_bound"] = bps.rootLowerBound
-        results["root_upper_bound"] = bps.rootUpperBound
+        results["root_upper_bound"] =
+            if (bps.rootUpperBound == Double.MAX_VALUE) "infinity" else bps.rootUpperBound
         results["root_lp_optimal"] = bps.rootLpOptimal
         results["root_gap_percentage"] =
             computePercentGap(bps.rootLowerBound, bps.rootUpperBound)
 
         results["final_lower_bound"] = bpSolution.lowerBound
-        results["final_upper_bound"] = bpSolution.upperBound
+        results["final_upper_bound"] =
+            if (bpSolution.upperBound == Double.MAX_VALUE) "infinity" else bpSolution.upperBound
         results["final_gap_percentage"] =
             computePercentGap(bpSolution.lowerBound, bpSolution.upperBound)
 
