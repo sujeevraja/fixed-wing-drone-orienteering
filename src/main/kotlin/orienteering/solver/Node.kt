@@ -76,7 +76,7 @@ class Node private constructor(
      * String representation.
      */
     override fun toString(): String {
-        return "Node($index, bound=$lpObjective, feasible=$lpFeasible)"
+        return "Node($index, lp=$lpObjective, mip=$mipObjective, feasible=$lpFeasible)"
     }
 
     /**
@@ -288,6 +288,9 @@ class Node private constructor(
     ): Node {
         val reducedGraph = graph.getCopy()
         for (vertex in instance.getVertices(fromTarget)) {
+            if (!graph.containsVertex(vertex)) {
+                continue
+            }
             val edgesToRemove = mutableListOf<DefaultWeightedEdge>()
             for (nextVertex in Graphs.successorListOf(graph, vertex)) {
                 if (instance.whichTarget(nextVertex) == toTarget) {
