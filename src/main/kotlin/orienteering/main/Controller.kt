@@ -49,12 +49,13 @@ class Controller {
 
         results["instance_name"] = parser.instanceName
         results["instance_path"] = parser.instancePath
-        results["algorithm"] = if (parser.algorithm == 1) "BC" else "BP"
+        results["algorithm"] = if (parser.algorithm == 1) "branch_and_cut" else "branch_and_price"
         results["time_limit_in_seconds"] = parser.timeLimitInSeconds
         results["turn_radius"] = parser.turnRadius
         results["number_of_discretizations"] = parser.numDiscretizations
         results["number_of_reduced_cost_columns"] = parser.numReducedCostColumns
         results["number_of_solver_coroutines"] = parser.numSolverCoroutines
+        results["search"] = if (parser.useInterleavedSearch == 1) "interleaved" else "simple"
         logger.debug("finished parsing command line arguments and populating parameters")
     }
 
@@ -68,6 +69,7 @@ class Controller {
             Parameters.numDiscretizations,
             Parameters.turnRadius
         ).getInstance()
+        results["budget"] = instance.budget
     }
 
     /**
