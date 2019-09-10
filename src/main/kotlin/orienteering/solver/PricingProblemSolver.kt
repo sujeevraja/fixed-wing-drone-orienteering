@@ -169,8 +169,19 @@ class PricingProblemSolver(
             if (i !in srcVertices) {
                 forwardStates[i].clear()
             }
+            else {
+                for (state in forwardStates[i]) {
+                    state.extended = false
+                    state.dominated = false
+                }
+            }
             if (i !in dstVertices) {
                 backwardStates[i].clear()
+            } else {
+                for (state in backwardStates[i]) {
+                    state.extended = false
+                    state.dominated = false
+                }
             }
         }
 
