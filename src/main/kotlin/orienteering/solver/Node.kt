@@ -155,6 +155,8 @@ class Node private constructor(
         feasible = !cgSolver.lpInfeasible
         if (feasible) {
             if (lpObjective <= cgSolver.lpObjective - Parameters.eps) {
+                logger.error("best LP objective: $lpObjective")
+                logger.error("node LP objective: ${cgSolver.lpObjective}")
                 throw OrienteeringException("parent node LP objective smaller than child's")
             }
             lpObjective = cgSolver.lpObjective

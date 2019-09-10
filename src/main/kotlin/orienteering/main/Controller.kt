@@ -41,6 +41,7 @@ class Controller {
             numDiscretizations = parser.numDiscretizations,
             numReducedCostColumns = parser.numReducedCostColumns,
             timeLimitInSeconds = parser.timeLimitInSeconds,
+            useInterleavedSearch = parser.useInterleavedSearch == 1,
             useNumTargetsForDominance = parser.useNumTargetsForDominance == 1,
             relaxDominanceRules = parser.relaxDominanceRules == 1,
             numSolverCoroutines = parser.numSolverCoroutines
@@ -124,7 +125,7 @@ class Controller {
     private fun runBranchAndPrice() {
         logger.info("algorithm: branch and price")
         val context = (if (Parameters.numSolverCoroutines == 1)
-            newSingleThreadContext("OneThread_") else Dispatchers.Default)
+            newSingleThreadContext("OneThread") else Dispatchers.Default)
         val bps = BranchAndPriceSolver(instance, context)
         bps.solve()
         val bpSolution = bps.finalSolution
