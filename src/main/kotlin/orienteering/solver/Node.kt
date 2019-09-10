@@ -80,61 +80,6 @@ class Node private constructor(
     }
 
     /**
-     * Checks whether source, destination and must-visit targets are connected to the node's graph.
-     * This can be useful to avoid solving LPs if the node's data fails these feasibility checks.
-     *
-     * @param instance class that provides vertices of each target.
-     *
-     * @return true if feasibility checks are satisfied, false otherwise.
-     */
-    fun isFeasible(instance: Instance): Boolean {
-        // Check if source target has at least 1 outgoing edge.
-        val sourceEdgeExists = instance.getVertices(instance.sourceTarget).any {
-            graph.containsVertex(it) && Graphs.vertexHasSuccessors(graph, it)
-        }
-        if (!sourceEdgeExists) {
-            return false
-        }
-
-        // Check if destination target has at least 1 incoming edge.
-        val destinationEdgeExists = instance.getVertices(instance.destinationTarget).any {
-            graph.containsVertex(it) && Graphs.vertexHasPredecessors(graph, it)
-        }
-        if (!destinationEdgeExists) {
-            return false
-        }
-
-        // Check if all must-visit targets are connected.
-        for (target in mustVisitTargets) {
-            if (instance.getVertices(target).none { isVertexConnected(it) }) {
-                logger.debug("graph does not contain a must-visit target")
-                return false
-            }
-        }
-
-        // Check if all must-visit edges are present in graph.
-        val requiredEdgesExist = mustVisitTargetEdges.all {
-            graph.containsEdge(it.first, it.second)
-        }
-
-        if (!requiredEdgesExist) {
-            logger.debug("graph does not contain a must-visit edge")
-        }
-        return requiredEdgesExist
-    }
-
-    /**
-     * Checks whether [vertex] has at least one incoming edge and one outgoing edge.
-     *
-     * @return true if specified edges exist, false otherwise.
-     */
-    private fun isVertexConnected(vertex: Int): Boolean {
-        return (graph.containsVertex(vertex) &&
-                Graphs.vertexHasPredecessors(graph, vertex) &&
-                Graphs.vertexHasSuccessors(graph, vertex))
-    }
-
-    /**
      * Solves LP to optimality and MIP using the LP columns to get a feasible solution.
      *
      * @param instance provides problem information

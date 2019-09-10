@@ -141,10 +141,6 @@ class BranchAndPriceSolver(private val instance: Instance, context: CoroutineCon
             instance.getVertices(instance.sourceTarget),
             instance.getVertices(instance.destinationTarget)
         )
-        if (!node.isFeasible(instance)) {
-            logger.info("$node infeasible before solving")
-            return
-        }
         node.solve(instance, cplex)
         logger.info("$node sending to solvedNodes channel after solving")
         solvedNodes.send(node)
