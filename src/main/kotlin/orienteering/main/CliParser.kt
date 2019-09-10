@@ -55,7 +55,7 @@ class CliParser : CliktCommand() {
 
     val algorithm: Int by option(
         "-a",
-        help = "1 for branch-and-cut, 2 for branch-and-price"
+        help = "use branch-and-cut (1) or branch-and-price (2)"
     )
         .int().default(2).validate {
             require(it in 1 until 3) {
@@ -87,7 +87,7 @@ class CliParser : CliktCommand() {
         "-i",
         help = "use inter-leaved search (1) or simple search (0)"
     )
-        .int().default(1).validate {
+        .int().default(0).validate {
             require(it == 1 || it == 0) {
                 "should be 1 or 0"
             }

@@ -26,6 +26,9 @@ class BranchAndPriceSolver(private val instance: Instance, context: CoroutineCon
     var rootUpperBound: Double = Double.MAX_VALUE
         private set
 
+    var rootLpOptimal: Boolean = false
+        private set
+
     lateinit var finalSolution: BranchAndPriceSolution
         private set
 
@@ -113,6 +116,7 @@ class BranchAndPriceSolver(private val instance: Instance, context: CoroutineCon
         logger.info("received $rootNode in solveRootNode")
         rootUpperBound = rootNode.lpObjective
         rootLowerBound = rootNode.mipObjective
+        rootLpOptimal = rootNode.lpOptimal
         if (rootLowerBound >= rootUpperBound + Parameters.eps) {
             throw OrienteeringException("lower bound overshoots upper bound")
         }
@@ -137,10 +141,6 @@ class BranchAndPriceSolver(private val instance: Instance, context: CoroutineCon
             instance.getVertices(instance.sourceTarget),
             instance.getVertices(instance.destinationTarget)
         )
-        if (!node.isFeasible(instance)) {
-            logger.info("$node infeasible before solving")
-            return
-        }
         node.solve(instance, cplex)
         logger.info("$node sending to solvedNodes channel after solving")
         solvedNodes.send(node)

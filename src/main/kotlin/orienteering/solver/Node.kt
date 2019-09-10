@@ -32,43 +32,41 @@ class Node private constructor(
      * Unique index of node.
      */
     val index = getNodeIndex()
-
     /**
      * True if LP solution is feasible, i.e. visits all targets in [mustVisitTargets] and uses
      * all direct target connections specified in [mustVisitTargetEdges].
      */
-    var feasible = true
+    var lpFeasible = true
         private set
-
     /**
-     * LP objective value.
+     * True if LP optimality is proved by lack of negative reduced cost columns.
      */
-    var lpObjective = upperBound
+    var lpOptimal = false
         private set
-
-    /**
-     * Routes in LP solution with non-zero values and corresponding solution values.
-     */
-    private var lpSolution = listOf<Pair<Route, Double>>()
-
-    /**
-     * MIP objective value.
-     */
-    var mipObjective = -Double.MAX_VALUE
-        private set
-
-    /**
-     * Routes selected in MIP solution (i.e. solution value of 1.0).
-     */
-    var mipSolution = listOf<Route>()
-        private set
-
     /**
      * True if all decision variables have binary values in LP solution, false otherwise.
      */
     var lpIntegral = false
         private set
-
+    /**
+     * LP objective value.
+     */
+    var lpObjective = upperBound
+        private set
+    /**
+     * Routes in LP solution with non-zero values and corresponding solution values.
+     */
+    private var lpSolution = listOf<Pair<Route, Double>>()
+    /**
+     * MIP objective value.
+     */
+    var mipObjective = -Double.MAX_VALUE
+        private set
+    /**
+     * Routes selected in MIP solution (i.e. solution value of 1.0).
+     */
+    var mipSolution = listOf<Route>()
+        private set
     /**
      * Holds reduced costs for each target after LP is solved.
      */
@@ -78,62 +76,7 @@ class Node private constructor(
      * String representation.
      */
     override fun toString(): String {
-        return "Node($index, bound=$lpObjective, feasible=$feasible)"
-    }
-
-    /**
-     * Checks whether source, destination and must-visit targets are connected to the node's graph.
-     * This can be useful to avoid solving LPs if the node's data fails these feasibility checks.
-     *
-     * @param instance class that provides vertices of each target.
-     *
-     * @return true if feasibility checks are satisfied, false otherwise.
-     */
-    fun isFeasible(instance: Instance): Boolean {
-        // Check if source target has at least 1 outgoing edge.
-        val sourceEdgeExists = instance.getVertices(instance.sourceTarget).any {
-            graph.containsVertex(it) && Graphs.vertexHasSuccessors(graph, it)
-        }
-        if (!sourceEdgeExists) {
-            return false
-        }
-
-        // Check if destination target has at least 1 incoming edge.
-        val destinationEdgeExists = instance.getVertices(instance.destinationTarget).any {
-            graph.containsVertex(it) && Graphs.vertexHasPredecessors(graph, it)
-        }
-        if (!destinationEdgeExists) {
-            return false
-        }
-
-        // Check if all must-visit targets are connected.
-        for (target in mustVisitTargets) {
-            if (instance.getVertices(target).none { isVertexConnected(it) }) {
-                logger.debug("graph does not contain a must-visit target")
-                return false
-            }
-        }
-
-        // Check if all must-visit edges are present in graph.
-        val requiredEdgesExist = mustVisitTargetEdges.all {
-            graph.containsEdge(it.first, it.second)
-        }
-
-        if (!requiredEdgesExist) {
-            logger.debug("graph does not contain a must-visit edge")
-        }
-        return requiredEdgesExist
-    }
-
-    /**
-     * Checks whether [vertex] has at least one incoming edge and one outgoing edge.
-     *
-     * @return true if specified edges exist, false otherwise.
-     */
-    private fun isVertexConnected(vertex: Int): Boolean {
-        return (graph.containsVertex(vertex) &&
-                Graphs.vertexHasPredecessors(graph, vertex) &&
-                Graphs.vertexHasSuccessors(graph, vertex))
+        return "Node($index, lp=$lpObjective, mip=$mipObjective, feasible=$lpFeasible)"
     }
 
     /**
@@ -152,22 +95,26 @@ class Node private constructor(
             mustVisitTargetEdges
         )
         cgSolver.solve()
-        feasible = !cgSolver.lpInfeasible
-        if (feasible) {
-            if (lpObjective <= cgSolver.lpObjective - Parameters.eps) {
-                logger.error("best LP objective: $lpObjective")
-                logger.error("node LP objective: ${cgSolver.lpObjective}")
-                throw OrienteeringException("parent node LP objective smaller than child's")
-            }
+        lpFeasible = !cgSolver.lpInfeasible
+        if (!lpFeasible) {
+            return
+        }
+        lpOptimal = cgSolver.lpOptimal
+        if (lpObjective <= cgSolver.lpObjective - Parameters.eps) {
+            logger.error("best LP objective: $lpObjective")
+            logger.error("node LP objective: ${cgSolver.lpObjective}")
+            throw OrienteeringException("parent node LP objective smaller than child's")
+        }
+        if (cgSolver.lpOptimal) {
             lpObjective = cgSolver.lpObjective
             lpSolution = cgSolver.lpSolution
-            mipObjective = cgSolver.mipObjective
-            mipSolution = cgSolver.mipSolution
-            targetReducedCosts = cgSolver.targetReducedCosts
             lpIntegral = lpSolution.all {
                 it.second >= 1.0 - Parameters.eps
             }
         }
+        mipObjective = cgSolver.mipObjective
+        mipSolution = cgSolver.mipSolution
+        targetReducedCosts = cgSolver.targetReducedCosts
     }
 
     /**
@@ -341,6 +288,9 @@ class Node private constructor(
     ): Node {
         val reducedGraph = graph.getCopy()
         for (vertex in instance.getVertices(fromTarget)) {
+            if (!graph.containsVertex(vertex)) {
+                continue
+            }
             val edgesToRemove = mutableListOf<DefaultWeightedEdge>()
             for (nextVertex in Graphs.successorListOf(graph, vertex)) {
                 if (instance.whichTarget(nextVertex) == toTarget) {
