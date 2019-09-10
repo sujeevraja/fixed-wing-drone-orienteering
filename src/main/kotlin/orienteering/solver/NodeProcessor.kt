@@ -29,16 +29,29 @@ class NodeProcessor(
 
     suspend fun processSolvedNode(node: Node, unsolvedNodes: SendChannel<Node>) {
         solvingNodes.remove(node.index)
-
         logger.info("received solved node $node")
         logger.info("numNodes ${openNodes.size}")
         logger.info("numSolving: $numSolving")
+
+        // Update lower bound using MIP solution of node if possible.
+        if (node.lpFeasible && lowerBound <= node.mipObjective - Parameters.eps) {
+            lowerBound = node.mipObjective
+            bestFeasibleSolution = node.mipSolution
+        }
+
+        if (TimeChecker.timeLimitReached()) {
+            logger.info("terminating by time limit")
+            deferredSolution.complete(buildFinalSolution())
+            logger.info("final solution sent after time-based termination")
+            return
+        }
 
         if (!prune(node)) {
             branch(node)
         }
         updateUpperBound()
         releaseNodesForSolving(unsolvedNodes)
+
         if (shouldStop()) {
             logger.info("should terminate, building solution")
             deferredSolution.complete(buildFinalSolution())
@@ -76,18 +89,10 @@ class NodeProcessor(
             return true
         }
         if (node.lpIntegral) {
-            updateLowerBound(node)
-            logger.debug("$node pruned by optimality (LP integral)")
+            logger.info("$node pruned by optimality (LP integral)")
             return true
         }
         return false
-    }
-
-    private fun updateLowerBound(node: Node) {
-        if (lowerBound <= node.mipObjective - Parameters.eps) {
-            lowerBound = node.mipObjective
-            bestFeasibleSolution = node.mipSolution
-        }
     }
 
     private fun updateUpperBound() {
@@ -125,7 +130,6 @@ class NodeProcessor(
 
     private fun branch(node: Node) {
         logger.info("branching on node $node")
-        updateLowerBound(node)
         node.branch(instance).map {
             logger.info("child $it")
             openNodes.add(it)
