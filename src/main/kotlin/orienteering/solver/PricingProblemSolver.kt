@@ -98,8 +98,12 @@ class PricingProblemSolver(
      * If true, state dominance check uses the following additional condition:
      *
      * State s1 dominates s2 iff critical targets visited by s1 is a subset of those visited by s2.
+     *
+     * For interleaved search, this condition is controlled by the "relaxDominanceRules" parameter.
+     * For simple search, this parameter is always true.
      */
-    private var useVisitCondition = !Parameters.relaxDominanceRules
+    private var useVisitCondition = (!Parameters.relaxDominanceRules ||
+            !Parameters.useInterleavedSearch)
 
     /**
      * Generates negative reduced cost elementaryRoutes.
@@ -282,15 +286,19 @@ class PricingProblemSolver(
 
             // Complete all forward extensions.
             for (state in forwardStates[vertex]) {
-                extendForward(state) {
-                    candidateVertices.add(it.vertex)
+                if (!state.dominated) {
+                    extendForward(state) {
+                        candidateVertices.add(it.vertex)
+                    }
                 }
             }
 
             // Complete all backward extensions.
             for (state in backwardStates[vertex]) {
-                extendBackward(state) {
-                    candidateVertices.add(it.vertex)
+                if (!state.dominated) {
+                    extendBackward(state) {
+                        candidateVertices.add(it.vertex)
+                    }
                 }
             }
 
