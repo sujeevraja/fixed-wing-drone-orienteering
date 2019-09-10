@@ -493,7 +493,7 @@ class PricingProblemSolver(
             optimalRoute = route
         }
 
-        if (!hasCycle(joinedVertexPath) && (route !in elementaryRoutes)) {
+        if (!hasCycle(joinedVertexPath)) {
             elementaryRoutes.add(route)
             if (elementaryRoutes.size >= Parameters.numReducedCostColumns) {
                 return true
@@ -540,22 +540,10 @@ class PricingProblemSolver(
         var otherDiff = 0.0
         if (fs.pathLength <= bs.pathLength - Parameters.eps) {
             if (bs.parent != null) {
-                // If extension of forward label past joined edge is infeasible, that extension
-                // cannot be a valid candidate. So, we can accept the current path.
-                if (fs.pathLength + joinEdgeLength >= maxPathLength * 0.5) {
-                    return true
-                }
                 otherDiff = (fs.pathLength + joinEdgeLength - bs.parent.pathLength).absoluteValue
             }
-        } else {
-            // If extension of backward label past joined edge is infeasible, that extension
-            // cannot be a valid candidate. So, we accept the current path.
-            if (fs.parent != null) {
-                if (joinEdgeLength + bs.pathLength >= maxPathLength * 0.5) {
-                    return true
-                }
-                otherDiff = (fs.parent.pathLength - (joinEdgeLength + bs.pathLength)).absoluteValue
-            }
+        } else if (fs.parent != null) {
+            otherDiff = (fs.parent.pathLength - (joinEdgeLength + bs.pathLength)).absoluteValue
         }
 
         if (currDiff <= otherDiff - Parameters.eps) {
