@@ -9,10 +9,9 @@ import orienteering.data.Instance
 import orienteering.main.OrienteeringException
 import orienteering.main.SetGraph
 
-class BoundingLP(
+class BranchAndCutSolver(
     private val instance: Instance,
     private var cplex: IloCplex,
-    private val targetDuals: List<Double> = listOf(),
     private val updatedGraph: SetGraph = instance.graph,
     private val mustVisitTargets: List<Int> = listOf(),
     private val mustVisitEdges: List<Pair<Int, Int>> = listOf()
