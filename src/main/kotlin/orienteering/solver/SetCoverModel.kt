@@ -37,14 +37,6 @@ class SetCoverModel(private var cplex: IloCplex) {
      */
     private var mustVisitTargetEdgeConstraintId: MutableMap<Pair<Int, Int>, Int> = mutableMapOf()
     /**
-     * map of must-visit vertex to constraint id
-     */
-    private var mustVisitVertexConstraintId: MutableMap<Int, Int> = mutableMapOf()
-    /**
-     * map of must-visit vertex edge to constraint id
-     */
-    private var mustVisitVertexEdgeConstraintId: MutableMap<Pair<Int, Int>, Int> = mutableMapOf()
-    /**
      * list of route variables
      */
     private var routeVariable: ArrayList<IloNumVar> = arrayListOf()
@@ -70,17 +62,13 @@ class SetCoverModel(private var cplex: IloCplex) {
      * @param binary if true, the model is created as a MIP and as a LP otherwise.
      * @param mustVisitTargets targets to which visits are enforced.
      * @param mustVisitTargetEdges target-edges to which visits are enforced.
-     * @param mustVisitVertices vertices to which visits are enforced.
-     * @param mustVisitVertexEdges actual edges between vertices to which visits are enforced.
      */
     fun createModel(
         instance: Instance,
         routes: MutableList<Route>,
         binary: Boolean = false,
         mustVisitTargets: IntArray = intArrayOf(),
-        mustVisitTargetEdges: List<Pair<Int, Int>> = mutableListOf(),
-        mustVisitVertices: List<Int> = mutableListOf(),
-        mustVisitVertexEdges: List<Pair<Int, Int>> = mutableListOf()
+        mustVisitTargetEdges: List<Pair<Int, Int>> = mutableListOf()
     ) {
         hasTargetCoverConstraint = MutableList(instance.numTargets) { false }
         targetCoverConstraintId = MutableList(instance.numTargets) { null }
@@ -149,30 +137,6 @@ class SetCoverModel(private var cplex: IloCplex) {
         }
 
         /**
-         * populate vertex incidence on routes
-         */
-        val vertexRoutes = mustVisitVertices.map { it to mutableListOf<Int>() }.toMap()
-        mustVisitVertices.forEach {
-            for (i in 0 until routes.size) {
-                if (it in routes[i].vertexPath)
-                    vertexRoutes.getValue(it).add(i)
-            }
-        }
-
-        /**
-         * mustVisit vertex constraints { sum(r in route) I(route contains vertex) * z(r) + w >= 1 }
-         */
-        mustVisitVertices.forEach {
-            val expr: IloLinearNumExpr = cplex.linearNumExpr()
-            vertexRoutes.getValue(it).forEach { it1 ->
-                expr.addTerm(1.0, routeVariable[it1])
-            }
-            expr.addTerm(1.0, auxiliaryVariable)
-            mustVisitVertexConstraintId[it] = constraints.size
-            constraints.add(cplex.addGe(expr, 1.0, "must_visit_vertex_$it"))
-        }
-
-        /**
          * populate targetEdge incidence on routes
          */
         val targetEdgeRoutes = mustVisitTargetEdges.map { it to mutableListOf<Int>() }.toMap()
@@ -200,34 +164,6 @@ class SetCoverModel(private var cplex: IloCplex) {
                 )
             )
         }
-
-        /**
-         * populate vertexEdge incidence on routes
-         */
-        val vertexEdgeRoutes = mustVisitVertexEdges.map { it to mutableListOf<Int>() }.toMap()
-        mustVisitVertexEdges.forEach {
-            for (i in 0 until routes.size) {
-                if (it in routes[i].vertexPath.zipWithNext())
-                    vertexEdgeRoutes.getValue(it).add(i)
-            }
-        }
-
-        mustVisitVertexEdges.forEach {
-            val expr: IloLinearNumExpr = cplex.linearNumExpr()
-            vertexEdgeRoutes.getValue(it).forEach { it1 ->
-                expr.addTerm(1.0, routeVariable[it1])
-            }
-            expr.addTerm(1.0, auxiliaryVariable)
-            mustVisitVertexEdgeConstraintId[it] = constraints.size
-            constraints.add(
-                cplex.addGe(
-                    expr,
-                    1.0,
-                    "must_visit_vertex_edge_${it.first}_${it.second}"
-                )
-            )
-        }
-
     }
 
     /**
@@ -286,28 +222,11 @@ class SetCoverModel(private var cplex: IloCplex) {
     }.toMap()
 
     /**
-     * Function to get dual of must visit vertex constraints
-     * @return map of dual values keyed by vertex id
-     */
-    fun getMustVisitVertexDuals(): Map<Int, Double> = mustVisitVertexConstraintId.map {
-        it.key to cplex.getDual(constraints[it.value])
-    }.toMap()
-
-    /**
      * Function to get dual of must visit targetEdges
      * @return map of dual values keyed by target edge pairs
      */
     fun getMustVisitTargetEdgeDuals(): Map<Pair<Int, Int>, Double> =
         mustVisitTargetEdgeConstraintId.map {
-            it.key to cplex.getDual(constraints[it.value])
-        }.toMap()
-
-    /**
-     * Function to get dual of must visit targetEdges
-     * @return map of dual values keyed by target edge pairs
-     */
-    fun getMustVisitVertexEdgeDuals(): Map<Pair<Int, Int>, Double> =
-        mustVisitVertexEdgeConstraintId.map {
             it.key to cplex.getDual(constraints[it.value])
         }.toMap()
 

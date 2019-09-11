@@ -6,12 +6,12 @@ import ilog.cplex.IloCplex
 import mu.KLogging
 import org.jgrapht.Graphs
 import orienteering.data.Instance
+import orienteering.main.OrienteeringException
 import orienteering.main.SetGraph
 
-class BoundingLP(
+class BranchAndCutSolver(
     private val instance: Instance,
     private var cplex: IloCplex,
-    private val targetDuals: List<Double> = listOf(),
     private val updatedGraph: SetGraph = instance.graph,
     private val mustVisitTargets: List<Int> = listOf(),
     private val mustVisitEdges: List<Pair<Int, Int>> = listOf()
@@ -146,7 +146,7 @@ class BoundingLP(
             for (j in successors)
                 sourceOutExpression.addTerm(1.0, edgeVariable[i]?.get(j))
         }
-        cplex.addEq(sourceOutExpression, instance.numVehicles.toDouble(), "out_degree_source")
+        cplex.addLe(sourceOutExpression, instance.numVehicles.toDouble(), "out_degree_source")
 
         val destinationVertices = instance.getVertices(instance.destinationTarget)
         val destinationInExpression: IloLinearNumExpr = cplex.linearNumExpr()
@@ -155,7 +155,7 @@ class BoundingLP(
             for (j in predecessors)
                 destinationInExpression.addTerm(1.0, edgeVariable[j]?.get(i))
         }
-        cplex.addEq(
+        cplex.addLe(
             destinationInExpression,
             instance.numVehicles.toDouble(),
             "in_degree_destination"
@@ -276,9 +276,9 @@ class BoundingLP(
 
     fun solve() {
         cplex.setParam(IloCplex.Param.MIP.Display, 2)
-        cplex.setParam(IloCplex.Param.MIP.Limits.Nodes, 0)
+        // cplex.setParam(IloCplex.Param.MIP.Limits.Nodes, 0)
         if (!cplex.solve())
-            throw RuntimeException("No feasible lpSolution found")
+            throw OrienteeringException("No feasible lpSolution found")
         logger.info("LP obj. value: ${cplex.bestObjValue}")
         logger.info("best MIP obj. value: ${cplex.objValue}")
     }

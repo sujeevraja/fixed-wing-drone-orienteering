@@ -10,7 +10,7 @@ import org.yaml.snakeyaml.Yaml
 import orienteering.data.Instance
 import orienteering.data.InstanceDto
 import orienteering.data.Parameters
-import orienteering.solver.BoundingLP
+import orienteering.solver.BranchAndCutSolver
 import orienteering.solver.BranchAndPriceSolver
 import orienteering.solver.TimeChecker
 import java.io.File
@@ -161,7 +161,7 @@ class Controller {
     private fun runBranchAndCut() {
         logger.info("algorithm: branch and cut")
         initCPLEX()
-        val bc = BoundingLP(instance, cplex, targetDuals = List(instance.numTargets) { 0.0 })
+        val bc = BranchAndCutSolver(instance, cplex)
         bc.createModel()
         bc.exportModel()
         bc.solve()
