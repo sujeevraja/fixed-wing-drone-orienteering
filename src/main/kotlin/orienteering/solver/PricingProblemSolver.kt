@@ -304,6 +304,9 @@ class PricingProblemSolver(
         candidateVertices.addAll(dstVertices)
 
         while (candidateVertices.isNotEmpty()) {
+            if (TimeChecker.timeLimitReached()) {
+                return true
+            }
             val vertex = candidateVertices.first()
 
             // Complete all forward extensions.
@@ -314,6 +317,9 @@ class PricingProblemSolver(
                     }
                 }
             }
+            if (TimeChecker.timeLimitReached()) {
+                return true
+            }
 
             // Complete all backward extensions.
             for (state in backwardStates[vertex]) {
@@ -322,6 +328,9 @@ class PricingProblemSolver(
                         candidateVertices.add(it.vertex)
                     }
                 }
+            }
+            if (TimeChecker.timeLimitReached()) {
+                return true
             }
 
             candidateVertices.remove(vertex)
@@ -340,6 +349,9 @@ class PricingProblemSolver(
                             return true
                         }
                     }
+                }
+                if (TimeChecker.timeLimitReached()) {
+                    return true
                 }
             }
         }
