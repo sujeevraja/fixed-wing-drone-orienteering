@@ -161,7 +161,7 @@ class Controller {
     private fun runBranchAndCut() {
         logger.info("algorithm: branch and cut")
         initCPLEX()
-        val bc = BranchAndCutSolver(instance, cplex, targetDuals = List(instance.numTargets) { 0.0 })
+        val bc = BranchAndCutSolver(instance, cplex)
         bc.createModel()
         bc.exportModel()
         bc.solve()
