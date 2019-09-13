@@ -507,7 +507,10 @@ class PricingProblemSolver(
             return false
         }
 
-        val reducedCost = routeDual + forwardState.reducedCost + backwardState.reducedCost
+        val forwardTarget = instance.whichTarget(forwardState.vertex)
+        val backwardTarget = instance.whichTarget(backwardState.vertex)
+        val reducedCost = (routeDual + forwardState.reducedCost + backwardState.reducedCost +
+                targetEdgeDuals[forwardTarget][backwardTarget])
         if (reducedCost >= -Parameters.eps) {
             return false
         }
