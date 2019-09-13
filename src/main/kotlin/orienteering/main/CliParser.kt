@@ -87,7 +87,7 @@ class CliParser : CliktCommand() {
         "-i",
         help = "use inter-leaved search (1) or simple search (0)"
     )
-        .int().default(0).validate {
+        .int().default(1).validate {
             require(it == 1 || it == 0) {
                 "should be 1 or 0"
             }
