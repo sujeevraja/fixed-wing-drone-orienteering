@@ -604,18 +604,17 @@ class PricingProblemSolver(
         newState: State,
         onExtend: (State) -> Unit
     ) {
-        var i = 0
-        while (i < existingStates.size) {
-            val state = existingStates[i]
-            if (state.dominates(newState, useVisitCondition)) {
+        var dominatingPredecessorTarget: Int? = null
+        for (state in existingStates) {
+            if (!state.dominates(newState, useVisitCondition)) {
+                continue
+            }
+            val predecessorTarget = instance.whichTarget(state.parent!!.vertex)
+            if (dominatingPredecessorTarget == null) {
+                dominatingPredecessorTarget = predecessorTarget
+            } else if (predecessorTarget != dominatingPredecessorTarget) {
                 newState.dominated = true
                 return
-            }
-            if (newState.dominates(state, useVisitCondition)) {
-                state.dominated = true
-                existingStates.removeAt(i)
-            } else {
-                i++
             }
         }
         existingStates.add(newState)
