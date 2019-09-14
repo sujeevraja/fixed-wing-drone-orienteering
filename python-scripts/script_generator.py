@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
+import csv
 import logging
 import os
 import shutil
@@ -33,6 +34,13 @@ class Config(object):
         self.jar_path = os.path.join(
             self.base_path, 'build', 'libs', 'uber.jar')
 
+        # Path to csv file with instance path, instance name and number of
+        # discretizations. Instances from this file will be used to generate
+        # run commands.
+        self.instance_file_path = os.path.join(self.base_path,
+                                               "final-results",
+                                               "instances.csv")
+
         self.dominance_runs = False
         self.exhaustive_runs = False
         self.simple_search_runs = False
@@ -63,68 +71,128 @@ class Controller:
         self._base_cmd = None
 
     def run(self):
-        cases = self._collect_cases_to_run()
-        if not cases:
-            raise ScriptException(
-                "no cases found in {}".format(self.config.data_path))
-        else:
-            log.info("number of cases: {}".format(len(cases)))
-
         self._base_cmd = [
             "java", "-Xms32m", "-Xmx32g",
             "-Djava.library.path={}".format(self.config.cplex_lib_path),
             "-jar", "./uber.jar",
         ]
 
-        if self.config.simple_search_runs:
-            self._generate_search_run_files(cases, True)
-        elif self.config.interleaved_search_runs:
-            self._generate_search_run_files(cases, False)
-
         self._prepare_uberjar()
-        self._prepare_test_folder()
 
-    def _collect_cases_to_run(self):
-        cases = []
-        for top, _, files in os.walk(self.config.data_path):
-            folder_name = os.path.basename(top)
-            if '_100_' in folder_name or '_102_' in folder_name:
-                continue
+        if self.config.dominance_runs:
+            self._generate_non_exhaustive_setup(
+                "dominance", cmd_args=[
+                    "-s", "1",
+                    "-i", "1",
+                    "-rd", "0", ])
 
-            for f in files:
-                if f.endswith(".txt"):
-                    cases.append((folder_name, f))
+        if self.config.simple_search_runs:
+            self._generate_non_exhaustive_setup(
+                "simple", cmd_args=[
+                    "-s", "1",
+                    "-i", "0", ])
 
-        return cases
+        if self.config.single_thread_runs:
+            self._generate_non_exhaustive_setup(
+                "onethread", cmd_args=[
+                    "-s", "1",
+                    "-i", "1", ])
 
-    def _generate_search_run_files(self, cases, simple_search):
+        if self.config.exhaustive_runs:
+            self._generate_exhaustive_setup()
+
+    def _generate_non_exhaustive_setup(self, test_name, cmd_args):
+        cases = self._collect_cases_from_file()
+        runs_file_path = os.path.join(
+            self.config.script_folder_path, '{}_runs.txt'.format(test_name))
+
+        with open(runs_file_path, 'w') as f_out:
+            counter = 0
+            for folder_name, instance_name, num_disc in cases:
+                folder_path = './data/{}/'.format(folder_name)
+                cleaned_name = instance_name[:-4].replace('.', '_')
+                results_file_name = "results_{}.yaml".format(counter)
+
+                results_path = os.path.join("results", results_file_name)
+                results_path = "./{}".format(results_path)
+
+                cmd = [c for c in self._base_cmd]
+                cmd.extend([
+                    "-n", instance_name,
+                    "-p", folder_path,
+                    "-o", results_path,
+                    "-d", str(num_disc),
+                ])
+                cmd.extend(cmd_args)
+                f_out.write(' '.join(cmd))
+                f_out.write('\n')
+                counter += 1
+
+        log.info("wrote cases to {}".format(runs_file_path))
+        self._prepare_test_folder(
+            test_name, self._get_folder_and_file_names(cases))
+
+    def _generate_exhaustive_setup(self):
+        cases = self._collect_exhaustive_cases()
         runs_file_path = os.path.join(
             self.config.script_folder_path, 'exhaustive_runs.txt')
 
-        search_arg = "0" if simple_search else "1"
-
         with open(runs_file_path, 'w') as f_out:
-            for folder_name, instance_name in cases:
-                folder_path = './data/{}/'.format(folder_name)
-                cleaned_name = instance_name[:-4].replace('.', '_')
+            counter = 0
+            for folder, file_name, num_disc in cases:
+                results_file_name = "results_{}.yaml".format(counter)
+                results_path = os.path.join("results", results_file_name)
+                results_path = "./{}".format(results_path)
 
-                for num_disc in [2, 4, 6]:
-                    results_file_name = "results_{}_{}_d_{}_i_{}.yaml".format(
-                        folder_name, cleaned_name, num_disc, search_arg)
-                    results_path = os.path.join("results", results_file_name)
-                    results_path = "./{}".format(results_path)
+                cmd = [c for c in self._base_cmd]
+                cmd.extend([
+                    "-n", file_name,
+                    "-p", "./data/{}".format(folder),
+                    "-o", results_path,
+                    "-d", str(num_disc),
+                    "-i", "1", ])
 
-                    cmd = [c for c in self._base_cmd]
-                    cmd.extend([
-                        "-n", instance_name,
-                        "-p", folder_path,
-                        "-o", results_path,
-                        "-d", str(num_disc),
-                        "-i", "0" if simple_search else "1",
-                    ])
-                    f_out.write(' '.join(cmd))
-                    f_out.write('\n')
+                f_out.write(' '.join(cmd))
+                f_out.write('\n')
+                counter += 1
+
         log.info("wrote cases to {}".format(runs_file_path))
+        self._prepare_test_folder(
+            "exhaustive", self._get_folder_and_file_names(cases))
+
+    def _collect_exhaustive_cases(self):
+        cases = []
+        for folder in os.listdir(self.config.data_path):
+            if '_100_' in folder or '_102_' in folder:
+                continue
+
+            for f in os.listdir(os.path.join(self.config.data_path, folder)):
+                if f.endswith(".txt"):
+                    for num_disc in ["2", "4", "6"]:
+                        cases.append((folder, f, num_disc))
+
+        if not cases:
+            raise ScriptException("no cases found for exhaustive runs")
+
+        return cases
+
+    def _collect_cases_from_file(self):
+        cases = []
+        with open(self.config.instance_file_path, 'r', newline='') as csvfile:
+            reader = csv.reader(csvfile)
+            next(reader)  # skip header row
+            for row in reader:
+                folder_name = row[0].replace('./data/', '')
+                folder_name = folder_name[:-1]
+                cases.append((folder_name, row[1], int(row[2])))
+
+        if not cases:
+            raise ScriptException('no instances found in csv file')
+
+        return cases
+
+    def _get_folder_and_file_names(self, cases):
+        return list(set([(c[0], c[1]) for c in cases]))
 
     def _prepare_uberjar(self):
         os.chdir(self.config.base_path)
@@ -133,11 +201,11 @@ class Controller:
             raise ScriptException("uberjar build failed")
         log.info("prepared uberjar")
 
-    def _prepare_test_folder(self):
-        rt_path = os.path.join(self.config.base_path, 'regression_testing')
+    def _prepare_test_folder(self, test_name, cases):
+        rt_path = os.path.join(self.config.base_path, test_name)
         os.makedirs(rt_path, exist_ok=True)
         shutil.copy(self.config.jar_path, os.path.join(rt_path, 'uber.jar'))
-        runs_file_name = 'exhaustive_runs.txt'
+        runs_file_name = '{}_runs.txt'.format(test_name)
         for f in [runs_file_name, 'submit-batch.sh', 'slurm-batch-job.sh']:
             src_path = os.path.join(self.config.script_folder_path, f)
             dst_path = os.path.join(rt_path, f)
@@ -148,18 +216,20 @@ class Controller:
 
         test_data_path = os.path.join(rt_path, 'data')
         os.makedirs(test_data_path, exist_ok=True)
-        for folder_name in os.listdir(self.config.data_path):
-            if '_100_' not in folder_name and '_102_' not in folder_name:
-                shutil.copytree(
-                    os.path.join(self.config.data_path, folder_name),
-                    os.path.join(test_data_path, folder_name))
-        log.info('copied data files to {}'.format(rt_path))
-
-        folder_names = ['output', 'results']
-        for folder_name in folder_names:
-            folder_path = os.path.join(rt_path, folder_name)
+        for folder_name, file_name, in cases:
+            folder_path = os.path.join(test_data_path, folder_name)
             os.makedirs(folder_path, exist_ok=True)
-        log.info('created folders {}'.format(folder_names))
+            src = os.path.join(self.config.data_path, folder_name, file_name)
+            dst = os.path.join(folder_path, file_name)
+            log.info("src: {}".format(src))
+            log.info("dst: {}".format(dst))
+            shutil.copy(src, dst)
+            log.info("copied {}, {}".format(folder_name, file_name))
+
+        for name in ['output', 'results']:
+            folder_path = os.path.join(rt_path, name)
+            os.makedirs(folder_path, exist_ok=True)
+        log.info('created output and result folders.')
 
 
 def handle_command_line():
@@ -169,6 +239,8 @@ def handle_command_line():
                         help="generate runs file for dominance comparison")
     parser.add_argument("-e", "--exhaustive", action="store_true",
                         help="generate runs file for testing all instances")
+    parser.add_argument("-i", "--instancefilepath", type=str,
+                        help="path to csv file with instances to run")
     parser.add_argument("-s", "--simple", action="store_true",
                         help="generate runs file for simple search")
     parser.add_argument("-t", "--threading", action="store_true",
@@ -181,6 +253,8 @@ def handle_command_line():
     config.exhaustive_runs = args.exhaustive
     config.simple_search_runs = args.simple
     config.single_thread_runs = args.threading
+    if args.instancefilepath:
+        config.instance_file_path = args.instancefilepath
 
     return config
 
