@@ -33,8 +33,10 @@ class Config(object):
         self.jar_path = os.path.join(
             self.base_path, 'build', 'libs', 'uber.jar')
 
+        self.dominance_runs = False
+        self.exhaustive_runs = False
         self.simple_search_runs = False
-        self.interleaved_search_runs = False
+        self.single_thread_runs = False
 
 
 def guess_cplex_library_path():
@@ -163,15 +165,23 @@ class Controller:
 def handle_command_line():
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("-i", "--interleaved", action="store_true",
-                        help="generate runs file for interleaved search")
+    parser.add_argument("-d", "--dominance", action="store_true",
+                        help="generate runs file for dominance comparison")
+    parser.add_argument("-e", "--exhaustive", action="store_true",
+                        help="generate runs file for testing all instances")
     parser.add_argument("-s", "--simple", action="store_true",
                         help="generate runs file for simple search")
+    parser.add_argument("-t", "--threading", action="store_true",
+                        help="generate runs file for threading comparison")
 
     args = parser.parse_args()
     config = Config()
-    config.interleaved_search_runs = args.interleaved
+
+    config.dominance_runs = args.dominance
+    config.exhaustive_runs = args.exhaustive
     config.simple_search_runs = args.simple
+    config.single_thread_runs = args.threading
+
     return config
 
 
