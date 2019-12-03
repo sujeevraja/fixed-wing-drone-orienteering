@@ -15,3 +15,5 @@ python-scripts/exhaustive_runs.txt
 # Ignore Gradle build output directory
 build
 
+# Ignore pycache
+final-results/__pycache__/
