@@ -45,3 +45,44 @@ def generate_exhaustive_opt_table_query(num_targets=21, discretizations=[2, 4, 6
             ex_3.instance_path like "%{0}%"
         order by ex_1.instance_name
         """.format(num_targets, discretizations[0], discretizations[1], discretizations[2])
+
+def generate_idssr_query():
+    return """
+        select
+            simple.instance_name,
+            simple.solution_time_in_seconds as simple_time,
+            simple.optimality_reached as simple_opt_reached,
+            one_thread_interleaved.solution_time_in_seconds as one_thread_time,
+            one_thread_interleaved.optimality_reached as one_thread_opt_reached
+        from simple
+        join one_thread_interleaved
+        on
+            simple.instance_name = one_thread_interleaved.instance_name and
+            simple.number_of_discretizations = one_thread_interleaved.number_of_discretizations
+        where
+            one_thread_interleaved.optimality_reached = "True" and cast(one_thread_interleaved.root_lower_bound as decimal(16,2)) > 0.0
+        order by
+            simple.instance_name
+        """
+
+def generate_concurrency_query():
+    return """
+        select
+            exhaustive.instance_name,
+            one_thread_interleaved.solution_time_in_seconds as one_thread_time,
+            one_thread_interleaved.optimality_reached as one_thread_opt_reached,
+            exhaustive.solution_time_in_seconds as concurrent_time,
+            exhaustive.optimality_reached as concurrent_opt_reached,
+            exhaustive.average_concurrent_solves as concurrent_solves,
+            exhaustive.maximum_concurrent_solves as max_concurrent_solves
+        from one_thread_interleaved
+        join exhaustive
+        on
+            one_thread_interleaved.instance_name = exhaustive.instance_name and
+            one_thread_interleaved.number_of_discretizations = exhaustive.number_of_discretizations
+        where 
+            cast(one_thread_interleaved.number_of_nodes_solved as integer) > 1 and 
+            one_thread_interleaved.optimality_reached = "True"
+        order by
+            one_thread_interleaved.instance_name
+        """

@@ -57,3 +57,31 @@ for t in num_targets:
             df[column] = df[column].apply(pd.to_numeric, downcast='float')
     df['instance_name'] = df['instance_name'].str.replace(r'.txt$', '')
     df.to_csv('csv/full_{}.csv'.format(t), float_format='%.2f', na_rep='--', index=False)
+
+query = generate_idssr_query()
+df = db.get_dataframe(query)
+df['instance_name'] = df['instance_name'].str.replace(r'.txt$', '')
+for column in df.columns:
+    if (column == 'instance_name'): 
+        continue
+    if ('opt' in column):
+        del df[column]
+        continue
+    df[column] = df[column].apply(pd.to_numeric, downcast='float')
+df['improvement_factor'] = (df['simple_time']-df['one_thread_time'])/df['simple_time']*100.00
+index_list = df.query('simple_time > 3600.00').index
+df.loc[index_list, 'simple_time'] = 3600.00
+df.loc[index_list, 'improvement_factor'] = np.nan
+print('mean improvement factor for I-DSSR = {}'.format(df['improvement_factor'].mean()))
+df.to_csv('csv/idssr.csv', float_format='%.2f', na_rep='--', index=False)
+
+query = generate_concurrency_query()
+df = db.get_dataframe(query)
+df['instance_name'] = df['instance_name'].str.replace(r'.txt$', '')
+for column in df.columns:
+    if (column == 'instance_name'): 
+        continue
+    if ('opt' in column):
+        del df[column]
+        continue
+    df[column] = df[column].apply(pd.to_numeric, downcast='float')
