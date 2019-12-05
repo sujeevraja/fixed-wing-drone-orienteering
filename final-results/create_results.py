@@ -85,3 +85,4 @@ for column in df.columns:
         del df[column]
         continue
     df[column] = df[column].apply(pd.to_numeric, downcast='float')
+
