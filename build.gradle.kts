@@ -8,13 +8,13 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
     // Apply the Kotlin JVM plugin to add support for Kotlin on the JVM.
-    id("org.jetbrains.kotlin.jvm").version("1.3.41")
+    id("org.jetbrains.kotlin.jvm").version("1.3.61")
 
     // Apply the application plugin to add support for building a CLI application.
     application
 
     // Documentation plugin
-    id("org.jetbrains.dokka").version("0.9.18")
+    id("org.jetbrains.dokka").version("0.10.0")
 }
 
 repositories {
@@ -28,25 +28,25 @@ dependencies {
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
 
     // coroutines
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.3.0-RC")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.3.2")
 
     // Kotlin logging with slf4j API and log4j logger
-    implementation("io.github.microutils:kotlin-logging:1.6.24")
+    implementation("io.github.microutils:kotlin-logging:1.7.8")
     implementation("org.slf4j:slf4j-api:1.7.25")
     implementation("org.apache.logging.log4j:log4j-slf4j-impl:2.9.1")
     implementation("org.apache.logging.log4j:log4j-api:2.9.1")
     implementation("org.apache.logging.log4j:log4j-core:2.9.1")
  
     // Use clikt (command line parser for kotlin) library
-    implementation("com.github.ajalt:clikt:2.0.0")
+    implementation("com.github.ajalt:clikt:2.3.0")
 
     // use JGraphT library
-    implementation("org.jgrapht:jgrapht-core:1.3.0")
+    implementation("org.jgrapht:jgrapht-core:1.3.1")
 
     // Library for writing output KPIs to YAML files
     implementation("org.yaml:snakeyaml:1.8")
 
-    compileClasspath("org.junit.platform:junit-platform-gradle-plugin:1.0.0-M3")
+    compileClasspath("org.junit.platform:junit-platform-gradle-plugin:1.2.0")
 
     val cplexJarPath: String by project
     compile(files(cplexJarPath))
@@ -55,15 +55,17 @@ dependencies {
     testImplementation("org.jetbrains.kotlin:kotlin-test")
 
     // Use the Kotlin JUnit integration.
-    testImplementation("org.junit.jupiter:junit-jupiter:5.4.2")
+    testImplementation("org.junit.jupiter:junit-jupiter:5.6.0-M1")
 }
 
 tasks {
     dokka {
         outputFormat = "javadoc"
         outputDirectory = "$buildDir/javadoc"
-        includeNonPublic = true
-        noStdlibLink = true
+        configuration {
+            includeNonPublic = true
+            noStdlibLink = true
+        }
     }
 
     register<Delete>("cleanlogs") {
