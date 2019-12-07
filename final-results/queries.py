@@ -69,6 +69,7 @@ def generate_concurrency_query():
     return """
         select
             exhaustive.instance_name,
+            cast(substr(exhaustive.instance_path, 12, 2) as integer) as num_targets,
             one_thread_interleaved.solution_time_in_seconds as one_thread_time,
             one_thread_interleaved.optimality_reached as one_thread_opt_reached,
             exhaustive.solution_time_in_seconds as concurrent_time,
@@ -82,7 +83,9 @@ def generate_concurrency_query():
             one_thread_interleaved.number_of_discretizations = exhaustive.number_of_discretizations
         where 
             cast(one_thread_interleaved.number_of_nodes_solved as integer) > 1 and 
-            one_thread_interleaved.optimality_reached = "True"
+            one_thread_interleaved.optimality_reached = "True" and 
+			cast(substr(exhaustive.instance_path, 12, 2) as integer) != 66 and 
+			cast(one_thread_interleaved.solution_time_in_seconds as float) > 5.0
         order by
             one_thread_interleaved.instance_name
         """

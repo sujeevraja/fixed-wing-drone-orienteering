@@ -2,6 +2,9 @@ from db_connector import DataBase
 from queries import *
 import pandas as pd
 import numpy as np
+import matplotlib.pyplot as plt
+import math
+import os
  
 
 db = DataBase('results.db')
@@ -84,5 +87,23 @@ for column in df.columns:
     if ('opt' in column):
         del df[column]
         continue
+    if (column == 'num_targets'):
+        df[column] = df[column].apply(pd.to_numeric, downcast='integer')
+        continue
     df[column] = df[column].apply(pd.to_numeric, downcast='float')
-
+df['improvement_factor'] = (df['one_thread_time']-df['concurrent_time'])/df['one_thread_time']*100.00
+hist_values = list(df['improvement_factor'].values)
+avg_improvement = df['improvement_factor'].mean()
+num_bins = math.ceil((max(hist_values)-min(hist_values))/1.5)
+bins = np.linspace(min(hist_values), max(hist_values), num_bins)
+# plot setup
+plt.rc('font',**{'family':'serif','serif':['Palatino']})
+plt.rc('text', usetex=True)
+fig, ax = plt.subplots(figsize=(3.5,5))
+ax.set_xlabel(r'Relative run time improvement (\%)', fontsize=10)
+ax.hist(hist_values, bins=23, density=False, alpha=0.5, edgecolor='black', color='#00AFBB', label=r'$|T|=70$')
+plt.figtext(0.5, 0.8, 'Average = {:.2f}\%'.format(avg_improvement), fontsize=10)
+plt.savefig('concurrency_histogram.pdf', format='pdf')
+crop_cmd = 'pdfcrop concurrency_histogram.pdf; mv -f concurrency_histogram-crop.pdf concurrency_histogram.pdf'
+os.system(crop_cmd)
+os.system('mv -f concurrency_histogram.pdf plots/concurrency_histogram.pdf')
