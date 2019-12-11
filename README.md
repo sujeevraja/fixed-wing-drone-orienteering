@@ -1,13 +1,15 @@
 ## Fixed-wing drone orienteering
 
-Kotlin code to solve the team orienteering problem for fixed-wing drones
+Code for computational experiments of the paper
+"A Team Orienteering Problem for Fixed-Wing Drones" available at [Arxiv](https://arxiv.org/abs/1912.04353).
+It can solve the team orienteering problem for fixed-wing drones
 using branch-and-cut and branch-and-price.
 
 ## Branches
 
 The _master_ branch contains all solver code and can be used to run either
 algorithm with any of the instances available in the "data" folder. See the
-"Running the solver" section for further details. The _paper-results_ branch
+"Running the solver" section for further details. The _results_ branch
 contains scripts, plots and csv files related to results reported in the paper.
 
 ## Dependencies
