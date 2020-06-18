@@ -18,11 +18,14 @@ repositories {
 }
 
 dependencies {
+    // Align versions of all Kotlin components
+    implementation(platform("org.jetbrains.kotlin:kotlin-bom"))
+
     // Use the Kotlin JDK 8 standard library.
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
 
     // coroutines
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.3.2")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.3.7")
 
     // Kotlin logging with slf4j API and log4j logger
     implementation("io.github.microutils:kotlin-logging:1.7.8")
@@ -32,24 +35,22 @@ dependencies {
     implementation("org.apache.logging.log4j:log4j-core:2.9.1")
 
     // Use clikt (command line parser for kotlin) library
-    implementation("com.github.ajalt:clikt:2.3.0")
+    implementation("com.github.ajalt:clikt:2.7.1")
 
     // use JGraphT library
-    implementation("org.jgrapht:jgrapht-core:1.3.1")
+    implementation("org.jgrapht:jgrapht-core:1.4.0")
 
     // Library for writing output KPIs to YAML files
     implementation("org.yaml:snakeyaml:1.8")
 
-    compileClasspath("org.junit.platform:junit-platform-gradle-plugin:1.2.0")
-
     val cplexJarPath: String by project
-    compile(files(cplexJarPath))
+    implementation(files(cplexJarPath))
 
     // Use the Kotlin test library.
     testImplementation("org.jetbrains.kotlin:kotlin-test")
 
     // Use the Kotlin JUnit integration.
-    testImplementation("org.junit.jupiter:junit-jupiter:5.6.0-M1")
+    testImplementation("org.junit.jupiter:junit-jupiter:5.6.2")
 }
 
 tasks {
@@ -62,13 +63,13 @@ tasks {
         }
     }
 
-    register<Delete>("cleanlogs") {
+    register<Delete>("cleanLogs") {
         delete(fileTree("logs") {
             include("*.db", "*.log", "*.lp", "*.yaml")
         })
     }
 
-    register<Jar>("uberjar") {
+    register<Jar>("uberJar") {
         archiveFileName.set("uber.jar")
         duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 
