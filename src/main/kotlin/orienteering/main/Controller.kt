@@ -1,12 +1,12 @@
 package orienteering.main
 
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.dataformat.yaml.YAMLFactory
 import ilog.cplex.IloCplex
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ObsoleteCoroutinesApi
 import kotlinx.coroutines.newSingleThreadContext
 import mu.KLogging
-import org.yaml.snakeyaml.DumperOptions
-import org.yaml.snakeyaml.Yaml
 import orienteering.data.Instance
 import orienteering.data.InstanceDto
 import orienteering.data.Parameters
@@ -110,14 +110,7 @@ class Controller {
      * Function to dump the results in a YAML file
      */
     fun writeResults() {
-        val dumperOptions = DumperOptions()
-        dumperOptions.defaultFlowStyle = DumperOptions.FlowStyle.BLOCK
-        dumperOptions.isPrettyFlow = true
-
-        val yaml = Yaml(dumperOptions)
-        val writer = File(resultsPath).bufferedWriter()
-        yaml.dump(results, writer)
-        writer.close()
+        ObjectMapper(YAMLFactory()).writeValue(File(resultsPath), results)
     }
 
     /**

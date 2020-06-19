@@ -40,9 +40,6 @@ dependencies {
     // use JGraphT library
     implementation("org.jgrapht:jgrapht-core:1.4.0")
 
-    // Library for writing output KPIs to YAML files
-    implementation("org.yaml:snakeyaml:1.8")
-
     val cplexJarPath: String by project
     implementation(files(cplexJarPath))
 
@@ -54,6 +51,7 @@ dependencies {
 
     // Jackson library to work with JSON/YAML.
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.11.0")
+    implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.11.0")
 }
 
 tasks {
