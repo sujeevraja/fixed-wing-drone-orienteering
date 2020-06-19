@@ -51,6 +51,9 @@ dependencies {
 
     // Use the Kotlin JUnit integration.
     testImplementation("org.junit.jupiter:junit-jupiter:5.6.2")
+
+    // Jackson library to work with JSON/YAML.
+    implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.11.0")
 }
 
 tasks {
