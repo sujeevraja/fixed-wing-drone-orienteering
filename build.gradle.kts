@@ -2,7 +2,7 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
     // Apply the Kotlin JVM plugin to add support for Kotlin on the JVM.
-    id("org.jetbrains.kotlin.jvm").version("1.3.72")
+    id("org.jetbrains.kotlin.jvm").version("1.4.20")
 
     // Apply the application plugin to add support for building a CLI application.
     application
@@ -25,7 +25,7 @@ dependencies {
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
 
     // coroutines
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.3.7")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.4.2")
 
     // Kotlin logging with slf4j API and log4j logger
     implementation("io.github.microutils:kotlin-logging:1.7.8")
@@ -35,10 +35,10 @@ dependencies {
     implementation("org.apache.logging.log4j:log4j-core:2.9.1")
 
     // Use clikt (command line parser for kotlin) library
-    implementation("com.github.ajalt:clikt:2.7.1")
+    implementation("com.github.ajalt:clikt:3.0.1")
 
     // use JGraphT library
-    implementation("org.jgrapht:jgrapht-core:1.4.0")
+    implementation("org.jgrapht:jgrapht-core:1.5.0")
 
     val cplexJarPath: String by project
     implementation(files(cplexJarPath))
@@ -50,7 +50,7 @@ dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter:5.6.2")
 
     // Jackson library to work with JSON/YAML.
-    implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.11.0")
+    implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.12.0")
     implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.11.0")
 }
 
