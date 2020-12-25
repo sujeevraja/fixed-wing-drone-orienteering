@@ -102,7 +102,7 @@ class NodeProcessor(
 
         val ubFromUnsolvedNodes =
             if (openNodes.isNotEmpty()) openNodes.peek().lpObjective else -Double.MAX_VALUE
-        val ubFromSolvingNodes = solvingNodes.values.max() ?: -Double.MAX_VALUE
+        val ubFromSolvingNodes = solvingNodes.values.maxOrNull() ?: -Double.MAX_VALUE
         val newUpperBound = max(ubFromUnsolvedNodes, ubFromSolvingNodes)
 
         if (solvingNodes.isNotEmpty()) {

@@ -40,7 +40,7 @@ class PricingProblemSolver(
     /**
      * Number of vertices in given instance.
      */
-    private val numVertices = graph.vertexSet().max()!! + 1
+    private val numVertices = graph.vertexSet().maxOrNull()!! + 1
     /**
      * source vertices
      */

@@ -2,7 +2,7 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
     // Apply the Kotlin JVM plugin to add support for Kotlin on the JVM.
-    id("org.jetbrains.kotlin.jvm").version("1.4.20")
+    kotlin("jvm") version "1.4.21"
 
     // Apply the application plugin to add support for building a CLI application.
     application
@@ -18,11 +18,18 @@ repositories {
 }
 
 dependencies {
-    // Align versions of all Kotlin components
+    // Align versions of all Kotlin components. We don't need to specify an explicit version for
+    // "kotlin-bom" as the Kotlin gradle plugin takes care of it based on the Kotlin version
+    // specified in the "plugins" seciton.
     implementation(platform("org.jetbrains.kotlin:kotlin-bom"))
 
-    // Use the Kotlin JDK 8 standard library.
-    implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
+    // --- Dependencies managed by BOM (start) ---
+    // We don't need to specify versions for these dependencies, as they come from the "kotlin-bom"
+    // dependency. Check a specific release of "kotlin-bom" in the following page to get libraries
+    // with version numbers managed by the BOM:
+    // https://mvnrepository.com/artifact/org.jetbrains.kotlin/kotlin-bom
+    testImplementation("org.jetbrains.kotlin:kotlin-test")
+    // --- Dependencies managed by BOM (end)   ---
 
     // coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.4.2")
@@ -42,9 +49,6 @@ dependencies {
 
     val cplexJarPath: String by project
     implementation(files(cplexJarPath))
-
-    // Use the Kotlin test library.
-    testImplementation("org.jetbrains.kotlin:kotlin-test")
 
     // Use the Kotlin JUnit integration.
     testImplementation("org.junit.jupiter:junit-jupiter:5.6.2")
@@ -94,7 +98,23 @@ tasks {
         }
     }
 
+    withType<JavaExec> {
+        val cplexLibPath: String by project
+        jvmArgs = listOf(
+            "-Xms32m",
+            "-Xmx22g",
+            "-Djava.library.path=$cplexLibPath"
+        )
+    }
+
     withType<Test> {
+        val cplexLibPath: String by project
+        jvmArgs = listOf(
+            "-Xms32m",
+            "-Xmx22g",
+            "-Djava.library.path=$cplexLibPath"
+        )
+
         testLogging {
             showStandardStreams = true
         }
@@ -133,11 +153,5 @@ fun printResults(desc: TestDescriptor, result: TestResult) {
 application {
     // Define the main class for the application.
     mainClassName = "orienteering.main.MainKt"
-
-    val cplexLibPath : String by project
-    applicationDefaultJvmArgs = listOf(
-            "-Xms32m",
-            "-Xmx22g",
-            "-Djava.library.path=$cplexLibPath")
 }
 
