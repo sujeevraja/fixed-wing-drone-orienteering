@@ -8,7 +8,7 @@ plugins {
     application
 
     // Documentation plugin
-    id("org.jetbrains.dokka").version("0.10.0")
+    id("org.jetbrains.dokka") version "0.10.0"
 }
 
 repositories {
@@ -20,7 +20,7 @@ repositories {
 dependencies {
     // Align versions of all Kotlin components. We don't need to specify an explicit version for
     // "kotlin-bom" as the Kotlin gradle plugin takes care of it based on the Kotlin version
-    // specified in the "plugins" seciton.
+    // specified in the "plugins" section.
     implementation(platform("org.jetbrains.kotlin:kotlin-bom"))
 
     // --- Dependencies managed by BOM (start) ---
@@ -42,7 +42,7 @@ dependencies {
     implementation("org.apache.logging.log4j:log4j-core:2.9.1")
 
     // Use clikt (command line parser for kotlin) library
-    implementation("com.github.ajalt:clikt:3.0.1")
+    implementation("com.github.ajalt:clikt:2.8.0")
 
     // use JGraphT library
     implementation("org.jgrapht:jgrapht-core:1.5.0")
