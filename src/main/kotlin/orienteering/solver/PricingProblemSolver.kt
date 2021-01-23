@@ -12,15 +12,20 @@ import java.util.*
 import kotlin.math.absoluteValue
 
 /**
- * Pricing problem solver to find negative reduced cost paths for a branch and price algorithm
- * using the Decremental State Space Relaxation (DSSR) algorithm.
+ * Pricing problem solver to find negative reduced cost paths for a branch and price algorithm.
+ * It can be configured to use either the I-DSSR algorithm (implemented in the
+ * [interleavedSearch] function), or the DSSR algorithm (implemented in the [simpleSearch]
+ * function).
  *
- * Algorithm reference:
+ * I-DSSR reference:
+ * Kaarthik Sundar and Sujeevraja Sanjeevi.
+ * "A Branch-and-Price Algorithm for a Team Orienteering Problem for Fixed-Wing Drones"
+ * Under review, Arxiv: https://arxiv.org/abs/1912.04353.
  *
- * Righini, Giovanni, and Matteo Salani.
- * "New dynamic programming algorithms for the resource constrained elementary shortest path problem."
+ * DSSR reference:
+ * Righini Giovanni and Matteo Salani.
+ * "New dynamic programming algorithms for the resource constrained elementary shortest path problem"
  * Networks: An International Journal 51.3 (2008): 155-170.
- *
  * This class implements Algorithm 3 in the paper.
  *
  * @param instance problem data
@@ -197,6 +202,9 @@ class PricingProblemSolver(
         }
     }
 
+    /**
+     * Implementation of the I-DSSR algorithm presented in the paper.
+     */
     private fun interleavedSearch(): Boolean {
         val criticalTargets = (0 until numTargets).filter { isCritical[it] }
         logger.debug("critical targets: $criticalTargets")
@@ -298,6 +306,10 @@ class PricingProblemSolver(
         return false
     }
 
+    /**
+     * This is the DSSR algorithm presented as Algorithm 3 in the [Giovanni,Salani] paper.
+     * Reference is available in the class documentation.
+     */
     private fun simpleSearch(): Boolean {
         val candidateVertices = mutableSetOf<Int>()
         candidateVertices.addAll(srcVertices)
