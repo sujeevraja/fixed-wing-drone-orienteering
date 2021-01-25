@@ -143,7 +143,7 @@ class PricingProblemSolver(
             }
 
             if (Parameters.useInterleavedSearch &&
-                elementaryRoutes.size >= Parameters.numElementaryRoutesForExit
+                elementaryRoutes.size >= Parameters.maxPathsAfterSearch
             ) {
                 logger.debug("----- STOP column search due to elementary route existence")
                 break
@@ -544,7 +544,7 @@ class PricingProblemSolver(
 
         if (!hasCycle(joinedVertexPath)) {
             elementaryRoutes.add(route)
-            if (elementaryRoutes.size >= Parameters.numReducedCostColumns) {
+            if (elementaryRoutes.size >= Parameters.maxPathsInsideSearch) {
                 return true
             }
         }
