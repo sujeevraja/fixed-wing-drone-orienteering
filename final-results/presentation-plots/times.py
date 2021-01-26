@@ -27,15 +27,16 @@ for i in range(1, len(rows)):
     times[2].append(float(rows[i][2]))
 
 to_plot = [times[0], times[1], times[2]]
-labels = [r'\begin{center} \noindent Sequential B\&P with \\ \noindent simple search \end{center}', 
-          r'\begin{center} \noindent Sequential B\&P with \\ \noindent interleaved search \end{center}', 
-          r'\begin{center} \noindent Asynchronous B\&P with \\ interleaved search \end{center}']
+labels = [r'\begin{center} \noindent Single-threaded\\ \noindent B\&P with DSSR \end{center}', 
+          r'\begin{center} \noindent Single-threaded\\ \noindent B\&P with I-DSSR \end{center}', 
+          r'\begin{center} \noindent Multi-threaded\\ B\&P with I-DSSR \end{center}']
 
 plt.rc('font',**{'family':'serif','serif':['Palatino']})
 plt.rc('text', usetex=True)
+plt.style.use('seaborn-paper')
 
-fig, ax = plt.subplots()
-bplot = ax.boxplot(to_plot, vert=True, patch_artist=True,  widths=0.25, labels=labels) 
+fig, ax = plt.subplots(figsize=(4,5))
+bplot = ax.boxplot(to_plot, vert=True, patch_artist=True, widths=0.2, labels=labels) 
 colors = ['pink', 'lightblue', 'lightgreen']
 
 for patch, color in zip(bplot['boxes'], colors):
