@@ -32,7 +32,7 @@ object Parameters {
     /**
      * limit on number of reduced cost columns to stop pricing problem
      */
-    var numReducedCostColumns: Int = 500
+    var maxPathsInsideSearch: Int = 500
         private set
     /**
      * Maximum time allowed for algorithm
@@ -64,7 +64,7 @@ object Parameters {
      * the number of elementary routes with negative reduced cost collected during the search is
      * greater than or equal to this value, that DSSR iteration will be terminated.
      */
-    const val numElementaryRoutesForExit = 10
+    const val maxPathsAfterSearch = 10
     /**
      * Tolerance used to compare double values.
      */
@@ -92,7 +92,7 @@ object Parameters {
         Parameters.algorithm = algorithm
         Parameters.turnRadius = turnRadius
         Parameters.numDiscretizations = numDiscretizations
-        Parameters.numReducedCostColumns = numReducedCostColumns
+        Parameters.maxPathsInsideSearch = numReducedCostColumns
         Parameters.timeLimitInSeconds = timeLimitInSeconds
         Parameters.useInterleavedSearch = useInterleavedSearch
         Parameters.useNumTargetsForDominance = useNumTargetsForDominance

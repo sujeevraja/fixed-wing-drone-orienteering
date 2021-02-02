@@ -12,15 +12,20 @@ import java.util.*
 import kotlin.math.absoluteValue
 
 /**
- * Pricing problem solver to find negative reduced cost paths for a branch and price algorithm
- * using the Decremental State Space Relaxation (DSSR) algorithm.
+ * Pricing problem solver to find negative reduced cost paths for a branch and price algorithm.
+ * It can be configured to use either the I-DSSR algorithm (implemented in the
+ * [interleavedSearch] function), or the DSSR algorithm (implemented in the [simpleSearch]
+ * function).
  *
- * Algorithm reference:
+ * I-DSSR reference:
+ * Kaarthik Sundar and Sujeevraja Sanjeevi.
+ * "A Branch-and-Price Algorithm for a Team Orienteering Problem for Fixed-Wing Drones"
+ * Under review, Arxiv: https://arxiv.org/abs/1912.04353.
  *
- * Righini, Giovanni, and Matteo Salani.
- * "New dynamic programming algorithms for the resource constrained elementary shortest path problem."
+ * DSSR reference:
+ * Righini Giovanni and Matteo Salani.
+ * "New dynamic programming algorithms for the resource constrained elementary shortest path problem"
  * Networks: An International Journal 51.3 (2008): 155-170.
- *
  * This class implements Algorithm 3 in the paper.
  *
  * @param instance problem data
@@ -138,7 +143,7 @@ class PricingProblemSolver(
             }
 
             if (Parameters.useInterleavedSearch &&
-                elementaryRoutes.size >= Parameters.numElementaryRoutesForExit
+                elementaryRoutes.size >= Parameters.maxPathsAfterSearch
             ) {
                 logger.debug("----- STOP column search due to elementary route existence")
                 break
@@ -197,6 +202,9 @@ class PricingProblemSolver(
         }
     }
 
+    /**
+     * Implementation of the I-DSSR algorithm presented in the paper.
+     */
     private fun interleavedSearch(): Boolean {
         val criticalTargets = (0 until numTargets).filter { isCritical[it] }
         logger.debug("critical targets: $criticalTargets")
@@ -204,7 +212,7 @@ class PricingProblemSolver(
         // Extend source states.
         for (srcVertex in srcVertices) {
             for (state in forwardStates[srcVertex]) {
-                extendForward(state) {
+                processState(state) {
                     unprocessedForwardStates.add(it)
                 }
             }
@@ -213,7 +221,7 @@ class PricingProblemSolver(
         // Extend destination state.
         for (dstVertex in dstVertices) {
             for (state in backwardStates[dstVertex]) {
-                extendBackward(state) {
+                processState(state) {
                     unprocessedBackwardStates.add(it)
                 }
             }
@@ -260,7 +268,7 @@ class PricingProblemSolver(
                 }
 
                 if (Graphs.vertexHasSuccessors(graph, vertex)) {
-                    extendForward(state) {
+                    processState(state) {
                         unprocessedForwardStates.add(it)
                     }
                 }
@@ -285,7 +293,7 @@ class PricingProblemSolver(
                 }
 
                 if (Graphs.vertexHasPredecessors(graph, vertex)) {
-                    extendBackward(state) {
+                    processState(state) {
                         unprocessedBackwardStates.add(it)
                     }
                 }
@@ -298,6 +306,10 @@ class PricingProblemSolver(
         return false
     }
 
+    /**
+     * This is the DSSR algorithm presented as Algorithm 3 in the [Giovanni,Salani] paper.
+     * Reference is available in the class documentation.
+     */
     private fun simpleSearch(): Boolean {
         val candidateVertices = mutableSetOf<Int>()
         candidateVertices.addAll(srcVertices)
@@ -312,7 +324,7 @@ class PricingProblemSolver(
             // Complete all forward extensions.
             for (state in forwardStates[vertex]) {
                 if (!state.dominated) {
-                    extendForward(state) {
+                    processState(state) {
                         candidateVertices.add(it.vertex)
                     }
                 }
@@ -324,7 +336,7 @@ class PricingProblemSolver(
             // Complete all backward extensions.
             for (state in backwardStates[vertex]) {
                 if (!state.dominated) {
-                    extendBackward(state) {
+                    processState(state) {
                         candidateVertices.add(it.vertex)
                     }
                 }
@@ -397,47 +409,40 @@ class PricingProblemSolver(
         return false
     }
 
-    private fun extendForward(state: State, onExtend: (State) -> Unit) {
-        if (state.extended) {
-            return
-        }
+    /**
+     * This is the ProcessLabel function presented in Algorithm 2 in the paper.
+     */
+    private fun processState(state: State, onExtend: (State) -> Unit) {
+        if (state.extended) return
         state.extended = true
-        if (!canExtend(state)) {
-            return
-        }
+        if (!canExtend(state)) return
+        if (state.isForward) extendForward(state, onExtend)
+        else extendBackward(state, onExtend)
+    }
 
-        val vertex = state.vertex
-        for (nextVertex in Graphs.successorListOf(graph, vertex)) {
+    private fun extendForward(state: State, onExtend: (State) -> Unit) {
+        for (nextVertex in Graphs.successorListOf(graph, state.vertex)) {
             if (state.visits(instance.whichTarget(nextVertex))) {
                 continue
             }
             if (state.parent != null && sameTarget(state.parent.vertex, nextVertex)) {
                 continue
             }
-            val edgeLength = graph.getEdgeWeight(vertex, nextVertex)
+            val edgeLength = graph.getEdgeWeight(state.vertex, nextVertex)
             val extension = extendIfFeasible(state, nextVertex, edgeLength) ?: continue
             updateNonDominatedStates(forwardStates[nextVertex], extension, onExtend)
         }
     }
 
     private fun extendBackward(state: State, onExtend: (State) -> Unit) {
-        if (state.extended) {
-            return
-        }
-        state.extended = true
-        if (!canExtend(state)) {
-            return
-        }
-
-        val vertex = state.vertex
-        for (prevVertex in Graphs.predecessorListOf(graph, vertex)) {
+        for (prevVertex in Graphs.predecessorListOf(graph, state.vertex)) {
             if (state.visits(instance.whichTarget(prevVertex))) {
                 continue
             }
             if (state.parent != null && sameTarget(state.parent.vertex, prevVertex)) {
                 continue
             }
-            val edgeLength = graph.getEdgeWeight(prevVertex, vertex)
+            val edgeLength = graph.getEdgeWeight(prevVertex, state.vertex)
             val extension = extendIfFeasible(state, prevVertex, edgeLength) ?: continue
             updateNonDominatedStates(backwardStates[prevVertex], extension, onExtend)
         }
@@ -532,7 +537,7 @@ class PricingProblemSolver(
 
         if (!hasCycle(joinedVertexPath)) {
             elementaryRoutes.add(route)
-            if (elementaryRoutes.size >= Parameters.numReducedCostColumns) {
+            if (elementaryRoutes.size >= Parameters.maxPathsInsideSearch) {
                 return true
             }
         }
@@ -599,8 +604,8 @@ class PricingProblemSolver(
     }
 
     /**
-     * Adds [newState] to [existingStates] if it is not dominated by any state in [existingStates].
-     * Also removes states in [existingStates] dominated by [newState].
+     * Add [newState] to [existingStates] if it is not dominated by any state in [existingStates].
+     * If [newState] is dominated, mark it as dominated, just in case it is held elsewhere for use.
      */
     private fun updateNonDominatedStates(
         existingStates: MutableList<State>,
