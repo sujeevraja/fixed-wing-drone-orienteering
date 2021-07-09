@@ -4,6 +4,8 @@ out/
 regression_testing/
 *.lp
 python-scripts/exhaustive_runs.txt
+*.pyc
+*.DS_Store 
 
 # Intellij
 .idea/

@@ -50,6 +50,7 @@ def generate_idssr_query():
     return """
         select
             simple.instance_name,
+            simple.number_of_discretizations,
             simple.solution_time_in_seconds as simple_time,
             simple.optimality_reached as simple_opt_reached,
             one_thread_interleaved.solution_time_in_seconds as one_thread_time,
