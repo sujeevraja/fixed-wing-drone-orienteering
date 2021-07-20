@@ -42,6 +42,7 @@ class Controller {
             numReducedCostColumns = parser.numReducedCostColumns,
             timeLimitInSeconds = parser.timeLimitInSeconds,
             useInterleavedSearch = parser.useInterleavedSearch == 1,
+            useBangForBuck = parser.useBangForBuck == 1,
             useNumTargetsForDominance = parser.useNumTargetsForDominance == 1,
             relaxDominanceRules = parser.relaxDominanceRules == 1,
             numSolverCoroutines = parser.numSolverCoroutines

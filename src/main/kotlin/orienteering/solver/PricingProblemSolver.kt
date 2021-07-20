@@ -496,7 +496,8 @@ class PricingProblemSolver(
             isCritical[neighborTarget],
             edgeLength,
             instance.targetScores[neighborTarget],
-            rcUpdate
+            rcUpdate,
+            Parameters.useBangForBuck
         )
     }
 

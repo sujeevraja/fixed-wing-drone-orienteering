@@ -60,6 +60,11 @@ object Parameters {
     var useInterleavedSearch: Boolean = true
         private set
     /**
+     * If true, use best bang for buck to select labels. Use least reduced cost otherwise.
+     */
+    var useBangForBuck: Boolean = true
+        private set
+    /**
      * If the most negative reduced cost column of a DSSR search iteration is not elementary, but
      * the number of elementary routes with negative reduced cost collected during the search is
      * greater than or equal to this value, that DSSR iteration will be terminated.
@@ -83,6 +88,7 @@ object Parameters {
         numReducedCostColumns: Int,
         timeLimitInSeconds: Int,
         useInterleavedSearch: Boolean,
+        useBangForBuck: Boolean,
         useNumTargetsForDominance: Boolean,
         relaxDominanceRules: Boolean,
         numSolverCoroutines: Int
@@ -92,9 +98,10 @@ object Parameters {
         Parameters.algorithm = algorithm
         Parameters.turnRadius = turnRadius
         Parameters.numDiscretizations = numDiscretizations
-        Parameters.maxPathsInsideSearch = numReducedCostColumns
+        maxPathsInsideSearch = numReducedCostColumns
         Parameters.timeLimitInSeconds = timeLimitInSeconds
         Parameters.useInterleavedSearch = useInterleavedSearch
+        Parameters.useBangForBuck = useBangForBuck
         Parameters.useNumTargetsForDominance = useNumTargetsForDominance
         Parameters.relaxDominanceRules = relaxDominanceRules
         Parameters.numSolverCoroutines = numSolverCoroutines
