@@ -1,4 +1,10 @@
+# Project folders
+!*/.gitkeep
+
+
 # Project specific
+bangforbuck/
+dominance/
 logs/
 out/
 regression_testing/

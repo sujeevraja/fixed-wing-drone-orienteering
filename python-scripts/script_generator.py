@@ -22,7 +22,7 @@ class ScriptException(Exception):
         return repr(self.value)
 
 
-class Config(object):
+class Config:
     """Class that holds global parameters."""
 
     def __init__(self):
@@ -45,6 +45,7 @@ class Config(object):
         self.exhaustive_runs = False
         self.simple_search_runs = False
         self.single_thread_runs = False
+        self.bang_for_buck_runs = False
 
 
 def guess_cplex_library_path():
@@ -79,6 +80,9 @@ class Controller:
 
         self._prepare_uberjar()
 
+        if self.config.bang_for_buck_runs:
+            self._setup_bang_for_buck_runs()
+
         if self.config.dominance_runs:
             self._generate_non_exhaustive_setup(
                 "dominance", cmd_args=[
@@ -99,7 +103,16 @@ class Controller:
                     "-i", "1", ])
 
         if self.config.exhaustive_runs:
-            self._generate_exhaustive_setup()
+            self._generate_exhaustive_setup(
+                cases=self._collect_exhaustive_cases())
+
+    def _setup_bang_for_buck_runs(self):
+        cases = self._collect_exhaustive_cases(discretizations=["2", "4"])
+        args = [
+            ["-b", "1"],
+            ["-b", "0"]
+        ]
+        self._generate_exhaustive_setup(cases, args, "bangforbuck")
 
     def _generate_non_exhaustive_setup(self, test_name, cmd_args):
         cases = self._collect_cases_from_file()
@@ -110,7 +123,6 @@ class Controller:
             counter = 0
             for folder_name, instance_name, num_disc in cases:
                 folder_path = './data/{}/'.format(folder_name)
-                cleaned_name = instance_name[:-4].replace('.', '_')
                 results_file_name = "results_{}.yaml".format(counter)
 
                 results_path = os.path.join("results", results_file_name)
@@ -132,35 +144,42 @@ class Controller:
         self._prepare_test_folder(
             test_name, self._get_folder_and_file_names(cases))
 
-    def _generate_exhaustive_setup(self):
-        cases = self._collect_exhaustive_cases()
+    def _generate_exhaustive_setup(self, cases, additional_cmds=[],
+                                   test_name="exhaustive"):
         runs_file_path = os.path.join(
-            self.config.script_folder_path, 'exhaustive_runs.txt')
+            self.config.script_folder_path, test_name + '_runs.txt')
 
         with open(runs_file_path, 'w') as f_out:
             counter = 0
             for folder, file_name, num_disc in cases:
-                results_file_name = "results_{}.yaml".format(counter)
-                results_path = os.path.join("results", results_file_name)
-                results_path = "./{}".format(results_path)
-
+                prefix = "./results/results"
                 cmd = [c for c in self._base_cmd]
                 cmd.extend([
                     "-n", file_name,
-                    "-p", "./data/{}".format(folder),
-                    "-o", results_path,
+                    "-p", "./data/{}/".format(folder),
                     "-d", str(num_disc),
                     "-i", "1", ])
 
-                f_out.write(' '.join(cmd))
-                f_out.write('\n')
-                counter += 1
+                if not additional_cmds:
+                    cmd.extend(["-o", prefix + "_{}.yaml".format(counter)])
+                    f_out.write(' '.join(cmd))
+                    f_out.write('\n')
+                    counter += 1
+                    continue
+
+                for addition in additional_cmds:
+                    cmd1 = [c for c in cmd]
+                    cmd1.extend(addition)
+                    cmd1.extend(["-o", prefix + "_{}.yaml".format(counter)])
+                    f_out.write(' '.join(cmd1))
+                    f_out.write('\n')
+                    counter += 1
 
         log.info("wrote cases to {}".format(runs_file_path))
         self._prepare_test_folder(
-            "exhaustive", self._get_folder_and_file_names(cases))
+            test_name, self._get_folder_and_file_names(cases))
 
-    def _collect_exhaustive_cases(self):
+    def _collect_exhaustive_cases(self, discretizations=["2", "4", "6"]):
         cases = []
         for folder in os.listdir(self.config.data_path):
             if '_100_' in folder or '_102_' in folder:
@@ -168,7 +187,7 @@ class Controller:
 
             for f in os.listdir(os.path.join(self.config.data_path, folder)):
                 if f.endswith(".txt"):
-                    for num_disc in ["2", "4", "6"]:
+                    for num_disc in discretizations:
                         cases.append((folder, f, num_disc))
 
         if not cases:
@@ -235,6 +254,8 @@ class Controller:
 def handle_command_line():
     parser = argparse.ArgumentParser()
 
+    parser.add_argument("-b", "--bangforbuck", action="store_true",
+                        help="generate runs to test efficacy of bang-for-buck")
     parser.add_argument("-d", "--dominance", action="store_true",
                         help="generate runs file for dominance comparison")
     parser.add_argument("-e", "--exhaustive", action="store_true",
@@ -249,6 +270,7 @@ def handle_command_line():
     args = parser.parse_args()
     config = Config()
 
+    config.bang_for_buck_runs = args.bangforbuck
     config.dominance_runs = args.dominance
     config.exhaustive_runs = args.exhaustive
     config.simple_search_runs = args.simple
