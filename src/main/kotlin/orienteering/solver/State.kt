@@ -37,16 +37,18 @@ class State private constructor(
     /**
      * Numbers whose bits are used to track target visits using bitwise operations.
      */
-    private val visitedBits: LongArray
-) : Comparable<State> {
+    private val visitedBits: LongArray,
     /**
-     * Reduced cost per unit length of partial path up to incident vertex of label.
+     * Used in the comparator to order states, can be equal to [reducedCost] or bang for buck
+     * (i.e. reduced cost per unit path length).
      */
-    private val bangForBuck = if (pathLength >= Parameters.eps) reducedCost / pathLength else 0.0
+    private val selectionMetric: Double
+) : Comparable<State> {
     /**
      * true if all extensions have been generated, false otherwise
      */
     var extended = false
+
     /**
      * true if dominated by another State, false otherwise
      */
@@ -63,20 +65,10 @@ class State private constructor(
     /**
      * Comparator based on reduced cost per unit length used to store states in a priority queue.
      */
-    override fun compareTo(other: State): Int {
-        return when {
-            bangForBuck <= other.bangForBuck - Parameters.eps -> -1
-            bangForBuck >= other.bangForBuck + Parameters.eps -> 1
-            else -> 0
-        }
-
-        /*
-        return when {
-            reducedCost <= other.reducedCost - Parameters.EPS -> -1
-            reducedCost >= other.reducedCost + Parameters.EPS -> 1
-            else -> 0
-        }
-         */
+    override fun compareTo(other: State): Int = when {
+        selectionMetric <= other.selectionMetric - Parameters.eps -> -1
+        selectionMetric >= other.selectionMetric + Parameters.eps -> 1
+        else -> 0
     }
 
     /**
@@ -95,12 +87,17 @@ class State private constructor(
         isCritical: Boolean,
         edgeLength: Double,
         vertexScore: Double,
-        reducedCostChange: Double
+        reducedCostChange: Double,
+        useBangForBuck: Boolean
     ): State {
         val newVisitedBits = visitedBits.copyOf()
-        if (isCritical) {
+        if (isCritical)
             markVisited(newVisitedBits, newTarget)
-        }
+
+        val newReducedCost = reducedCost + reducedCostChange
+        val metric = if (useBangForBuck)
+            if (pathLength >= Parameters.eps) reducedCost / pathLength else 0.0
+        else newReducedCost
 
         return State(
             isForward,
@@ -108,9 +105,10 @@ class State private constructor(
             newVertex,
             pathLength + edgeLength,
             score + vertexScore,
-            reducedCost + reducedCostChange,
+            newReducedCost,
             numTargetsVisited + 1,
-            newVisitedBits
+            newVisitedBits,
+            metric
         )
     }
 
@@ -129,7 +127,7 @@ class State private constructor(
         if (reducedCost <= other.reducedCost - Parameters.eps) {
             strict = true
         }
-        if(pathLength >= other.pathLength + Parameters.eps) {
+        if (pathLength >= other.pathLength + Parameters.eps) {
             return false
         }
         if (!strict && pathLength <= other.pathLength - Parameters.eps) {
@@ -222,7 +220,7 @@ class State private constructor(
         ): State {
             val size: Int = (numTargets / Parameters.numBits) + 1
             return State(isForward, null, vertex, 0.0, 0.0, 0.0,
-                0, LongArray(size) { 0L })
+                0, LongArray(size) { 0L }, 0.0)
         }
 
         /**
