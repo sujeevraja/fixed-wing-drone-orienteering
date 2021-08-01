@@ -5,7 +5,6 @@ import logging
 import operator
 import os
 import sqlite3
-import subprocess
 import yaml
 
 log = logging.getLogger(__name__)
@@ -96,6 +95,8 @@ class Controller:
 
     def _add_results_to_table(self, fpath):
         with open(fpath, "r") as f_result:
+            name = os.path.basename(fpath.strip()).split(".")[0]
+            id = int(name.split("_")[1])
             result_dict = yaml.load(f_result, Loader=yaml.FullLoader)
             keys_and_values = [(key, val)
                                for (key, val) in result_dict.items()]
@@ -107,17 +108,17 @@ class Controller:
                 INSERT INTO {self.config.table_name}
                 VALUES ({",".join(values)})"""
             self._cursor.execute(cmd)
-            # self._cursor.execute(
-            #     f"""INSERT INTO results VALUES ({",".join(values)})""")
 
 
 def handle_command_line():
     parser = argparse.ArgumentParser()
 
     parser.add_argument("-r", "--resultspath", type=str,
-                        help="path to folder with results")
+                        help="path to folder with results",
+                        default="../results")
     parser.add_argument("-t", "--tablename", type=str,
-                        help="name of table to add results to")
+                        help="name of table to add results to",
+                        default="bangforbuck")
 
     args = parser.parse_args()
     config = Config()

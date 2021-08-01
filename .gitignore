@@ -11,17 +11,18 @@ regression_testing/
 *.lp
 python-scripts/exhaustive_runs.txt
 *.pyc
-*.DS_Store 
+*.DS_Store
 
 # Intellij
 .idea/
 *.iml
 
-# Ignore Gradle project-specific cache directory
+# Gradle
 .gradle
-
-# Ignore Gradle build output directory
 build
 
-# Ignore pycache
+# pycache
 final-results/__pycache__/
+
+# VSCode
+.vscode/
