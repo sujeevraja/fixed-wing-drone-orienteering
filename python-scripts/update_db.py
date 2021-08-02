@@ -32,6 +32,23 @@ class ScriptException(Exception):
         return repr(self.value)
 
 
+def table_exists(cursor, name):
+    cmd = f"""
+        SELECT count(name)
+        FROM sqlite_master
+        WHERE type='table'
+        AND name='{name}'"""
+    cursor.execute(cmd)
+    return cursor.fetchone()[0] == 1
+
+
+def create_table(cursor, name, fields):
+    if not table_exists(cursor, name):
+        field_str = ",".join(fields)
+        cursor.execute(
+            f"""CREATE TABLE {name} ({field_str})""")
+
+
 class Controller:
     """class that manages the functionality of the entire script."""
 
@@ -39,13 +56,39 @@ class Controller:
         self.config = config
         self._connection = None  # will point to a connection to a SQL database
         self._cursor = None
+        self._result_id_col = "result_id"
 
     def run(self):
         self._connection = sqlite3.connect(self.config.db_path)
         self._cursor = self._connection.cursor()
 
-        if not self._table_exists():
-            self._create_table()
+        self._write_results_table()
+
+        if self.config.table_name == "bangforbuck":
+            self._write_args_table()
+
+        self._connection.commit()
+        self._cursor.close()
+        self._connection.close()
+        log.info("result addition completed")
+    
+    def _write_results_table(self):
+        table_created = False
+        for f in os.listdir(self.config.results_path):
+            if not f.endswith(".yaml"):
+                continue
+
+            with open(os.path.join(self.config.results_path, f), 'r') as fin:
+                result_dict = yaml.load(fin, Loader=yaml.FullLoader)
+                col_names = list(result_dict.keys()) + [self._result_id_col]
+                col_names.sort()
+                create_table(self._cursor, self.config.table_name, col_names)
+                table_created = True
+            
+            break
+
+        if not table_created:
+            raise ScriptException(f"no yaml file found in results folder")
 
         for f in os.listdir(self.config.results_path):
             if f.endswith(".yaml"):
@@ -53,55 +96,46 @@ class Controller:
                 self._add_results_to_table(fpath)
                 log.info(f"added results for {f}")
 
-        self._connection.commit()
-        self._cursor.close()
-        self._connection.close()
-        log.info("result addition completed")
 
-    def _table_exists(self):
-        cmd = f"""
-            SELECT count(name)
-            FROM sqlite_master
-            WHERE type='table'
-            AND name='{self.config.table_name}'"""
-        self._cursor.execute(cmd)
-        return self._cursor.fetchone()[0] == 1
+    def _write_args_table(self):
+        table_name = self.config.table_name + "_args"
+        fields = [self._result_id_col, "bfb"]
+        create_table(self._cursor, table_name, fields)
 
-    def _create_table(self):
-        for f in os.listdir(self.config.results_path):
-            if not f.endswith(".yaml"):
-                continue
+        runs_path = os.path.join(
+            os.path.dirname(__file__),
+            "..",
+            "bangforbuck",
+            "bangforbuck_runs.txt"
+        )
 
-            with open(os.path.join(self.config.results_path, f), 'r') as fin:
-                result_dict = yaml.load(fin, Loader=yaml.FullLoader)
-                column_names = sorted(list(result_dict.keys()))
-                self._cursor.execute(
-                    f"""
-                    CREATE TABLE
-                    {self.config.table_name}
-                    ({",".join(column_names)})""")
+        with open(runs_path, "r") as runsfile:
+            for line in runsfile:
+                cmds = line.strip().split()
+                result_name = cmds[-1].split(".")[1].split("/")[-1]
+                result_id = int(result_name.split("_")[-1])
 
-            return
+                bfb_used = None
+                for i, cmd in enumerate(cmds):
+                    if cmd == "-b":
+                        bfb_used = int(cmds[i+1])
+                        break
 
-        raise ScriptException(f"no yaml file found in results folder")
-
-    @staticmethod
-    def _build_create_table_command(name, num_columns):
-        cmd_list = [f'CREATE TABLE {name}', '(']
-        for _ in range(num_columns - 1):
-            cmd_list.append('?,')
-        cmd_list.append('?)')
-        return ''.join(cmd_list)
+                row = [str(result_id), str(bfb_used)]
+                insert_cmd = f"""
+                    INSERT INTO {table_name}
+                    VALUES ({",".join(row)})"""
+                self._cursor.execute(insert_cmd)
 
     def _add_results_to_table(self, fpath):
         with open(fpath, "r") as f_result:
             name = os.path.basename(fpath.strip()).split(".")[0]
             id = int(name.split("_")[1])
             result_dict = yaml.load(f_result, Loader=yaml.FullLoader)
-            keys_and_values = [(key, val)
-                               for (key, val) in result_dict.items()]
-            keys_and_values.sort(key=operator.itemgetter(0))
-            _, values = zip(*keys_and_values)
+            keys_and_vals = [(k, v) for (k, v) in result_dict.items()] + \
+                [(self._result_id_col, id)]
+            keys_and_vals.sort(key=operator.itemgetter(0))
+            _, values = zip(*keys_and_vals)
             values = [f"'{v}'" for v in values]
 
             cmd = f"""
