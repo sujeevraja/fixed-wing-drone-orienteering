@@ -197,9 +197,9 @@ class State private constructor(
     }
 
     /**
-     * Returns true if [target] is on partial path, false otherwise.
+     * Returns true if critical [target] is on partial path, false otherwise.
      */
-    fun visits(target: Int): Boolean {
+    fun usedCriticalTarget(target: Int): Boolean {
         val quotient: Int = target / Parameters.numBits
         val remainder: Int = target % Parameters.numBits
         return visitedCriticalBits[quotient] and (1L shl remainder) != 0L
@@ -208,7 +208,7 @@ class State private constructor(
     /**
      * Returns true if any critical target is visited both by this and [other], false otherwise.
      */
-    fun hasCommonVisits(other: State): Boolean {
+    fun hasCommonCriticalVisits(other: State): Boolean {
         for (i in visitedCriticalBits.indices) {
             if (visitedCriticalBits[i] and other.visitedCriticalBits[i] != 0L) {
                 return true

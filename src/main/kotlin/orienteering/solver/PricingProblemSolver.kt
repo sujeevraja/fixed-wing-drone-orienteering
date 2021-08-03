@@ -428,7 +428,7 @@ class PricingProblemSolver(
             val nextVertex = graph.getEdgeTarget(e)
 
             // Don't extend to critical vertices more than once
-            if (state.visits(instance.whichTarget(nextVertex)))
+            if (state.usedCriticalTarget(instance.whichTarget(nextVertex)))
                 continue
 
             // No 2-cycles
@@ -452,7 +452,7 @@ class PricingProblemSolver(
 
             val prevVertex = graph.getEdgeSource(e)
 
-            if (state.visits(instance.whichTarget(prevVertex)))
+            if (state.usedCriticalTarget(instance.whichTarget(prevVertex)))
                 continue
 
             if (state.parent != null && sameTarget(state.parent.vertex, prevVertex))
@@ -575,7 +575,7 @@ class PricingProblemSolver(
      * @return true if path is feasible, false otherwise.
      */
     private fun feasible(fs: State, bs: State): Boolean {
-        return (!fs.hasCommonVisits(bs) &&
+        return (!fs.hasCommonCriticalVisits(bs) &&
                 getJoinedPathLength(fs, bs) <= maxPathLength &&
                 (fs.parent == null || !sameTarget(fs.parent.vertex, bs.vertex)) &&
                 (bs.parent == null || !sameTarget(fs.vertex, bs.parent.vertex)))
