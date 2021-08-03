@@ -35,9 +35,13 @@ class State private constructor(
      */
     val numTargetsVisited: Int,
     /**
-     * Numbers whose bits are used to track target visits using bitwise operations.
+     * Numbers whose bits are used to track critical target visits using bitwise operations.
      */
     private val visitedCriticalBits: LongArray,
+    /**
+     * Numbers whose bits are used to track unreachable critical targets using bitwise operations
+     */
+    private val unreachableCriticalBits: LongArray,
     /**
      * Used in the comparator to order states, can be equal to [reducedCost] or bang for buck
      * (i.e. reduced cost per unit path length).
@@ -115,6 +119,7 @@ class State private constructor(
             reducedCost = newReducedCost,
             numTargetsVisited = numTargetsVisited + 1,
             visitedCriticalBits = newVisitedCriticalBits,
+            unreachableCriticalBits = unreachableCriticalBits.copyOf(),
             selectionMetric = metric
         )
     }
@@ -242,6 +247,7 @@ class State private constructor(
                 reducedCost = 0.0,
                 numTargetsVisited = 1,
                 visitedCriticalBits = arrayOfLongs,
+                unreachableCriticalBits = arrayOfLongs,
                 selectionMetric = 0.0)
         }
 
