@@ -3,9 +3,6 @@ package orienteering.main
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory
 import ilog.cplex.IloCplex
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.ObsoleteCoroutinesApi
-import kotlinx.coroutines.newSingleThreadContext
 import mu.KLogging
 import orienteering.data.Instance
 import orienteering.data.InstanceDto
@@ -91,7 +88,6 @@ class Controller {
     /**
      * Function to start the solver
      */
-    @ObsoleteCoroutinesApi
     fun run() {
         TimeChecker.startTracking()
         val timeElapsedMillis = measureTimeMillis {
@@ -117,27 +113,20 @@ class Controller {
     /**
      * Function to run branch-and-price algorithm
      */
-    @ObsoleteCoroutinesApi
     private fun runBranchAndPrice() {
         logger.info("algorithm: branch and price")
-        val context = (if (Parameters.numSolverCoroutines == 1)
-            newSingleThreadContext("OneThread") else Dispatchers.Default)
-        val bps = BranchAndPriceSolver(instance, context)
-        bps.solve()
-        val bpSolution = bps.finalSolution
+        val bps = BranchAndPriceSolver(instance)
+        val bpSolution = bps.solve()
 
         results["root_lower_bound"] = bps.rootLowerBound
-        results["root_upper_bound"] =
-            if (bps.rootUpperBound == Double.MAX_VALUE) "infinity" else bps.rootUpperBound
+        results["root_upper_bound"] = if (bps.rootUpperBound == Double.MAX_VALUE) "infinity" else bps.rootUpperBound
         results["root_lp_optimal"] = bps.rootLpOptimal
-        results["root_gap_percentage"] =
-            computePercentGap(bps.rootLowerBound, bps.rootUpperBound)
+        results["root_gap_percentage"] = computePercentGap(bps.rootLowerBound, bps.rootUpperBound)
 
         results["final_lower_bound"] = bpSolution.lowerBound
         results["final_upper_bound"] =
             if (bpSolution.upperBound == Double.MAX_VALUE) "infinity" else bpSolution.upperBound
-        results["final_gap_percentage"] =
-            computePercentGap(bpSolution.lowerBound, bpSolution.upperBound)
+        results["final_gap_percentage"] = computePercentGap(bpSolution.lowerBound, bpSolution.upperBound)
 
         results["optimality_reached"] = bpSolution.optimalityReached
         results["number_of_nodes_solved"] = bpSolution.numNodesSolved
