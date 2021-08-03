@@ -510,13 +510,13 @@ class PricingProblemSolver(
                 targetReducedCosts[neighborTarget] + targetEdgeDuals[neighborTarget][instance.whichTarget(state.vertex)]
 
         return state.extend(
-            neighbor,
-            neighborTarget,
-            isCritical[neighborTarget],
-            edgeLength,
-            instance.targetScores[neighborTarget],
-            rcUpdate,
-            Parameters.useBangForBuck
+            newVertex = neighbor,
+            newTarget = neighborTarget,
+            isCritical = isCritical[neighborTarget],
+            edgeLength = edgeLength,
+            vertexScore = instance.targetScores[neighborTarget],
+            reducedCostChange = rcUpdate,
+            useBangForBuck = Parameters.useBangForBuck
         )
     }
 
