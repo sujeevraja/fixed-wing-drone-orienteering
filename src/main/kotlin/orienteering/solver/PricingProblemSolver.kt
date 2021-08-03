@@ -501,18 +501,19 @@ class PricingProblemSolver(
 
     private fun extendIfFeasible(state: State, neighbor: Int, edgeLength: Double): State? {
         // Prevent budget infeasibility.
-        if (state.pathLength + edgeLength >= maxPathLength) {
+        if (state.pathLength + edgeLength > maxPathLength) {
             return null
         }
 
         // Here, extension is feasible. So, generate and return it.
         val neighborTarget = instance.whichTarget(neighbor)
-        var rcUpdate = targetReducedCosts[neighborTarget]
-        rcUpdate += if (state.isForward) {
-            targetEdgeDuals[instance.whichTarget(state.vertex)][neighborTarget]
-        } else {
-            targetEdgeDuals[neighborTarget][instance.whichTarget(state.vertex)]
-        }
+
+        val rcUpdate =
+            if (state.isForward)
+                targetReducedCosts[neighborTarget] + targetEdgeDuals[instance.whichTarget(state.vertex)][neighborTarget]
+            else
+                targetReducedCosts[neighborTarget] + targetEdgeDuals[neighborTarget][instance.whichTarget(state.vertex)]
+
         return state.extend(
             neighbor,
             neighborTarget,
