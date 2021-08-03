@@ -250,8 +250,13 @@ class PricingProblemSolver(
             }
 
             val vertex = state.vertex
+
+            // Current state is a forward state, so join with all non-dominated backward states
+
             if (state.isForward) {
+
                 // Join with all backward states.
+                /*
                 for (j in 0 until numVertices) {
                     if (j == vertex || !graph.containsEdge(vertex, j)) {
                         continue
@@ -263,21 +268,42 @@ class PricingProblemSolver(
                         }
                     }
                 }
+                 */
+
+                for (e in graph.outgoingEdgesOf(vertex)) {
+
+                    val nextVertex = graph.getEdgeTarget(e)
+
+                    for (bs in backwardStates[nextVertex]) {
+                        val shouldExit = save(state, bs)
+                        if (shouldExit)
+                            return true
+                    }
+
+                }
                 if (TimeChecker.timeLimitReached()) {
                     return true
                 }
 
+                /*
                 if (Graphs.vertexHasSuccessors(graph, vertex)) {
                     processState(state) {
                         unprocessedForwardStates.add(it)
                     }
                 }
+
+                 */
+                processState(state) {
+                    unprocessedForwardStates.add(it)
+                }
                 if (TimeChecker.timeLimitReached()) {
                     return true
                 }
-            } else {
+            }
+            else { // Current state is a backward state
+
                 // Join with all forward states.
-                for (j in 0 until numVertices) {
+                /*for (j in 0 until numVertices) {
                     if (j == vertex || !graph.containsEdge(j, vertex)) {
                         continue
                     }
@@ -288,14 +314,34 @@ class PricingProblemSolver(
                         }
                     }
                 }
+
+                 */
+
+                for (e in graph.incomingEdgesOf(vertex)) {
+
+                    val prevVertex = graph.getEdgeSource(e)
+
+                    for (fs in forwardStates[prevVertex]) {
+                        val shouldExit = save(fs, state)
+                        if (shouldExit)
+                            return true
+                    }
+                }
+
                 if (TimeChecker.timeLimitReached()) {
                     return true
                 }
 
+                /*
                 if (Graphs.vertexHasPredecessors(graph, vertex)) {
                     processState(state) {
                         unprocessedBackwardStates.add(it)
                     }
+                }
+
+                 */
+                processState(state) {
+                    unprocessedBackwardStates.add(it)
                 }
                 if (TimeChecker.timeLimitReached()) {
                     return true
@@ -421,31 +467,50 @@ class PricingProblemSolver(
     }
 
     private fun extendForward(state: State, onExtend: (State) -> Unit) {
-        for (nextVertex in Graphs.successorListOf(graph, state.vertex)) {
-            if (state.visits(instance.whichTarget(nextVertex))) {
+
+        val currentVertex = state.vertex
+
+        for (e in graph.outgoingEdgesOf(currentVertex)) {
+
+            val nextVertex = graph.getEdgeTarget(e)
+
+            // Don't extend to critical vertices more than once
+            if (state.visits(instance.whichTarget(nextVertex)))
                 continue
-            }
-            if (state.parent != null && sameTarget(state.parent.vertex, nextVertex)) {
+
+            // No 2-cycles
+            if (state.parent != null && sameTarget(state.parent.vertex, nextVertex))
                 continue
-            }
-            val edgeLength = graph.getEdgeWeight(state.vertex, nextVertex)
+
+            // Checking if an extension is feasible
+            val edgeLength = graph.getEdgeWeight(currentVertex, nextVertex)
             val extension = extendIfFeasible(state, nextVertex, edgeLength) ?: continue
+
+            // Extension is feasible. Update non-dominated states accordingly
             updateNonDominatedStates(forwardStates[nextVertex], extension, onExtend)
         }
     }
 
     private fun extendBackward(state: State, onExtend: (State) -> Unit) {
-        for (prevVertex in Graphs.predecessorListOf(graph, state.vertex)) {
-            if (state.visits(instance.whichTarget(prevVertex))) {
+
+        val currentVertex = state.vertex
+
+        for (e in graph.incomingEdgesOf(currentVertex)) {
+
+            val prevVertex = graph.getEdgeSource(e)
+
+            if (state.visits(instance.whichTarget(prevVertex)))
                 continue
-            }
-            if (state.parent != null && sameTarget(state.parent.vertex, prevVertex)) {
+
+            if (state.parent != null && sameTarget(state.parent.vertex, prevVertex))
                 continue
-            }
-            val edgeLength = graph.getEdgeWeight(prevVertex, state.vertex)
+
+            val edgeLength = graph.getEdgeWeight(prevVertex, currentVertex)
             val extension = extendIfFeasible(state, prevVertex, edgeLength) ?: continue
+
             updateNonDominatedStates(backwardStates[prevVertex], extension, onExtend)
         }
+
     }
 
     private fun sameTarget(v1: Int, v2: Int): Boolean {
@@ -515,15 +580,15 @@ class PricingProblemSolver(
 
         val forwardTarget = instance.whichTarget(forwardState.vertex)
         val backwardTarget = instance.whichTarget(backwardState.vertex)
+
         val reducedCost = (routeDual + forwardState.reducedCost + backwardState.reducedCost +
                 targetEdgeDuals[forwardTarget][backwardTarget])
+
         if (reducedCost >= -Parameters.eps) {
             return false
         }
 
-        val joinedVertexPath = mutableListOf<Int>()
-        joinedVertexPath.addAll(forwardState.getPartialPathVertices().asReversed())
-        joinedVertexPath.addAll(backwardState.getPartialPathVertices())
+        val joinedVertexPath = forwardState.getPartialPathVertices().asReversed() + backwardState.getPartialPathVertices()
 
         val route = Route(
             joinedVertexPath,
@@ -532,6 +597,7 @@ class PricingProblemSolver(
             getJoinedPathLength(forwardState, backwardState),
             reducedCost
         )
+
         if (optimalRoute == null || reducedCost <= optimalRoute!!.reducedCost - Parameters.eps) {
             optimalRoute = route
         }
