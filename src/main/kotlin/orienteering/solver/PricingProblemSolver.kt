@@ -1,7 +1,6 @@
 package orienteering.solver
 
 import mu.KLogging
-import org.jgrapht.Graphs
 import orienteering.data.Instance
 import orienteering.data.Parameters
 import orienteering.data.Route
@@ -259,9 +258,7 @@ class PricingProblemSolver(
 
                 for (e in graph.outgoingEdgesOf(vertex)) {
 
-                    val nextVertex = graph.getEdgeTarget(e)
-
-                    for (bs in backwardStates[nextVertex]) {
+                    for (bs in backwardStates[graph.getEdgeTarget(e)]) {
                         val shouldExit = save(state, bs)
                         if (shouldExit)
                             return true
@@ -284,9 +281,7 @@ class PricingProblemSolver(
                 // Join with all forward states.
                 for (e in graph.incomingEdgesOf(vertex)) {
 
-                    val prevVertex = graph.getEdgeSource(e)
-
-                    for (fs in forwardStates[prevVertex]) {
+                    for (fs in forwardStates[graph.getEdgeSource(e)]) {
                         val shouldExit = save(fs, state)
                         if (shouldExit)
                             return true
