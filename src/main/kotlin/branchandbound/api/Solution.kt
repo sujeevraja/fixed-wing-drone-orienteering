@@ -10,6 +10,7 @@ package branchandbound.api
  * @property maxParallelSolves maximum number of parallel solves performed by algorithm
  */
 data class Solution(
+    val solvedRootNode: INode,
     val objective: Double,
     val incumbent: INode?,
     val numCreatedNodes: Int,

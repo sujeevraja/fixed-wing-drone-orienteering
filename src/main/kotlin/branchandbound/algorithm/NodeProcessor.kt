@@ -14,8 +14,13 @@ import kotlin.math.max
  */
 private val log = KotlinLogging.logger {}
 
-class NodeProcessor(private val numSolvers: Int, comparator: Comparator<INode>) {
+class NodeProcessor(
+    private val solvedRootNode: INode,
+    private val numSolvers: Int,
+    comparator: Comparator<INode>
+) {
     private val eps = 1e-6
+
     /**
      * Best integer solution.
      */
@@ -29,14 +34,14 @@ class NodeProcessor(private val numSolvers: Int, comparator: Comparator<INode>) 
 
     /**
      * The number of unsolved nodes sent for solving. It is initialized with 1 as the root node
-     * is created directly outside of the node processor and not by branching. This way, when we
+     * is created directly outside the node processor and not by branching. This way, when we
      * receive the root node, we will correctly decrease this count to 0.
      */
     private var numSolving = 1
 
     /**
      * Number of branch-and-bound nodes created, initialized with 1 to count the root node created
-     * outside of this coroutine.
+     * outside this coroutine.
      */
     private var numCreated = 1
 
@@ -73,8 +78,18 @@ class NodeProcessor(private val numSolvers: Int, comparator: Comparator<INode>) 
      */
     private val leafUpperBounds = mutableMapOf<Long, Double>()
 
-    private var lowerBound: Double = -Double.MAX_VALUE
+    private var lowerBound: Double =  -Double.MAX_VALUE
     private var upperBound: Double = Double.MAX_VALUE
+
+    init {
+        if (solvedRootNode.lpFeasible) {
+            upperBound = solvedRootNode.lpObjective
+            solvedRootNode.mipObjective?.let {
+                lowerBound = it
+                incumbent = solvedRootNode
+            }
+        }
+    }
 
     /**
      * Process the given [solvedNode] assuming that its LP solution or infeasibility is known.
@@ -156,8 +171,9 @@ class NodeProcessor(private val numSolvers: Int, comparator: Comparator<INode>) 
         }
 
         if (solvedNode.mipObjective != null &&
-            (solvedNode.lpObjective - solvedNode.mipObjective!!).absoluteValue <= eps) {
-            log.debug {"Node ${solvedNode.id} pruned by LP objective matching MIP objective"}
+            (solvedNode.lpObjective - solvedNode.mipObjective!!).absoluteValue <= eps
+        ) {
+            log.debug { "Node ${solvedNode.id} pruned by LP objective matching MIP objective" }
             return true
         }
 
@@ -202,10 +218,11 @@ class NodeProcessor(private val numSolvers: Int, comparator: Comparator<INode>) 
         log.info { "number of feasible nodes: $numFeasible" }
         log.info { "maximum parallel solves: $maxParallelSolves" }
         log.info { "sending solution to solution channel..." }
-        log.info { "Final upper bound: $upperBound"}
+        log.info { "Final upper bound: $upperBound" }
         solutionChannel.send(
             incumbent?.let {
                 Solution(
+                    solvedRootNode = solvedRootNode,
                     objective = it.lpObjective,
                     incumbent = incumbent,
                     numCreatedNodes = numCreated,

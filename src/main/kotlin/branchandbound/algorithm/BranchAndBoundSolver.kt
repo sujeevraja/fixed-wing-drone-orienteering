@@ -61,10 +61,9 @@ class BranchAndBoundSolver(
      */
     private suspend fun runBranchAndBound(scope: CoroutineScope, rootNode: INode): Solution? {
         prepareOptimizers(scope)
-        prepareSolvedNodeProcessing(scope)
-        scope.launch {
-            unsolvedChannel.send(rootNode)
-        }
+        val solvedRootNode = solveRootNode(rootNode)
+        prepareSolvedNodeProcessing(scope, solvedRootNode)
+        solvedChannel.send(solvedRootNode)
         val solution = solutionChannel.receive()
         log.info { "received solution" }
         scope.coroutineContext.cancelChildren()
@@ -82,12 +81,10 @@ class BranchAndBoundSolver(
      * the CPLEX object and the solveNode() function call will persist as long as the for loop is
      * suspended. We will go out of scope only when the unsolvedNodes channel is closed.
      */
-    private suspend fun prepareOptimizers(scope: CoroutineScope) {
-        for (solver in solvers) {
-            scope.launch {
-                for (unsolvedNode in unsolvedChannel)
-                    solvedChannel.send(solver.solve(unsolvedNode))
-            }
+    private suspend fun prepareOptimizers(scope: CoroutineScope): List<Job> = solvers.map {
+        scope.launch {
+            for (unsolvedNode in unsolvedChannel)
+                solvedChannel.send(it.solve(unsolvedNode))
         }
     }
 
@@ -97,13 +94,19 @@ class BranchAndBoundSolver(
      * branched, new unsolved nodes will be stored in the node processor's open node queue and
      * released to the unsolvedNodes channel whenever solvers are available.
      */
-    private suspend fun prepareSolvedNodeProcessing(scope: CoroutineScope) =
-        scope.launch {
-            val comparator =
-                if (selectionStrategy == SelectionStrategy.BEST_BOUND) BestBoundComparator()
-                else WorstBoundComparator()
-            val nodeProcessor = NodeProcessor(solvers.size, comparator)
-            for (solvedNode in solvedChannel)
-                nodeProcessor.processNode(solvedNode, unsolvedChannel, solutionChannel, branch)
-        }
+    private suspend fun prepareSolvedNodeProcessing(
+        scope: CoroutineScope, solvedRootNode: INode
+    ): Job = scope.launch {
+        val comparator =
+            if (selectionStrategy == SelectionStrategy.BEST_BOUND) BestBoundComparator()
+            else WorstBoundComparator()
+        val nodeProcessor = NodeProcessor(solvedRootNode, solvers.size, comparator)
+        for (solvedNode in solvedChannel)
+            nodeProcessor.processNode(solvedNode, unsolvedChannel, solutionChannel, branch)
+    }
+
+    private suspend fun solveRootNode(rootNode: INode): INode {
+        unsolvedChannel.send(rootNode)
+        return solvedChannel.receive()
+    }
 }
