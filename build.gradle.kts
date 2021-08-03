@@ -1,20 +1,22 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
+application {
+    mainClass.set("orienteering.main.MainKt")
+}
+
 plugins {
     // Apply the Kotlin JVM plugin to add support for Kotlin on the JVM.
-    kotlin("jvm") version "1.4.21"
+    kotlin("jvm") version "1.5.21"
 
     // Apply the application plugin to add support for building a CLI application.
     application
 
     // Documentation plugin
-    id("org.jetbrains.dokka") version "0.10.0"
+    id("org.jetbrains.dokka") version "1.5.0"
 }
 
 repositories {
-    // Use jcenter for resolving your dependencies.
-    // You can declare any Maven/Ivy/file repository here.
-    jcenter()
+    mavenCentral()
 }
 
 dependencies {
@@ -32,7 +34,7 @@ dependencies {
     // --- Dependencies managed by BOM (end)   ---
 
     // coroutines
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.4.2")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.5.1")
 
     // Kotlin logging with slf4j API and log4j logger
     implementation("io.github.microutils:kotlin-logging:1.7.8")
@@ -45,7 +47,7 @@ dependencies {
     implementation("com.github.ajalt:clikt:2.8.0")
 
     // use JGraphT library
-    implementation("org.jgrapht:jgrapht-core:1.5.0")
+    implementation("org.jgrapht:jgrapht-core:1.5.1")
 
     val cplexJarPath: String by project
     implementation(files(cplexJarPath))
@@ -59,15 +61,6 @@ dependencies {
 }
 
 tasks {
-    dokka {
-        outputFormat = "javadoc"
-        outputDirectory = "$buildDir/javadoc"
-        configuration {
-            includeNonPublic = true
-            noStdlibLink = true
-        }
-    }
-
     register<Delete>("cleanLogs") {
         delete(fileTree("logs") {
             include("*.db", "*.log", "*.lp", "*.yaml")
@@ -98,60 +91,20 @@ tasks {
         }
     }
 
+    val cplexLibPath: String by project
+    val args = listOf(
+        "-Xms32m",
+        "-Xmx22g",
+        "-Djava.library.path=$cplexLibPath"
+    )
+
     withType<JavaExec> {
-        val cplexLibPath: String by project
-        jvmArgs = listOf(
-            "-Xms32m",
-            "-Xmx22g",
-            "-Djava.library.path=$cplexLibPath"
-        )
+        jvmArgs = args
     }
 
     withType<Test> {
-        val cplexLibPath: String by project
-        jvmArgs = listOf(
-            "-Xms32m",
-            "-Xmx22g",
-            "-Djava.library.path=$cplexLibPath"
-        )
-
-        testLogging {
-            showStandardStreams = true
-        }
-
-        addTestListener(object : TestListener {
-            override fun beforeTest(p0: TestDescriptor?) = Unit
-            override fun beforeSuite(p0: TestDescriptor?) = Unit
-            override fun afterTest(desc: TestDescriptor, result: TestResult) = Unit
-            override fun afterSuite(desc: TestDescriptor, result: TestResult) {
-                // printResults(desc, result)
-            }
-        })
+        jvmArgs = args
+        testLogging { showStandardStreams = true }
         useJUnitPlatform()
     }
 }
-
-fun printResults(desc: TestDescriptor, result: TestResult) {
-    if (desc.parent != null) {
-        val output = result.run {
-            "Results: $resultType (" +
-                    "$testCount tests, " +
-                    "$successfulTestCount successes, " +
-                    "$failedTestCount failures, " +
-                    "$skippedTestCount skipped" +
-                    ")"
-        }
-        val testResultLine = "|  $output  |"
-        val repeatLength = testResultLine.length
-        val separationLine = "-".repeat(repeatLength)
-        println(separationLine)
-        println(testResultLine)
-        println(separationLine)
-    }
-}
-
-application {
-    // Define the main class for the application.
-    mainClassName = "orienteering.main.MainKt"
-}
-
