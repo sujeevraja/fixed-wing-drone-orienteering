@@ -1,17 +1,16 @@
-# Project folders
-!*/.gitkeep
-
-
 # Project specific
 bangforbuck/
 dominance/
-logs/
+logs/*
 out/
 regression_testing/
 *.lp
 python-scripts/exhaustive_runs.txt
 *.pyc
 *.DS_Store
+
+# Project folders
+!*/.gitkeep
 
 # Intellij
 .idea/
