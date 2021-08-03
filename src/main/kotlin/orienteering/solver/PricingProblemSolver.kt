@@ -99,6 +99,11 @@ class PricingProblemSolver(
         private set
 
     /**
+     * Flag for indicating if at least one target has been indicated as a critical target
+     */
+    private var hasCriticalTargets = false
+
+    /**
      * If true, state dominance check uses the following additional condition:
      *
      * State s1 dominates s2 iff critical targets visited by s1 is a subset of those visited by s2.
@@ -383,6 +388,7 @@ class PricingProblemSolver(
             numVisits[target]++
             if (numVisits[target] > 1) {
                 isVisitedMultipleTimes[target] = true
+                hasCriticalTargets = true
                 if (isCritical[target]) {
                     logger.error("multiple visits to critical target $target")
                     logger.error("problematic route: $optimalRoute")
@@ -638,21 +644,19 @@ class PricingProblemSolver(
         onExtend: (State) -> Unit
     ) {
         // Before checking for domination, updating unreachable targets for stronger dominance
-        //updateUnreachableCriticalTargets(newState)
+        if (hasCriticalTargets)
+            updateUnreachableCriticalTargets(newState)
 
-        var dominatingPredecessorTarget: Int? = null
-        for (state in existingStates) {
-            if (!state.dominates(newState, useVisitCondition)) {
-                continue
-            }
-            val predecessorTarget = instance.whichTarget(state.parent!!.vertex)
-            if (dominatingPredecessorTarget == null) {
-                dominatingPredecessorTarget = predecessorTarget
-            } else if (predecessorTarget != dominatingPredecessorTarget) {
-                newState.dominated = true
+        // Checking for domination both ways
+        for (i in existingStates.indices.reversed()) {
+            if (existingStates[i].dominates(newState, useVisitCondition))
                 return
-            }
+
+            if (newState.dominates(existingStates[i], useVisitCondition))
+                existingStates.removeAt(i)
         }
+
+        // New state is not dominated by previously found non-dominated states. Update non-dominated states
         existingStates.add(newState)
         onExtend(newState)
     }
