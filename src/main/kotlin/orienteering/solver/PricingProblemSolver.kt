@@ -112,6 +112,7 @@ class PricingProblemSolver(
     /**
      * Generates negative reduced cost elementaryRoutes.
      */
+    //Good
     fun generateColumns() {
         // Store source states.
         for (srcVertex in srcVertices) {
@@ -162,6 +163,7 @@ class PricingProblemSolver(
         } while (!stop)
     }
 
+    // Need to update how cycles detected
     private fun initializeIteration() {
         // Update critical vertices.
         for (i in isCritical.indices) {
@@ -204,6 +206,7 @@ class PricingProblemSolver(
     /**
      * Implementation of the I-DSSR algorithm presented in the paper.
      */
+
     private fun interleavedSearch(): Boolean {
         val criticalTargets = (0 until numTargets).filter { isCritical[it] }
         logger.debug("critical targets: $criticalTargets")
@@ -396,6 +399,7 @@ class PricingProblemSolver(
      *
      * @param path list of vertices.
      */
+    // Need to make obsolete
     private fun hasCycle(path: List<Int>): Boolean {
         val visited = hashSetOf<Int>()
         for (vertex in path) {
@@ -427,7 +431,7 @@ class PricingProblemSolver(
 
             val nextVertex = graph.getEdgeTarget(e)
 
-            // Don't extend to critical vertices more than once
+            // Don't extend to critical targets more than once
             if (state.usedCriticalTarget(instance.whichTarget(nextVertex)))
                 continue
 
@@ -633,6 +637,9 @@ class PricingProblemSolver(
         newState: State,
         onExtend: (State) -> Unit
     ) {
+        // Before checking for domination, updating unreachable targets for stronger dominance
+        //updateUnreachableCriticalTargets(newState)
+
         var dominatingPredecessorTarget: Int? = null
         for (state in existingStates) {
             if (!state.dominates(newState, useVisitCondition)) {
@@ -648,6 +655,44 @@ class PricingProblemSolver(
         }
         existingStates.add(newState)
         onExtend(newState)
+    }
+
+    /**
+     * Function that identifies all targets that are unreachable for a given state in the sense that taking a single
+     * edge to a new critical target will exceed the length budget. Since only a single move is considered, the edge
+     * lengths need not satisfy the triangle inequality for this to behave properly.
+     */
+    private fun updateUnreachableCriticalTargets(state: State) {
+
+        val currentVertex = state.vertex
+
+        if (state.isForward) {
+
+            // Finding all targets reachable from the current target using a single edge
+            for (e in graph.outgoingEdgesOf(currentVertex)) {
+
+                val nextTarget = instance.whichTarget(graph.getEdgeTarget(e))
+                val edgeLength = graph.getEdgeWeight(e)
+
+                // If the next target is a critical target, check if it is unreachable and mark if so
+                if (isCritical[nextTarget] && state.pathLength + edgeLength > instance.budget)
+                    state.markCriticalTargetUnreachable(nextTarget)
+            }
+        }
+        else {
+
+            // Finding all targets reachable from the current target using a single edge
+            for (e in graph.incomingEdgesOf(currentVertex)) {
+
+                val prevTarget = instance.whichTarget(graph.getEdgeSource(e))
+                val edgeLength = graph.getEdgeWeight(e)
+
+                // If the target is a critical target, check if it is unreachable and mark if so
+                if (isCritical[prevTarget] && state.pathLength + edgeLength > instance.budget)
+                    state.markCriticalTargetUnreachable(prevTarget)
+            }
+        }
+
     }
 
     /**

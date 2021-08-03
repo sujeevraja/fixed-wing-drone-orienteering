@@ -161,13 +161,17 @@ class State private constructor(
             for (i in visitedCriticalBits.indices) {
                 // Following condition is satisfied when "this" visits a critical target and
                 // "other" does not. So, "this" does not dominate the "other".
-                if (visitedCriticalBits[i] and other.visitedCriticalBits[i].inv() != 0L) {
+
+                val thisCombined = visitedCriticalBits[i] or unreachableCriticalBits[i]
+                val otherCombined = other.visitedCriticalBits[i] or other.unreachableCriticalBits[i]
+
+                if (thisCombined and otherCombined.inv() != 0L) {
                     return false
                 }
 
                 // Following condition is satisfied when "this" does not visit a critical target
                 // and "other" does. So, "this" strictly dominates "other".
-                if (!strict && (visitedCriticalBits[i].inv() and other.visitedCriticalBits[i] != 0L)) {
+                if (!strict && (thisCombined.inv() and otherCombined != 0L)) {
                     strict = true
                 }
             }
@@ -197,12 +201,17 @@ class State private constructor(
     }
 
     /**
-     * Returns true if critical [target] is on partial path, false otherwise.
+     * Returns true if critical [target] has been used, false otherwise. A critical vertex may have either been used
+     * by existing in the partial path associated with the state or because it is no longer reachable from the current
+     * state.
      */
     fun usedCriticalTarget(target: Int): Boolean {
         val quotient: Int = target / Parameters.numBits
         val remainder: Int = target % Parameters.numBits
-        return visitedCriticalBits[quotient] and (1L shl remainder) != 0L
+
+        val combined = visitedCriticalBits[quotient] or unreachableCriticalBits[quotient]
+
+        return combined and (1L shl remainder) != 0L
     }
 
     /**
@@ -215,6 +224,18 @@ class State private constructor(
             }
         }
         return false
+    }
+
+    /**
+     * Function that marks a critical [target] as unreachable in the sense that using a single edge to reach this
+     * target will always exceed the budget
+     */
+    fun markCriticalTargetUnreachable(target: Int) {
+        val quotient : Int = target / Parameters.numBits
+        val remainder : Int = target % Parameters.numBits
+
+        // Updating unreachable critical targets
+        unreachableCriticalBits[quotient] = unreachableCriticalBits[quotient] or (1L shl remainder)
     }
 
     /**
