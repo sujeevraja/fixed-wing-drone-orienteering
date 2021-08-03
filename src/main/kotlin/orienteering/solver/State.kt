@@ -218,9 +218,21 @@ class State private constructor(
             vertex: Int,
             numTargets: Int
         ): State {
-            val size: Int = (numTargets / Parameters.numBits) + 1
-            return State(isForward, null, vertex, 0.0, 0.0, 0.0,
-                0, LongArray(size) { 0L }, 0.0)
+
+            val numberOfLongs : Int = (numTargets / Parameters.numBits) + 1
+
+            val arrayOfLongs = LongArray(numberOfLongs){0L}
+
+            return State(
+                isForward = isForward,
+                parent = null,
+                vertex = vertex,
+                pathLength = 0.0,
+                score = 0.0,
+                reducedCost = 0.0,
+                numTargetsVisited = 1,
+                visitedBits = arrayOfLongs,
+                selectionMetric = 0.0)
         }
 
         /**
