@@ -256,19 +256,6 @@ class PricingProblemSolver(
             if (state.isForward) {
 
                 // Join with all backward states.
-                /*
-                for (j in 0 until numVertices) {
-                    if (j == vertex || !graph.containsEdge(vertex, j)) {
-                        continue
-                    }
-                    for (bs in backwardStates[j]) {
-                        val shouldExit = save(state, bs)
-                        if (shouldExit) {
-                            return true
-                        }
-                    }
-                }
-                 */
 
                 for (e in graph.outgoingEdgesOf(vertex)) {
 
@@ -285,14 +272,6 @@ class PricingProblemSolver(
                     return true
                 }
 
-                /*
-                if (Graphs.vertexHasSuccessors(graph, vertex)) {
-                    processState(state) {
-                        unprocessedForwardStates.add(it)
-                    }
-                }
-
-                 */
                 processState(state) {
                     unprocessedForwardStates.add(it)
                 }
@@ -303,20 +282,6 @@ class PricingProblemSolver(
             else { // Current state is a backward state
 
                 // Join with all forward states.
-                /*for (j in 0 until numVertices) {
-                    if (j == vertex || !graph.containsEdge(j, vertex)) {
-                        continue
-                    }
-                    for (fs in forwardStates[j]) {
-                        val shouldExit = save(fs, state)
-                        if (shouldExit) {
-                            return true
-                        }
-                    }
-                }
-
-                 */
-
                 for (e in graph.incomingEdgesOf(vertex)) {
 
                     val prevVertex = graph.getEdgeSource(e)
@@ -332,17 +297,10 @@ class PricingProblemSolver(
                     return true
                 }
 
-                /*
-                if (Graphs.vertexHasPredecessors(graph, vertex)) {
-                    processState(state) {
-                        unprocessedBackwardStates.add(it)
-                    }
-                }
-
-                 */
                 processState(state) {
                     unprocessedBackwardStates.add(it)
                 }
+
                 if (TimeChecker.timeLimitReached()) {
                     return true
                 }
