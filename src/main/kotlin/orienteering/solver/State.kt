@@ -37,7 +37,7 @@ class State private constructor(
     /**
      * Numbers whose bits are used to track target visits using bitwise operations.
      */
-    private val visitedBits: LongArray,
+    private val visitedCriticalBits: LongArray,
     /**
      * Used in the comparator to order states, can be equal to [reducedCost] or bang for buck
      * (i.e. reduced cost per unit path length).
@@ -90,25 +90,32 @@ class State private constructor(
         reducedCostChange: Double,
         useBangForBuck: Boolean
     ): State {
-        val newVisitedBits = visitedBits.copyOf()
-        if (isCritical)
-            markVisited(newVisitedBits, newTarget)
 
+        // If new target is a critical target, mark it as being visited
+        val newVisitedCriticalBits = visitedCriticalBits.copyOf()
+
+        if (isCritical)
+            markVisited(newVisitedCriticalBits, newTarget)
+
+        // Reduced cost associated with going to the new target
         val newReducedCost = reducedCost + reducedCostChange
-        val metric = if (useBangForBuck)
-            if (pathLength >= Parameters.eps) reducedCost / pathLength else 0.0
-        else newReducedCost
+
+        // Updating metric used for selection of unprocessed state
+        val metric =
+            if (useBangForBuck)
+                if (pathLength >= Parameters.eps) reducedCost / pathLength else 0.0
+            else newReducedCost
 
         return State(
-            isForward,
-            this,
-            newVertex,
-            pathLength + edgeLength,
-            score + vertexScore,
-            newReducedCost,
-            numTargetsVisited + 1,
-            newVisitedBits,
-            metric
+            isForward = isForward,
+            parent = this,
+            vertex = newVertex,
+            pathLength = pathLength + edgeLength,
+            score = score + vertexScore,
+            reducedCost = newReducedCost,
+            numTargetsVisited = numTargetsVisited + 1,
+            visitedCriticalBits = newVisitedCriticalBits,
+            selectionMetric = metric
         )
     }
 
@@ -120,19 +127,22 @@ class State private constructor(
      * @param useVisitCondition if true, a stricter dominance check is enforced.
      */
     fun dominates(other: State, useVisitCondition: Boolean): Boolean {
+
         var strict = false
-        if (reducedCost >= other.reducedCost + Parameters.eps) {
+
+        if (reducedCost >= other.reducedCost + Parameters.eps)
             return false
-        }
-        if (reducedCost <= other.reducedCost - Parameters.eps) {
+
+        if (reducedCost <= other.reducedCost - Parameters.eps)
             strict = true
-        }
-        if (pathLength >= other.pathLength + Parameters.eps) {
+
+        if (pathLength >= other.pathLength + Parameters.eps)
             return false
-        }
-        if (!strict && pathLength <= other.pathLength - Parameters.eps) {
+
+        if (!strict && pathLength <= other.pathLength - Parameters.eps)
             strict = true
-        }
+
+        // Checking visited critical vertices
 
         if (useVisitCondition) {
             if (Parameters.useNumTargetsForDominance) {
@@ -143,16 +153,16 @@ class State private constructor(
                     strict = true
                 }
             }
-            for (i in visitedBits.indices) {
+            for (i in visitedCriticalBits.indices) {
                 // Following condition is satisfied when "this" visits a critical target and
                 // "other" does not. So, "this" does not dominate the "other".
-                if (visitedBits[i] and other.visitedBits[i].inv() != 0L) {
+                if (visitedCriticalBits[i] and other.visitedCriticalBits[i].inv() != 0L) {
                     return false
                 }
 
                 // Following condition is satisfied when "this" does not visit a critical target
                 // and "other" does. So, "this" strictly dominates "other".
-                if (!strict && (visitedBits[i].inv() and other.visitedBits[i] != 0L)) {
+                if (!strict && (visitedCriticalBits[i].inv() and other.visitedCriticalBits[i] != 0L)) {
                     strict = true
                 }
             }
@@ -187,15 +197,15 @@ class State private constructor(
     fun visits(target: Int): Boolean {
         val quotient: Int = target / Parameters.numBits
         val remainder: Int = target % Parameters.numBits
-        return visitedBits[quotient] and (1L shl remainder) != 0L
+        return visitedCriticalBits[quotient] and (1L shl remainder) != 0L
     }
 
     /**
      * Returns true if any critical target is visited both by this and [other], false otherwise.
      */
     fun hasCommonVisits(other: State): Boolean {
-        for (i in visitedBits.indices) {
-            if (visitedBits[i] and other.visitedBits[i] != 0L) {
+        for (i in visitedCriticalBits.indices) {
+            if (visitedCriticalBits[i] and other.visitedCriticalBits[i] != 0L) {
                 return true
             }
         }
@@ -231,7 +241,7 @@ class State private constructor(
                 score = 0.0,
                 reducedCost = 0.0,
                 numTargetsVisited = 1,
-                visitedBits = arrayOfLongs,
+                visitedCriticalBits = arrayOfLongs,
                 selectionMetric = 0.0)
         }
 
