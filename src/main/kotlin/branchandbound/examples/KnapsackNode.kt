@@ -5,7 +5,7 @@ import branchandbound.api.INode
 /**
  * Implements the node interface with additional fields
  */
-data class Node(
+data class KnapsackNode(
     override val id: Long,
     /**
      * Keys are variable ids. Values are integers to which variables are locked.

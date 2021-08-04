@@ -10,10 +10,15 @@ package branchandbound.api
  * @property maxParallelSolves maximum number of parallel solves performed by algorithm
  */
 data class Solution(
+    val optimalityReached: Boolean,
     val solvedRootNode: INode,
+    val upperBound: Double,
     val objective: Double,
     val incumbent: INode?,
     val numCreatedNodes: Int,
     val numFeasibleNodes: Int,
     val maxParallelSolves: Int
-)
+) {
+    val lowerBound: Double
+        get() = incumbent?.mipObjective ?: -Double.MAX_VALUE
+}

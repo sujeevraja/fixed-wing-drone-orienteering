@@ -17,7 +17,8 @@ private val log = KotlinLogging.logger {}
 class NodeProcessor(
     private val solvedRootNode: INode,
     private val numSolvers: Int,
-    comparator: Comparator<INode>
+    comparator: Comparator<INode>,
+    private val timeLimitHit: () -> Boolean
 ) {
     private val eps = 1e-6
 
@@ -53,7 +54,7 @@ class NodeProcessor(
     /**
      * Maximum number of branch-and-bound nodes solved in parallel.
      */
-    private var maxParallelSolves = 0
+    private var maxParallelSolves = 1
 
     /**
      * This map can be used to find the upper bound at any time. Its values are the upper bounds
@@ -78,7 +79,7 @@ class NodeProcessor(
      */
     private val leafUpperBounds = mutableMapOf<Long, Double>()
 
-    private var lowerBound: Double =  -Double.MAX_VALUE
+    private var lowerBound: Double = -Double.MAX_VALUE
     private var upperBound: Double = Double.MAX_VALUE
 
     init {
@@ -127,12 +128,16 @@ class NodeProcessor(
         while (unsolvedNodes.isNotEmpty() && numSolving < numSolvers) {
             unsolvedChannel.send(unsolvedNodes.remove())
             ++numSolving
+            if (numSolving > maxParallelSolves)
+                maxParallelSolves = numSolving
         }
 
         maxParallelSolves = max(maxParallelSolves, numSolving)
 
         if (unsolvedNodes.isEmpty() && numSolving == 0)
-            sendSolution(solutionChannel)
+            sendSolution(solutionChannel, true)
+        else if (timeLimitHit())
+            sendSolution(solutionChannel, false)
     }
 
     /**
@@ -213,7 +218,9 @@ class NodeProcessor(
         }
     }
 
-    private suspend fun sendSolution(solutionChannel: SendChannel<Solution?>) {
+    private suspend fun sendSolution(
+        solutionChannel: SendChannel<Solution?>, optimalityReached: Boolean
+    ) {
         log.info { "number of nodes created: $numCreated" }
         log.info { "number of feasible nodes: $numFeasible" }
         log.info { "maximum parallel solves: $maxParallelSolves" }
@@ -222,7 +229,9 @@ class NodeProcessor(
         solutionChannel.send(
             incumbent?.let {
                 Solution(
+                    optimalityReached = optimalityReached,
                     solvedRootNode = solvedRootNode,
+                    upperBound = upperBound,
                     objective = it.lpObjective,
                     incumbent = incumbent,
                     numCreatedNodes = numCreated,

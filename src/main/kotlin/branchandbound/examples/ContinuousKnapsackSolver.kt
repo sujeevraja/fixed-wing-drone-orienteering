@@ -19,14 +19,14 @@ class ContinuousKnapsackSolver(
     private val eps = 1e-6
 
     override fun solve(unsolvedNode: INode): INode {
-        (unsolvedNode as Node)
+        (unsolvedNode as KnapsackNode)
         val restrictions = unsolvedNode.restrictions
         val node = applyRestrictions(unsolvedNode)
         return if (node.remainingCapacity < 0.0) node.copy(lpSolved = true, lpFeasible = false)
         else runGreedyAlgorithm(node, getIndicesSortedByUtility(restrictions.keys.toSet()))
     }
 
-    private fun applyRestrictions(node: Node): Node =
+    private fun applyRestrictions(node: KnapsackNode): KnapsackNode =
         node.restrictions.entries.fold(node.copy(remainingCapacity = capacity, lpIntegral = true))
         { n, entry ->
             if (entry.value == 0) n
@@ -41,7 +41,7 @@ class ContinuousKnapsackSolver(
             Pair(i, profits[i] / weights[i])
         }.sortedByDescending { it.second }.asSequence().map { it.first }.toList()
 
-    private fun runGreedyAlgorithm(initialNode: Node, sortedIndices: List<Int>): Node =
+    private fun runGreedyAlgorithm(initialNode: KnapsackNode, sortedIndices: List<Int>): KnapsackNode =
         sortedIndices.fold(initialNode) { node, i ->
             val w = weights[i]
             val proportion = min(node.remainingCapacity, w) / w

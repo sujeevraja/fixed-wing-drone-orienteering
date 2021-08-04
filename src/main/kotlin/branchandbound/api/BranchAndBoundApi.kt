@@ -20,6 +20,8 @@ object BranchAndBoundApi {
         solvers: List<ISolver>,
         selectionStrategy: SelectionStrategy,
         rootNode: INode,
+        timeLimitHit: () -> Boolean,
         branch: (INode) -> List<INode>
-    ): Solution? = BranchAndBoundSolver(solvers, selectionStrategy, branch).solve(rootNode)
+    ): Solution? =
+        BranchAndBoundSolver(solvers, selectionStrategy, timeLimitHit, branch).solve(rootNode)
 }

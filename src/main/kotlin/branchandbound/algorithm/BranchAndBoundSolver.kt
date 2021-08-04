@@ -24,6 +24,7 @@ private val log = KotlinLogging.logger {}
 class BranchAndBoundSolver(
     private val solvers: List<ISolver>,
     private val selectionStrategy: SelectionStrategy = SelectionStrategy.BEST_BOUND,
+    private val timeLimitHit: () -> Boolean,
     private val branch: (INode) -> List<INode>
 ) {
     /**
@@ -47,12 +48,11 @@ class BranchAndBoundSolver(
      *
      * @param rootNode
      */
-    fun solve(rootNode: INode): Solution? =
-        runBlocking {
-            withContext(Dispatchers.Default) {
-                runBranchAndBound(this, rootNode)
-            }
+    fun solve(rootNode: INode): Solution? = runBlocking {
+        withContext(Dispatchers.Default) {
+            runBranchAndBound(this, rootNode)
         }
+    }
 
     /**
      * Run branch-and-bound in the [scope], the given coroutine scope. Start with solving the
@@ -100,7 +100,7 @@ class BranchAndBoundSolver(
         val comparator =
             if (selectionStrategy == SelectionStrategy.BEST_BOUND) BestBoundComparator()
             else WorstBoundComparator()
-        val nodeProcessor = NodeProcessor(solvedRootNode, solvers.size, comparator)
+        val nodeProcessor = NodeProcessor(solvedRootNode, solvers.size, comparator, timeLimitHit)
         for (solvedNode in solvedChannel)
             nodeProcessor.processNode(solvedNode, unsolvedChannel, solutionChannel, branch)
     }

@@ -34,11 +34,10 @@ object TimeChecker: KLogging() {
      */
     fun timeLimitReached(): Boolean {
         if (!limitHit) {
-            val elapsedTimeInSeconds = (System.currentTimeMillis() - startTime) / 1000.0
+            val elapsedTimeInSeconds = ((System.currentTimeMillis() - startTime) / 1000.0).toInt()
             limitHit = elapsedTimeInSeconds >= Parameters.timeLimitInSeconds
-            if (limitHit) {
+            if (limitHit)
                 logger.warn("time limit reached")
-            }
         }
         return limitHit
     }

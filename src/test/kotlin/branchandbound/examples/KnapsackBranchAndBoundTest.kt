@@ -32,11 +32,11 @@ class KnapsackBranchAndBoundTest {
                 val solvers = List(numSolvers) {
                     ContinuousKnapsackSolver(instance.profits, instance.weights, instance.capacity)
                 }
-                val rootNode = Node(id = idGenerator.next())
+                val rootNode = KnapsackNode(id = idGenerator.next())
                 val solution = BranchAndBoundApi.runBranchAndBound(
                     solvers, SelectionStrategy.BEST_BOUND, rootNode
                 ) {
-                    branch((it as Node), idGenerator)
+                    branch((it as KnapsackNode), idGenerator)
                 }
                 assertNotNull(solution)
                 assertTrue(solution.numCreatedNodes > 1)

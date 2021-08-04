@@ -129,14 +129,11 @@ class Controller {
         results["final_gap_percentage"] = computePercentGap(bpSolution.lowerBound, bpSolution.upperBound)
 
         results["optimality_reached"] = bpSolution.optimalityReached
-        results["number_of_nodes_solved"] = bpSolution.numNodesSolved
-        results["maximum_concurrent_solves"] = bpSolution.maxConcurrentSolves
-        results["average_concurrent_solves"] = bpSolution.averageConcurrentSolves
+        results["number_of_nodes_solved"] = bpSolution.numNodesCreated
+        results["maximum_concurrent_solves"] = bpSolution.maxParallelSolves
     }
 
-    private fun computePercentGap(lb: Double, ub: Double): Double {
-        return ((ub - lb) / ub) * 100.0
-    }
+    private fun computePercentGap(lb: Double, ub: Double): Double = ((ub - lb) / ub) * 100.0
 
     /**
      * Function to run the branch-and-cut algorithm
