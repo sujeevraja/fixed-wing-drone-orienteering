@@ -104,16 +104,15 @@ class NodeProcessor(
         solutionChannel: SendChannel<Solution?>,
         branch: (INode) -> List<INode>
     ) {
-        log.info { "processing $solvedNode" }
         leafUpperBounds.remove(solvedNode.id)
         --numSolving
 
-        if (solvedNode.lpFeasible)
+        if (solvedNode.lpFeasible) {
             ++numFeasible
-
-        solvedNode.mipObjective?.let {
-            if (it >= lowerBound + eps)
-                updateLowerBound(solvedNode)
+            solvedNode.mipObjective?.let {
+                if (it >= lowerBound + eps)
+                    updateLowerBound(solvedNode)
+            }
         }
 
         if (!prune(solvedNode))
@@ -160,26 +159,26 @@ class NodeProcessor(
      */
     private fun prune(solvedNode: INode): Boolean {
         if (!solvedNode.lpFeasible) {
-            log.debug { "Node ${solvedNode.id} pruned by infeasibility" }
+            log.info { "$solvedNode pruned by infeasibility" }
             return true
         }
 
         if (solvedNode.lpObjective <= lowerBound - eps) {
-            log.debug { "Node ${solvedNode.id} pruned by bound" }
+            log.info { "$solvedNode pruned by bound" }
             return true
         }
 
         if (solvedNode.lpIntegral) {
-            log.debug { "Node ${solvedNode.id} pruned by integrality" }
+            log.info { "$solvedNode pruned by integrality" }
             updateLowerBound(solvedNode)
             return true
         }
 
-        if (solvedNode.mipObjective != null &&
-            (solvedNode.lpObjective - solvedNode.mipObjective!!).absoluteValue <= eps
-        ) {
-            log.debug { "Node ${solvedNode.id} pruned by LP objective matching MIP objective" }
-            return true
+        solvedNode.mipObjective?.let {
+            if ((solvedNode.lpObjective - it).absoluteValue <= eps) {
+                log.info { "$solvedNode pruned by LP objective matching MIP objective" }
+                return true
+            }
         }
 
         return false
@@ -209,7 +208,7 @@ class NodeProcessor(
      * to the documentation of [leafUpperBounds] for details about upper bound maintenance.
      */
     private fun branchFrom(solvedNode: INode, branch: (INode) -> List<INode>) {
-        log.debug { "Node ${solvedNode.id} branched" }
+        log.info { "$solvedNode branched" }
         val children = branch(solvedNode)
         numCreated += children.size
         for (childNode in children) {

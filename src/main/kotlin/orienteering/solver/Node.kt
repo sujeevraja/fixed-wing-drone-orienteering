@@ -8,6 +8,7 @@ import orienteering.data.Instance
 import orienteering.data.Parameters
 import orienteering.data.Route
 import orienteering.main.SetGraph
+import orienteering.main.format
 import orienteering.main.getCopy
 import kotlin.math.absoluteValue
 import kotlin.math.round
@@ -55,7 +56,12 @@ data class Node(
     /**
      * String representation.
      */
-    override fun toString(): String = "Node($id, lp=$lpObjective, mip=$mipObjective, feasible=$lpFeasible)"
+    override fun toString(): String {
+        val lp = if (lpObjective <= 1e10) lpObjective.format(2) else "MAX"
+        val mip = mipObjective?.let { if (it <= 1e10) it.format(2) else "MAX" }
+        val feasible = if (lpFeasible) "f" else "inf"
+        return "Node($id,lp=$lp,mip=$mip,$feasible)"
+    }
 
     /**
      * Creates child nodes based on fractional values of LP solution.
@@ -132,7 +138,7 @@ data class Node(
      *
      * @return list of child nodes
      */
-    private fun branchOnTarget( target: Int, targetVertices: List<Int>, idGenerator: Iterator<Long> ): List<Node> {
+    private fun branchOnTarget(target: Int, targetVertices: List<Int>, idGenerator: Iterator<Long>): List<Node> {
         log.debug { "branching $this on target $target" }
         val noVisitNode = getChildWithoutTarget(idGenerator.next(), targetVertices)
         log.debug { "child without $target: $noVisitNode" }
@@ -158,7 +164,7 @@ data class Node(
         if (fromTarget in mustVisitTargets || toTarget in mustVisitTargets) {
             log.debug { "branching $this with target visit already enforced" }
 
-            childNodes.add( getChildWithoutTargetEdge(idGenerator.next(), fromTarget, toTarget, instance) )
+            childNodes.add(getChildWithoutTargetEdge(idGenerator.next(), fromTarget, toTarget, instance))
             log.debug { "child without $fromTarget -> $toTarget: ${childNodes.last()}" }
 
             childNodes.add(getChildWithTargetEdge(idGenerator.next(), fromTarget, toTarget))
@@ -262,12 +268,12 @@ data class Node(
      * @return node with enforced target edges.
      */
     private fun getChildWithTargetEdge(nodeId: Long, fromTarget: Int, toTarget: Int): Node = Node(
-            id = nodeId,
-            graph = graph,
-            mustVisitTargets = mustVisitTargets,
-            mustVisitTargetEdges = mustVisitTargetEdges + Pair(fromTarget, toTarget),
-            parentLpObjective = lpObjective
-        )
+        id = nodeId,
+        graph = graph,
+        mustVisitTargets = mustVisitTargets,
+        mustVisitTargetEdges = mustVisitTargetEdges + Pair(fromTarget, toTarget),
+        parentLpObjective = lpObjective
+    )
 
     /**
      * Comparator to store node with the highest LP objective at the top of a priority queue.

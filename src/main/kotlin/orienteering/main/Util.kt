@@ -86,3 +86,4 @@ fun preProcess(
     }
 }
 
+fun Double.format(digits: Int): String = "%.${digits}f".format(this)
