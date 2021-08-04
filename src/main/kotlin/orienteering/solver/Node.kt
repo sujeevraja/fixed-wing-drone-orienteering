@@ -1,7 +1,7 @@
 package orienteering.solver
 
 import ilog.cplex.IloCplex
-import mu.KLogging
+import mu.KotlinLogging
 import org.jgrapht.Graphs
 import org.jgrapht.graph.DefaultWeightedEdge
 import orienteering.data.Instance
@@ -13,6 +13,8 @@ import orienteering.main.getCopy
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.math.absoluteValue
 import kotlin.math.round
+
+private val log = KotlinLogging.logger {}
 
 /**
  * Class to store solution and constraint data at nodes of a branch-and-bound tree.
@@ -32,41 +34,49 @@ class Node private constructor(
      * Unique index of node.
      */
     val index = getNodeIndex()
+
     /**
      * True if LP solution is feasible, i.e. visits all targets in [mustVisitTargets] and uses
      * all direct target connections specified in [mustVisitTargetEdges].
      */
     var lpFeasible = true
         private set
+
     /**
      * True if LP optimality is proved by lack of negative reduced cost columns.
      */
     var lpOptimal = false
         private set
+
     /**
      * True if all decision variables have binary values in LP solution, false otherwise.
      */
     var lpIntegral = false
         private set
+
     /**
      * LP objective value.
      */
     var lpObjective = upperBound
         private set
+
     /**
      * Routes in LP solution with non-zero values and corresponding solution values.
      */
     private var lpSolution = listOf<Pair<Route, Double>>()
+
     /**
      * MIP objective value.
      */
     var mipObjective = -Double.MAX_VALUE
         private set
+
     /**
      * Routes selected in MIP solution (i.e. solution value of 1.0).
      */
     var mipSolution = listOf<Route>()
         private set
+
     /**
      * Holds reduced costs for each target after LP is solved.
      */
@@ -75,9 +85,7 @@ class Node private constructor(
     /**
      * String representation.
      */
-    override fun toString(): String {
-        return "Node($index, lp=$lpObjective, mip=$mipObjective, feasible=$lpFeasible)"
-    }
+    override fun toString(): String = "Node($index, lp=$lpObjective, mip=$mipObjective, feasible=$lpFeasible)"
 
     /**
      * Solves LP to optimality and MIP using the LP columns to get a feasible solution.
@@ -86,7 +94,7 @@ class Node private constructor(
      * @param cplex IloCplex object used to solve the models.
      */
     fun solve(instance: Instance, cplex: IloCplex) {
-        logger.debug("solving node number $index")
+        log.debug { "solving node number $index" }
         val cgSolver = ColumnGenSolver(
             instance,
             cplex,
@@ -96,13 +104,13 @@ class Node private constructor(
         )
         cgSolver.solve()
         lpFeasible = !cgSolver.lpInfeasible
-        if (!lpFeasible) {
+        if (!lpFeasible)
             return
-        }
+
         lpOptimal = cgSolver.lpOptimal
         if (lpObjective <= cgSolver.lpObjective - Parameters.eps) {
-            logger.error("best LP objective: $lpObjective")
-            logger.error("node LP objective: ${cgSolver.lpObjective}")
+            log.error { "best LP objective: $lpObjective" }
+            log.error { "node LP objective: ${cgSolver.lpObjective}" }
             throw OrienteeringException("parent node LP objective smaller than child's")
         }
         if (cgSolver.lpOptimal) {
@@ -150,34 +158,27 @@ class Node private constructor(
             if (i == instance.sourceTarget ||
                 i == instance.destinationTarget ||
                 isInteger(targetFlows[i])
-            ) {
-                continue
-            }
+            ) continue
 
-            if (bestTarget == null ||
-                targetReducedCosts[i] <= leastReducedCost!! - Parameters.eps
-            ) {
+            if (bestTarget == null || targetReducedCosts[i] <= leastReducedCost!! - Parameters.eps) {
                 bestTarget = i
                 leastReducedCost = targetReducedCosts[i]
             }
         }
 
         // If a target is found, branch on it.
-        if (bestTarget != null) {
+        if (bestTarget != null)
             return branchOnTarget(bestTarget, instance.getVertices(bestTarget))
-        }
 
         // Otherwise, find a target edge to branch. Among fractional flow edges, we select the one
         // with a starting vertex that has least reduced cost.
         var bestEdge: Pair<Int, Int>? = null
         for ((fromTarget, flowMap) in targetEdgeFlows) {
             for ((toTarget, flow) in flowMap) {
-                if (isInteger(flow)) {
+                if (isInteger(flow))
                     continue
-                }
-                if (bestEdge == null ||
-                    targetReducedCosts[fromTarget] <= leastReducedCost!! - Parameters.eps
-                ) {
+
+                if (bestEdge == null || targetReducedCosts[fromTarget] <= leastReducedCost!! - Parameters.eps) {
                     bestEdge = Pair(fromTarget, toTarget)
                     leastReducedCost = targetReducedCosts[fromTarget]
                 }
@@ -192,9 +193,7 @@ class Node private constructor(
     /**
      * Checks if [num] is close to an integer value.
      */
-    private fun isInteger(num: Double): Boolean {
-        return (num - round(num)).absoluteValue <= Parameters.eps
-    }
+    private fun isInteger(num: Double): Boolean = (num - round(num)).absoluteValue <= Parameters.eps
 
     /**
      * Creates child nodes by branching on visits to [target].
@@ -202,12 +201,12 @@ class Node private constructor(
      * @return list of child nodes
      */
     private fun branchOnTarget(target: Int, targetVertices: List<Int>): List<Node> {
-        logger.debug("branching $this on target $target")
+        log.debug { "branching $this on target $target" }
         val noVisitNode = getChildWithoutTarget(targetVertices)
-        logger.debug("child without $target: $noVisitNode")
+        log.debug { "child without $target: $noVisitNode" }
 
         val mustVisitNode = getChildWithTarget(target)
-        logger.debug("child with $target: $mustVisitNode")
+        log.debug { "child with $target: $mustVisitNode" }
 
         return listOf(noVisitNode, mustVisitNode)
     }
@@ -220,17 +219,17 @@ class Node private constructor(
     private fun branchOnTargetEdge(fromTarget: Int, toTarget: Int, instance: Instance): List<Node> {
         val childNodes = mutableListOf<Node>()
         if (fromTarget in mustVisitTargets || toTarget in mustVisitTargets) {
-            logger.debug("branching $this with target visit already enforced")
+            log.debug { "branching $this with target visit already enforced" }
 
             childNodes.add(getChildWithoutTargetEdge(fromTarget, toTarget, instance))
-            logger.debug("child without $fromTarget -> $toTarget: ${childNodes.last()}")
+            log.debug { "child without $fromTarget -> $toTarget: ${childNodes.last()}" }
 
             childNodes.add(getChildWithTargetEdge(fromTarget, toTarget))
-            logger.debug("child with $fromTarget -> $toTarget: ${childNodes.last()}")
+            log.debug { "child with $fromTarget -> $toTarget: ${childNodes.last()}" }
         } else {
-            logger.debug("branching $this without target visit already enforced")
+            log.debug { "branching $this without target visit already enforced" }
             childNodes.add(getChildWithoutTarget(instance.getVertices(fromTarget)))
-            logger.debug("child without $fromTarget: ${childNodes.last()}")
+            log.debug { "child without $fromTarget: ${childNodes.last()}" }
 
             childNodes.add(
                 getChildWithTarget(fromTarget).getChildWithoutTargetEdge(
@@ -239,15 +238,10 @@ class Node private constructor(
                     instance
                 )
             )
-            logger.debug("child with $fromTarget, without $fromTarget -> $toTarget: ${childNodes.last()}")
+            log.debug { "child with $fromTarget, without $fromTarget -> $toTarget: ${childNodes.last()}" }
 
-            childNodes.add(
-                getChildWithTarget(fromTarget).getChildWithTargetEdge(
-                    fromTarget,
-                    toTarget
-                )
-            )
-            logger.debug("child with $fromTarget, with $fromTarget -> $toTarget: ${childNodes.last()}")
+            childNodes.add(getChildWithTarget(fromTarget).getChildWithTargetEdge(fromTarget, toTarget))
+            log.debug { "child with $fromTarget, with $fromTarget -> $toTarget: ${childNodes.last()}" }
         }
 
         return childNodes
@@ -260,9 +254,8 @@ class Node private constructor(
      */
     private fun getChildWithoutTarget(targetVertices: List<Int>): Node {
         val reducedGraph = graph.getCopy()
-        for (vertex in targetVertices) {
+        for (vertex in targetVertices)
             reducedGraph.removeVertex(vertex)
-        }
         return Node(reducedGraph, mustVisitTargets, mustVisitTargetEdges, lpObjective)
     }
 
@@ -271,9 +264,8 @@ class Node private constructor(
      *
      * @return node with updated must-visit target list.
      */
-    private fun getChildWithTarget(target: Int): Node {
-        return Node(graph, mustVisitTargets + target, mustVisitTargetEdges, lpObjective)
-    }
+    private fun getChildWithTarget(target: Int): Node =
+        Node(graph, mustVisitTargets + target, mustVisitTargetEdges, lpObjective)
 
     /**
      * Creates a node by removing all edges between vertices of [fromTarget] and [toTarget].
@@ -288,15 +280,13 @@ class Node private constructor(
     ): Node {
         val reducedGraph = graph.getCopy()
         for (vertex in instance.getVertices(fromTarget)) {
-            if (!graph.containsVertex(vertex)) {
+            if (!graph.containsVertex(vertex))
                 continue
-            }
+
             val edgesToRemove = mutableListOf<DefaultWeightedEdge>()
-            for (nextVertex in Graphs.successorListOf(graph, vertex)) {
-                if (instance.whichTarget(nextVertex) == toTarget) {
+            for (nextVertex in Graphs.successorListOf(graph, vertex))
+                if (instance.whichTarget(nextVertex) == toTarget)
                     edgesToRemove.add(graph.getEdge(vertex, nextVertex))
-                }
-            }
 
             edgesToRemove.forEach { graph.removeEdge(it) }
         }
@@ -309,34 +299,26 @@ class Node private constructor(
      *
      * @return node with enforced target edges.
      */
-    private fun getChildWithTargetEdge(fromTarget: Int, toTarget: Int): Node {
-        val newMustVisitTargetEdges = mustVisitTargetEdges.toMutableList()
-        newMustVisitTargetEdges.add(Pair(fromTarget, toTarget))
-        return Node(graph, mustVisitTargets, newMustVisitTargetEdges, lpObjective)
-    }
+    private fun getChildWithTargetEdge(fromTarget: Int, toTarget: Int): Node = Node(
+        graph, mustVisitTargets, mustVisitTargetEdges + Pair(fromTarget, toTarget), lpObjective
+    )
 
     /**
-     * Comparator to to store node with the highest LP objective at the top of a priority queue.
+     * Comparator to store node with the highest LP objective at the top of a priority queue.
      */
-    override fun compareTo(other: Node): Int {
-        return when {
-            lpObjective >= other.lpObjective + Parameters.eps -> -1
-            lpObjective <= other.lpObjective - Parameters.eps -> 1
-            index < other.index -> -1
-            index > other.index -> 1
-            else -> 0
-        }
+    override fun compareTo(other: Node): Int = when {
+        lpObjective >= other.lpObjective + Parameters.eps -> -1
+        lpObjective <= other.lpObjective - Parameters.eps -> 1
+        index < other.index -> -1
+        index > other.index -> 1
+        else -> 0
     }
 
-    /**
-     * Companion object for logging, a factory constructor and node index management.
-     */
-    companion object : KLogging() {
+    companion object {
         /**
          * Factory constructor to build root node without any restrictions.
          */
-        fun buildRootNode(graph: SetGraph): Node =
-            Node(graph, intArrayOf(), listOf(), Double.MAX_VALUE)
+        fun buildRootNode(graph: SetGraph): Node = Node(graph, intArrayOf(), listOf(), Double.MAX_VALUE)
 
         /**
          * Thread-safe variable to provide unique index to each newly created node.
@@ -346,8 +328,6 @@ class Node private constructor(
         /**
          * Thread-safe function to get the existing [nodeCount] value and increment it afterward.
          */
-        fun getNodeIndex(): Int {
-            return nodeCount.getAndIncrement()
-        }
+        fun getNodeIndex(): Int = nodeCount.getAndIncrement()
     }
 }
