@@ -29,7 +29,7 @@ class NodeProcessor(
 
     suspend fun processSolvedNode(node: Node, unsolvedNodes: SendChannel<Node>) {
         solvingNodes.remove(node.index)
-        logger.info("received solved node $node")
+        logger.info("received solved $node")
         logger.info("numNodes ${openNodes.size}")
         logger.info("numSolving: $numSolving")
 
@@ -61,13 +61,13 @@ class NodeProcessor(
 
     private suspend fun releaseNodesForSolving(unsolvedNodes: SendChannel<Node>) {
         while (openNodes.isNotEmpty() && numSolving < numSolvers) {
-            logger.info("releasing open node to unsolvedNodes channel")
+            logger.debug("releasing open node to unsolvedNodes channel")
             val node = openNodes.remove()
             solvingNodes[node.index] = node.lpObjective
 
-            logger.info("received ReleaseOpenNode")
-            logger.info("numNodes ${openNodes.size}")
-            logger.info("numSolving: $numSolving")
+            logger.debug("received ReleaseOpenNode")
+            logger.debug("numNodes ${openNodes.size}")
+            logger.debug("numSolving: $numSolving")
 
             unsolvedNodes.send(node)
             if (maxConcurrentSolves < numSolving) {
@@ -75,7 +75,7 @@ class NodeProcessor(
             }
             numNodesSolved++
             averageConcurrentSolves += numSolving
-            logger.info("released open node to unsolvedNodes channel")
+            logger.debug("released open node to unsolvedNodes channel")
         }
     }
 
@@ -105,23 +105,10 @@ class NodeProcessor(
         val ubFromSolvingNodes = solvingNodes.values.maxOrNull() ?: -Double.MAX_VALUE
         val newUpperBound = max(ubFromUnsolvedNodes, ubFromSolvingNodes)
 
-        if (solvingNodes.isNotEmpty()) {
-            logger.info("solving node bounds")
-            for ((index, bound) in solvingNodes) {
-                logger.info("$index -> $bound")
-            }
-        }
-        if (openNodes.isNotEmpty()) {
-            logger.info("unsolved node bounds")
-            for (node in openNodes) {
-                logger.info("${node.index} -> ${node.lpObjective}")
-            }
-        }
-        logger.info("existing upper bound: $upperBound")
-        logger.info("upper bound from solving/unsolved nodes: $newUpperBound")
-        if (upperBound <= newUpperBound - Parameters.eps) {
+        logger.debug("existing upper bound: $upperBound")
+        logger.debug("upper bound from solving/unsolved nodes: $newUpperBound")
+        if (upperBound <= newUpperBound - Parameters.eps)
             throw OrienteeringException("upper bound not monotonic")
-        }
         upperBound = newUpperBound
         logger.info("upper bound: $upperBound")
         logger.info("lower bound: $lowerBound")
