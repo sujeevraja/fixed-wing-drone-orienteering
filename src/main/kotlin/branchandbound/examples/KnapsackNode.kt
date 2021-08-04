@@ -36,4 +36,22 @@ data class KnapsackNode(
 
         return clauses.joinToString(",", "Node(", ")")
     }
+
+    fun branch(idGenerator: Iterator<Long>): List<KnapsackNode> {
+        val eps = 1e-6
+        for ((index, value) in lpSolution) {
+            if (value >= 1 - eps)
+                continue
+
+            val restrictions = restrictions
+            return listOf(0, 1).map {
+                KnapsackNode(
+                    id = idGenerator.next(),
+                    restrictions = restrictions.plus(Pair(index, it)),
+                    parentLpObjective = lpObjective
+                )
+            }
+        }
+        return listOf()
+    }
 }
