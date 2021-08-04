@@ -5,6 +5,7 @@ import branchandbound.api.INode
 import branchandbound.api.Solution
 import kotlinx.coroutines.channels.SendChannel
 import mu.KotlinLogging
+import orienteering.main.format
 import java.util.*
 import kotlin.math.absoluteValue
 import kotlin.math.max
@@ -123,6 +124,10 @@ class NodeProcessor(
         }
         if (lowerBound >= upperBound + eps)
             throw BranchAndBoundException("LB $lowerBound bigger than UB $upperBound")
+
+        log.info { "bounds: ${lowerBound.format(2)}, ${upperBound.format(2)}" }
+        if (upperBound - lowerBound <= eps)
+            sendSolution(solutionChannel, true)
 
         while (unsolvedNodes.isNotEmpty() && numSolving < numSolvers) {
             unsolvedChannel.send(unsolvedNodes.remove())
