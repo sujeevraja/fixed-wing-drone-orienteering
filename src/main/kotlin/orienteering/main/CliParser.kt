@@ -132,7 +132,7 @@ class CliParser : CliktCommand() {
     val useBangForBuck: Int by option(
         "-b",
         help = "use bang for buck (1) or least reduced cost (0) to select labels"
-    ).int().default(1).validate {
+    ).int().default(0).validate {
         require(it == 1 || it == 0) {
             "should be 1 or 0"
         }
