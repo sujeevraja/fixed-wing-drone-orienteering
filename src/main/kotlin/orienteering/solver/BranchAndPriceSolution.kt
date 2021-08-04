@@ -3,11 +3,14 @@ package orienteering.solver
 import orienteering.data.Route
 
 data class BranchAndPriceSolution(
-    val optimalityReached: Boolean,
-    val lowerBound: Double,
-    val upperBound: Double,
-    val bestFeasibleSolution: List<Route>,
-    val numNodesSolved: Int = 1,
-    val maxConcurrentSolves: Int = 1,
-    val averageConcurrentSolves: Double = 1.0
+    val optimalityReached: Boolean = false,
+    val rootLowerBound: Double = -Double.MAX_VALUE,
+    val rootUpperBound: Double = Double.MAX_VALUE,
+    val rootLpOptimal: Boolean = false,
+    val lowerBound: Double = -Double.MAX_VALUE,
+    val upperBound: Double = Double.MAX_VALUE,
+    val bestFeasibleSolution: List<Route> = listOf(),
+    val numNodesCreated: Int = 0,
+    val numFeasibleNodes: Int = 0,
+    val maxParallelSolves: Int = 0
 )

@@ -1,5 +1,7 @@
 package orienteering.main
 
+import branchandbound.api.BranchAndBoundApi
+import branchandbound.api.SelectionStrategy
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory
 import ilog.cplex.IloCplex
@@ -7,9 +9,7 @@ import mu.KLogging
 import orienteering.data.Instance
 import orienteering.data.InstanceDto
 import orienteering.data.Parameters
-import orienteering.solver.BranchAndCutSolver
-import orienteering.solver.BranchAndPriceSolver
-import orienteering.solver.TimeChecker
+import orienteering.solver.*
 import java.io.File
 import kotlin.system.measureTimeMillis
 
@@ -115,28 +115,20 @@ class Controller {
      */
     private fun runBranchAndPrice() {
         logger.info("algorithm: branch and price")
-        val bps = BranchAndPriceSolver(instance)
-        val bpSolution = bps.solve()
-
-        results["root_lower_bound"] = bps.rootLowerBound
-        results["root_upper_bound"] = if (bps.rootUpperBound == Double.MAX_VALUE) "infinity" else bps.rootUpperBound
-        results["root_lp_optimal"] = bps.rootLpOptimal
-        results["root_gap_percentage"] = computePercentGap(bps.rootLowerBound, bps.rootUpperBound)
-
-        results["final_lower_bound"] = bpSolution.lowerBound
-        results["final_upper_bound"] =
-            if (bpSolution.upperBound == Double.MAX_VALUE) "infinity" else bpSolution.upperBound
-        results["final_gap_percentage"] = computePercentGap(bpSolution.lowerBound, bpSolution.upperBound)
-
-        results["optimality_reached"] = bpSolution.optimalityReached
-        results["number_of_nodes_solved"] = bpSolution.numNodesSolved
-        results["maximum_concurrent_solves"] = bpSolution.maxConcurrentSolves
-        results["average_concurrent_solves"] = bpSolution.averageConcurrentSolves
+        val sln = solveWithBranchAndPrice(instance)
+        results["root_lower_bound"] = sln.rootLowerBound
+        results["root_upper_bound"] = if (sln.rootUpperBound >= 1e20) "infinity" else sln.rootUpperBound
+        results["root_lp_optimal"] = sln.rootLpOptimal
+        results["root_gap_percentage"] = computePercentGap(sln.rootLowerBound, sln.rootUpperBound)
+        results["final_lower_bound"] = sln.lowerBound
+        results["final_upper_bound"] = if (sln.upperBound >= 1e20) "infinity" else sln.upperBound
+        results["final_gap_percentage"] = computePercentGap(sln.lowerBound, sln.upperBound)
+        results["optimality_reached"] = sln.optimalityReached
+        results["number_of_nodes_solved"] = sln.numNodesCreated
+        results["maximum_parallel_solves"] = sln.maxParallelSolves
     }
 
-    private fun computePercentGap(lb: Double, ub: Double): Double {
-        return ((ub - lb) / ub) * 100.0
-    }
+    private fun computePercentGap(lb: Double, ub: Double): Double = ((ub - lb) / ub) * 100.0
 
     /**
      * Function to run the branch-and-cut algorithm
@@ -155,4 +147,31 @@ class Controller {
      * Logger object.
      */
     companion object : KLogging()
+}
+
+private fun solveWithBranchAndPrice(instance: Instance): BranchAndPriceSolution {
+    val idGenerator = generateSequence(0L) { it + 1 }.iterator()
+    val solution = BranchAndBoundApi.runBranchAndBound(
+        (0 until Parameters.numSolverCoroutines).map { NodeSolver(instance) },
+        SelectionStrategy.BEST_BOUND,
+        Node(id = idGenerator.next(), instance.graph),
+        { TimeChecker.timeLimitReached() }
+    ) {
+        (it as Node).branch(instance, idGenerator)
+    } ?: return BranchAndPriceSolution()
+
+    val bestSolution = solution.incumbent?.let { (it as Node).mipSolution } ?: listOf()
+    val solvedRootNode = solution.solvedRootNode as Node
+    return BranchAndPriceSolution(
+        optimalityReached = solution.optimalityReached,
+        rootLowerBound = solvedRootNode.mipObjective ?: -Double.MAX_VALUE,
+        rootUpperBound = solvedRootNode.lpObjective,
+        rootLpOptimal = solvedRootNode.lpOptimal,
+        lowerBound = solution.lowerBound,
+        upperBound = solution.upperBound,
+        bestFeasibleSolution = bestSolution,
+        numNodesCreated = solution.numCreatedNodes,
+        numFeasibleNodes = solution.numFeasibleNodes,
+        maxParallelSolves = solution.maxParallelSolves
+    )
 }

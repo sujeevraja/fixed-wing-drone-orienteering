@@ -16,7 +16,7 @@ class InstanceTests {
                 2, 1.0).getInstance()
         assertEquals(7.5, instance.budget, "budget incorrect")
         assertEquals(21, instance.numTargets, "target count incorrect")
-        assertEquals(42, instance.graph.numVertices(), "vertex count incorrect")
+        assertEquals(7, instance.graph.numVertices(), "vertex count incorrect")
         assertEquals(0, instance.sourceTarget, "source target incorrect")
         assertEquals(20, instance.destinationTarget, "destination target incorrect")
     }
