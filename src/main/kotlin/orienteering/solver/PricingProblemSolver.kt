@@ -1,7 +1,6 @@
 package orienteering.solver
 
 import mu.KLogging
-import org.jgrapht.Graphs
 import orienteering.data.Instance
 import orienteering.data.Parameters
 import orienteering.data.Route
@@ -100,6 +99,11 @@ class PricingProblemSolver(
         private set
 
     /**
+     * Flag for indicating if at least one target has been indicated as a critical target
+     */
+    private var hasCriticalTargets = false
+
+    /**
      * If true, state dominance check uses the following additional condition:
      *
      * State s1 dominates s2 iff critical targets visited by s1 is a subset of those visited by s2.
@@ -113,6 +117,7 @@ class PricingProblemSolver(
     /**
      * Generates negative reduced cost elementaryRoutes.
      */
+    //Good
     fun generateColumns() {
         // Store source states.
         for (srcVertex in srcVertices) {
@@ -163,6 +168,7 @@ class PricingProblemSolver(
         } while (!stop)
     }
 
+    // Need to update how cycles detected
     private fun initializeIteration() {
         // Update critical vertices.
         for (i in isCritical.indices) {
@@ -205,6 +211,7 @@ class PricingProblemSolver(
     /**
      * Implementation of the I-DSSR algorithm presented in the paper.
      */
+
     private fun interleavedSearch(): Boolean {
         val criticalTargets = (0 until numTargets).filter { isCritical[it] }
         logger.debug("critical targets: $criticalTargets")
@@ -250,53 +257,53 @@ class PricingProblemSolver(
             }
 
             val vertex = state.vertex
+
+            // Current state is a forward state, so join with all non-dominated backward states
+
             if (state.isForward) {
+
                 // Join with all backward states.
-                for (j in 0 until numVertices) {
-                    if (j == vertex || !graph.containsEdge(vertex, j)) {
-                        continue
-                    }
-                    for (bs in backwardStates[j]) {
+
+                for (e in graph.outgoingEdgesOf(vertex)) {
+
+                    for (bs in backwardStates[graph.getEdgeTarget(e)]) {
                         val shouldExit = save(state, bs)
-                        if (shouldExit) {
+                        if (shouldExit)
                             return true
-                        }
                     }
+
                 }
                 if (TimeChecker.timeLimitReached()) {
                     return true
                 }
 
-                if (Graphs.vertexHasSuccessors(graph, vertex)) {
-                    processState(state) {
-                        unprocessedForwardStates.add(it)
-                    }
+                processState(state) {
+                    unprocessedForwardStates.add(it)
                 }
                 if (TimeChecker.timeLimitReached()) {
                     return true
                 }
-            } else {
+            }
+            else { // Current state is a backward state
+
                 // Join with all forward states.
-                for (j in 0 until numVertices) {
-                    if (j == vertex || !graph.containsEdge(j, vertex)) {
-                        continue
-                    }
-                    for (fs in forwardStates[j]) {
+                for (e in graph.incomingEdgesOf(vertex)) {
+
+                    for (fs in forwardStates[graph.getEdgeSource(e)]) {
                         val shouldExit = save(fs, state)
-                        if (shouldExit) {
+                        if (shouldExit)
                             return true
-                        }
                     }
                 }
+
                 if (TimeChecker.timeLimitReached()) {
                     return true
                 }
 
-                if (Graphs.vertexHasPredecessors(graph, vertex)) {
-                    processState(state) {
-                        unprocessedBackwardStates.add(it)
-                    }
+                processState(state) {
+                    unprocessedBackwardStates.add(it)
                 }
+
                 if (TimeChecker.timeLimitReached()) {
                     return true
                 }
@@ -381,6 +388,7 @@ class PricingProblemSolver(
             numVisits[target]++
             if (numVisits[target] > 1) {
                 isVisitedMultipleTimes[target] = true
+                hasCriticalTargets = true
                 if (isCritical[target]) {
                     logger.error("multiple visits to critical target $target")
                     logger.error("problematic route: $optimalRoute")
@@ -397,6 +405,7 @@ class PricingProblemSolver(
      *
      * @param path list of vertices.
      */
+    // Need to make obsolete
     private fun hasCycle(path: List<Int>): Boolean {
         val visited = hashSetOf<Int>()
         for (vertex in path) {
@@ -421,31 +430,50 @@ class PricingProblemSolver(
     }
 
     private fun extendForward(state: State, onExtend: (State) -> Unit) {
-        for (nextVertex in Graphs.successorListOf(graph, state.vertex)) {
-            if (state.visits(instance.whichTarget(nextVertex))) {
+
+        val currentVertex = state.vertex
+
+        for (e in graph.outgoingEdgesOf(currentVertex)) {
+
+            val nextVertex = graph.getEdgeTarget(e)
+
+            // Don't extend to critical targets more than once
+            if (state.usedCriticalTarget(instance.whichTarget(nextVertex)))
                 continue
-            }
-            if (state.parent != null && sameTarget(state.parent.vertex, nextVertex)) {
+
+            // No 2-cycles
+            if (state.parent != null && sameTarget(state.parent.vertex, nextVertex))
                 continue
-            }
-            val edgeLength = graph.getEdgeWeight(state.vertex, nextVertex)
+
+            // Checking if an extension is feasible
+            val edgeLength = graph.getEdgeWeight(currentVertex, nextVertex)
             val extension = extendIfFeasible(state, nextVertex, edgeLength) ?: continue
+
+            // Extension is feasible. Update non-dominated states accordingly
             updateNonDominatedStates(forwardStates[nextVertex], extension, onExtend)
         }
     }
 
     private fun extendBackward(state: State, onExtend: (State) -> Unit) {
-        for (prevVertex in Graphs.predecessorListOf(graph, state.vertex)) {
-            if (state.visits(instance.whichTarget(prevVertex))) {
+
+        val currentVertex = state.vertex
+
+        for (e in graph.incomingEdgesOf(currentVertex)) {
+
+            val prevVertex = graph.getEdgeSource(e)
+
+            if (state.usedCriticalTarget(instance.whichTarget(prevVertex)))
                 continue
-            }
-            if (state.parent != null && sameTarget(state.parent.vertex, prevVertex)) {
+
+            if (state.parent != null && sameTarget(state.parent.vertex, prevVertex))
                 continue
-            }
-            val edgeLength = graph.getEdgeWeight(prevVertex, state.vertex)
+
+            val edgeLength = graph.getEdgeWeight(prevVertex, currentVertex)
             val extension = extendIfFeasible(state, prevVertex, edgeLength) ?: continue
+
             updateNonDominatedStates(backwardStates[prevVertex], extension, onExtend)
         }
+
     }
 
     private fun sameTarget(v1: Int, v2: Int): Boolean {
@@ -478,26 +506,27 @@ class PricingProblemSolver(
 
     private fun extendIfFeasible(state: State, neighbor: Int, edgeLength: Double): State? {
         // Prevent budget infeasibility.
-        if (state.pathLength + edgeLength >= maxPathLength) {
+        if (state.pathLength + edgeLength > maxPathLength) {
             return null
         }
 
         // Here, extension is feasible. So, generate and return it.
         val neighborTarget = instance.whichTarget(neighbor)
-        var rcUpdate = targetReducedCosts[neighborTarget]
-        rcUpdate += if (state.isForward) {
-            targetEdgeDuals[instance.whichTarget(state.vertex)][neighborTarget]
-        } else {
-            targetEdgeDuals[neighborTarget][instance.whichTarget(state.vertex)]
-        }
+
+        val rcUpdate =
+            if (state.isForward)
+                targetReducedCosts[neighborTarget] + targetEdgeDuals[instance.whichTarget(state.vertex)][neighborTarget]
+            else
+                targetReducedCosts[neighborTarget] + targetEdgeDuals[neighborTarget][instance.whichTarget(state.vertex)]
+
         return state.extend(
-            neighbor,
-            neighborTarget,
-            isCritical[neighborTarget],
-            edgeLength,
-            instance.targetScores[neighborTarget],
-            rcUpdate,
-            Parameters.useBangForBuck
+            newVertex = neighbor,
+            newTarget = neighborTarget,
+            isCritical = isCritical[neighborTarget],
+            edgeLength = edgeLength,
+            vertexScore = instance.targetScores[neighborTarget],
+            reducedCostChange = rcUpdate,
+            useBangForBuck = Parameters.useBangForBuck
         )
     }
 
@@ -515,15 +544,15 @@ class PricingProblemSolver(
 
         val forwardTarget = instance.whichTarget(forwardState.vertex)
         val backwardTarget = instance.whichTarget(backwardState.vertex)
+
         val reducedCost = (routeDual + forwardState.reducedCost + backwardState.reducedCost +
                 targetEdgeDuals[forwardTarget][backwardTarget])
+
         if (reducedCost >= -Parameters.eps) {
             return false
         }
 
-        val joinedVertexPath = mutableListOf<Int>()
-        joinedVertexPath.addAll(forwardState.getPartialPathVertices().asReversed())
-        joinedVertexPath.addAll(backwardState.getPartialPathVertices())
+        val joinedVertexPath = forwardState.getPartialPathVertices().asReversed() + backwardState.getPartialPathVertices()
 
         val route = Route(
             joinedVertexPath,
@@ -532,6 +561,7 @@ class PricingProblemSolver(
             getJoinedPathLength(forwardState, backwardState),
             reducedCost
         )
+
         if (optimalRoute == null || reducedCost <= optimalRoute!!.reducedCost - Parameters.eps) {
             optimalRoute = route
         }
@@ -555,7 +585,7 @@ class PricingProblemSolver(
      * @return true if path is feasible, false otherwise.
      */
     private fun feasible(fs: State, bs: State): Boolean {
-        return (!fs.hasCommonVisits(bs) &&
+        return (!fs.hasCommonCriticalVisits(bs) &&
                 getJoinedPathLength(fs, bs) <= maxPathLength &&
                 (fs.parent == null || !sameTarget(fs.parent.vertex, bs.vertex)) &&
                 (bs.parent == null || !sameTarget(fs.vertex, bs.parent.vertex)))
@@ -613,21 +643,60 @@ class PricingProblemSolver(
         newState: State,
         onExtend: (State) -> Unit
     ) {
-        var dominatingPredecessorTarget: Int? = null
-        for (state in existingStates) {
-            if (!state.dominates(newState, useVisitCondition)) {
-                continue
-            }
-            val predecessorTarget = instance.whichTarget(state.parent!!.vertex)
-            if (dominatingPredecessorTarget == null) {
-                dominatingPredecessorTarget = predecessorTarget
-            } else if (predecessorTarget != dominatingPredecessorTarget) {
-                newState.dominated = true
+        // Before checking for domination, updating unreachable targets for stronger dominance
+        if (hasCriticalTargets)
+            updateUnreachableCriticalTargets(newState)
+
+        // Checking for domination both ways
+        for (i in existingStates.indices.reversed()) {
+            if (existingStates[i].dominates(newState, useVisitCondition))
                 return
-            }
+
+            if (newState.dominates(existingStates[i], useVisitCondition))
+                existingStates.removeAt(i)
         }
+
+        // New state is not dominated by previously found non-dominated states. Update non-dominated states
         existingStates.add(newState)
         onExtend(newState)
+    }
+
+    /**
+     * Function that identifies all targets that are unreachable for a given state in the sense that taking a single
+     * edge to a new critical target will exceed the length budget. Since only a single move is considered, the edge
+     * lengths need not satisfy the triangle inequality for this to behave properly.
+     */
+    private fun updateUnreachableCriticalTargets(state: State) {
+
+        val currentVertex = state.vertex
+
+        if (state.isForward) {
+
+            // Finding all targets reachable from the current target using a single edge
+            for (e in graph.outgoingEdgesOf(currentVertex)) {
+
+                val nextTarget = instance.whichTarget(graph.getEdgeTarget(e))
+                val edgeLength = graph.getEdgeWeight(e)
+
+                // If the next target is a critical target, check if it is unreachable and mark if so
+                if (isCritical[nextTarget] && state.pathLength + edgeLength > instance.budget)
+                    state.markCriticalTargetUnreachable(nextTarget)
+            }
+        }
+        else {
+
+            // Finding all targets reachable from the current target using a single edge
+            for (e in graph.incomingEdgesOf(currentVertex)) {
+
+                val prevTarget = instance.whichTarget(graph.getEdgeSource(e))
+                val edgeLength = graph.getEdgeWeight(e)
+
+                // If the target is a critical target, check if it is unreachable and mark if so
+                if (isCritical[prevTarget] && state.pathLength + edgeLength > instance.budget)
+                    state.markCriticalTargetUnreachable(prevTarget)
+            }
+        }
+
     }
 
     /**

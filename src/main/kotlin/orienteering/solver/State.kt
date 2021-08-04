@@ -35,9 +35,13 @@ class State private constructor(
      */
     val numTargetsVisited: Int,
     /**
-     * Numbers whose bits are used to track target visits using bitwise operations.
+     * Numbers whose bits are used to track critical target visits using bitwise operations.
      */
-    private val visitedBits: LongArray,
+    private val visitedCriticalBits: LongArray,
+    /**
+     * Numbers whose bits are used to track unreachable critical targets using bitwise operations
+     */
+    private val unreachableCriticalBits: LongArray,
     /**
      * Used in the comparator to order states, can be equal to [reducedCost] or bang for buck
      * (i.e. reduced cost per unit path length).
@@ -90,25 +94,33 @@ class State private constructor(
         reducedCostChange: Double,
         useBangForBuck: Boolean
     ): State {
-        val newVisitedBits = visitedBits.copyOf()
-        if (isCritical)
-            markVisited(newVisitedBits, newTarget)
 
+        // If new target is a critical target, mark it as being visited
+        val newVisitedCriticalBits = visitedCriticalBits.copyOf()
+
+        if (isCritical)
+            markVisited(newVisitedCriticalBits, newTarget)
+
+        // Reduced cost associated with going to the new target
         val newReducedCost = reducedCost + reducedCostChange
-        val metric = if (useBangForBuck)
-            if (pathLength >= Parameters.eps) reducedCost / pathLength else 0.0
-        else newReducedCost
+
+        // Updating metric used for selection of unprocessed state
+        val metric =
+            if (useBangForBuck)
+                if (pathLength >= Parameters.eps) reducedCost / pathLength else 0.0
+            else newReducedCost
 
         return State(
-            isForward,
-            this,
-            newVertex,
-            pathLength + edgeLength,
-            score + vertexScore,
-            newReducedCost,
-            numTargetsVisited + 1,
-            newVisitedBits,
-            metric
+            isForward = isForward,
+            parent = this,
+            vertex = newVertex,
+            pathLength = pathLength + edgeLength,
+            score = score + vertexScore,
+            reducedCost = newReducedCost,
+            numTargetsVisited = numTargetsVisited + 1,
+            visitedCriticalBits = newVisitedCriticalBits,
+            unreachableCriticalBits = unreachableCriticalBits.copyOf(),
+            selectionMetric = metric
         )
     }
 
@@ -120,19 +132,22 @@ class State private constructor(
      * @param useVisitCondition if true, a stricter dominance check is enforced.
      */
     fun dominates(other: State, useVisitCondition: Boolean): Boolean {
+
         var strict = false
-        if (reducedCost >= other.reducedCost + Parameters.eps) {
+
+        if (reducedCost >= other.reducedCost + Parameters.eps)
             return false
-        }
-        if (reducedCost <= other.reducedCost - Parameters.eps) {
+
+        if (reducedCost <= other.reducedCost - Parameters.eps)
             strict = true
-        }
-        if (pathLength >= other.pathLength + Parameters.eps) {
+
+        if (pathLength >= other.pathLength + Parameters.eps)
             return false
-        }
-        if (!strict && pathLength <= other.pathLength - Parameters.eps) {
+
+        if (!strict && pathLength <= other.pathLength - Parameters.eps)
             strict = true
-        }
+
+        // Checking visited critical vertices
 
         if (useVisitCondition) {
             if (Parameters.useNumTargetsForDominance) {
@@ -143,16 +158,20 @@ class State private constructor(
                     strict = true
                 }
             }
-            for (i in visitedBits.indices) {
+            for (i in visitedCriticalBits.indices) {
                 // Following condition is satisfied when "this" visits a critical target and
                 // "other" does not. So, "this" does not dominate the "other".
-                if (visitedBits[i] and other.visitedBits[i].inv() != 0L) {
+
+                val thisCombined = visitedCriticalBits[i] or unreachableCriticalBits[i]
+                val otherCombined = other.visitedCriticalBits[i] or other.unreachableCriticalBits[i]
+
+                if (thisCombined and otherCombined.inv() != 0L) {
                     return false
                 }
 
                 // Following condition is satisfied when "this" does not visit a critical target
                 // and "other" does. So, "this" strictly dominates "other".
-                if (!strict && (visitedBits[i].inv() and other.visitedBits[i] != 0L)) {
+                if (!strict && (thisCombined.inv() and otherCombined != 0L)) {
                     strict = true
                 }
             }
@@ -182,24 +201,41 @@ class State private constructor(
     }
 
     /**
-     * Returns true if [target] is on partial path, false otherwise.
+     * Returns true if critical [target] has been used, false otherwise. A critical vertex may have either been used
+     * by existing in the partial path associated with the state or because it is no longer reachable from the current
+     * state.
      */
-    fun visits(target: Int): Boolean {
+    fun usedCriticalTarget(target: Int): Boolean {
         val quotient: Int = target / Parameters.numBits
         val remainder: Int = target % Parameters.numBits
-        return visitedBits[quotient] and (1L shl remainder) != 0L
+
+        val combined = visitedCriticalBits[quotient] or unreachableCriticalBits[quotient]
+
+        return combined and (1L shl remainder) != 0L
     }
 
     /**
      * Returns true if any critical target is visited both by this and [other], false otherwise.
      */
-    fun hasCommonVisits(other: State): Boolean {
-        for (i in visitedBits.indices) {
-            if (visitedBits[i] and other.visitedBits[i] != 0L) {
+    fun hasCommonCriticalVisits(other: State): Boolean {
+        for (i in visitedCriticalBits.indices) {
+            if (visitedCriticalBits[i] and other.visitedCriticalBits[i] != 0L) {
                 return true
             }
         }
         return false
+    }
+
+    /**
+     * Function that marks a critical [target] as unreachable in the sense that using a single edge to reach this
+     * target will always exceed the budget
+     */
+    fun markCriticalTargetUnreachable(target: Int) {
+        val quotient : Int = target / Parameters.numBits
+        val remainder : Int = target % Parameters.numBits
+
+        // Updating unreachable critical targets
+        unreachableCriticalBits[quotient] = unreachableCriticalBits[quotient] or (1L shl remainder)
     }
 
     /**
@@ -218,9 +254,22 @@ class State private constructor(
             vertex: Int,
             numTargets: Int
         ): State {
-            val size: Int = (numTargets / Parameters.numBits) + 1
-            return State(isForward, null, vertex, 0.0, 0.0, 0.0,
-                0, LongArray(size) { 0L }, 0.0)
+
+            val numberOfLongs : Int = (numTargets / Parameters.numBits) + 1
+
+            val arrayOfLongs = LongArray(numberOfLongs){0L}
+
+            return State(
+                isForward = isForward,
+                parent = null,
+                vertex = vertex,
+                pathLength = 0.0,
+                score = 0.0,
+                reducedCost = 0.0,
+                numTargetsVisited = 1,
+                visitedCriticalBits = arrayOfLongs,
+                unreachableCriticalBits = arrayOfLongs,
+                selectionMetric = 0.0)
         }
 
         /**
