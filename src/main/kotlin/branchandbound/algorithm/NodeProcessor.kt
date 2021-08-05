@@ -109,6 +109,11 @@ class NodeProcessor(
         --numSolving
 
         if (solvedNode.lpFeasible) {
+            if (solvedNode.parentLpObjective <= solvedNode.lpObjective - eps)
+                throw BranchAndBoundException(
+                    "$solvedNode parent LP objective smaller than LP objective"
+                )
+
             ++numFeasible
             solvedNode.mipObjective?.let {
                 if (it >= lowerBound + eps)
@@ -217,6 +222,7 @@ class NodeProcessor(
         val children = branch(solvedNode)
         numCreated += children.size
         for (childNode in children) {
+            log.info { "child $childNode" }
             unsolvedNodes.add(childNode)
             leafUpperBounds[childNode.id] = childNode.parentLpObjective
         }

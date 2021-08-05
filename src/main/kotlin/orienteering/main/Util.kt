@@ -86,4 +86,8 @@ fun preProcess(
     }
 }
 
-fun Double.format(digits: Int): String = "%.${digits}f".format(this)
+fun Double.format(digits: Int): String = when {
+    this <= -1e20 -> "-inf"
+    this >= 1e20 -> "inf"
+    else -> "%.${digits}f".format(this)
+}

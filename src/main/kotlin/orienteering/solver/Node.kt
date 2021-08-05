@@ -38,7 +38,7 @@ data class Node(
      * True if all decision variables have binary values in LP solution, false otherwise.
      */
     override val lpIntegral: Boolean = false,
-    override val lpObjective: Double = Double.MAX_VALUE,
+    override val lpObjective: Double = -Double.MAX_VALUE,
     /**
      * Routes in LP solution with non-zero values and corresponding solution values.
      */
@@ -57,10 +57,19 @@ data class Node(
      * String representation.
      */
     override fun toString(): String {
-        val lp = if (lpObjective <= 1e10) lpObjective.format(2) else "MAX"
-        val mip = mipObjective?.let { if (it <= 1e10) it.format(2) else "MAX" }
-        val feasible = if (lpFeasible) "f" else "inf"
-        return "Node($id,lp=$lp,mip=$mip,$feasible)"
+        return (if (!lpSolved)
+            listOf(
+                "$id",
+                "ub=${parentLpObjective.format(2)}",
+                "unsolved"
+            )
+        else listOf(
+            "$id",
+            "ub=${parentLpObjective.format(2)}",
+            "lp=${lpObjective.format(2)}",
+            "mip=${mipObjective?.format(2)}",
+            if (lpFeasible) "f" else "inf"
+        )).joinToString(",", "Node(", ")")
     }
 
     /**
@@ -138,7 +147,11 @@ data class Node(
      *
      * @return list of child nodes
      */
-    private fun branchOnTarget(target: Int, targetVertices: List<Int>, idGenerator: Iterator<Long>): List<Node> {
+    private fun branchOnTarget(
+        target: Int,
+        targetVertices: List<Int>,
+        idGenerator: Iterator<Long>
+    ): List<Node> {
         log.debug { "branching $this on target $target" }
         val noVisitNode = getChildWithoutTarget(idGenerator.next(), targetVertices)
         log.debug { "child without $target: $noVisitNode" }
@@ -164,14 +177,26 @@ data class Node(
         if (fromTarget in mustVisitTargets || toTarget in mustVisitTargets) {
             log.debug { "branching $this with target visit already enforced" }
 
-            childNodes.add(getChildWithoutTargetEdge(idGenerator.next(), fromTarget, toTarget, instance))
+            childNodes.add(
+                getChildWithoutTargetEdge(
+                    idGenerator.next(),
+                    fromTarget,
+                    toTarget,
+                    instance
+                )
+            )
             log.debug { "child without $fromTarget -> $toTarget: ${childNodes.last()}" }
 
             childNodes.add(getChildWithTargetEdge(idGenerator.next(), fromTarget, toTarget))
             log.debug { "child with $fromTarget -> $toTarget: ${childNodes.last()}" }
         } else {
             log.debug { "branching $this without target visit already enforced" }
-            childNodes.add(getChildWithoutTarget(idGenerator.next(), instance.getVertices(fromTarget)))
+            childNodes.add(
+                getChildWithoutTarget(
+                    idGenerator.next(),
+                    instance.getVertices(fromTarget)
+                )
+            )
             log.debug("child without $fromTarget: ${childNodes.last()}")
 
             childNodes.add(
