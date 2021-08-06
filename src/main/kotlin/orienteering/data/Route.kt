@@ -1,5 +1,7 @@
 package orienteering.data
 
+import orienteering.main.format
+
 /**
  * Route data of a vehicle.
  *
@@ -16,11 +18,16 @@ data class Route(
     val length: Double,
     val reducedCost: Double
 ) {
-    override fun equals(other: Any?): Boolean {
-        return other != null && (other is Route) && vertexPath == other.vertexPath
-    }
+    override fun equals(other: Any?): Boolean =
+        other != null && (other is Route) && vertexPath == other.vertexPath
 
-    override fun hashCode(): Int {
-        return vertexPath.hashCode()
-    }
+    override fun hashCode(): Int = vertexPath.hashCode()
+
+    override fun toString(): String = listOf(
+        "vertexPath=$vertexPath",
+        "targetPath=$targetPath",
+        "score=${score.format(2)}",
+        "length=${length.format(2)}",
+        "reducedCost=${reducedCost.format(2)}"
+    ).joinToString(", ", "Route(", ")")
 }
