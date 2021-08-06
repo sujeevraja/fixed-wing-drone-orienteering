@@ -17,7 +17,7 @@ import kotlin.math.absoluteValue
  * function).
  *
  * I-DSSR reference:
- * Kaarthik Sundar and Sujeevraja Sanjeevi.
+ * Kaarthik Sundar, Sujeevraja Sanjeevi and Christopher Montez.
  * "A Branch-and-Price Algorithm for a Team Orienteering Problem for Fixed-Wing Drones"
  * Under review, Arxiv: https://arxiv.org/abs/1912.04353.
  *
@@ -706,8 +706,14 @@ class PricingProblemSolver(
 }
 
 /**
- * NOTE: This function mutates the dominated state, specifically the [State.dominatingPredecessor]
- * member, if [dominated] cannot be removed.
+ * Check if the [dominated] state can be removed from consideration even though it is dominated by the [dominating]
+ * state. If yes, return true. Otherwise, make sure to update the dominating predecessor value of [dominated]
+ *
+ * This function makes sure that 2-cycle elimination is handled correctly. For specifics on how this elimination works,
+ * refer to the subsection titled "SPPRC-2-cyc" in Page 51 of the following book chapter.
+ *
+ * Irnich, Stefan, and Guy Desaulniers. "Shortest path problems with resource constraints." Column generation.
+ * Springer, Boston, MA, 2005. 33-65.
  */
 private fun canRemoveDominated(dominating: State, dominated: State): Boolean =
     if (dominated.dominatingPredecessor == null) {
