@@ -641,8 +641,6 @@ class PricingProblemSolver(
         newState: State,
         onExtend: (State) -> Unit
     ) {
-        // if (newState.myBackwardState0())
-        //     1
         // Before checking for domination, updating unreachable targets for stronger dominance
         if (hasCriticalTargets)
             updateUnreachableCriticalTargets(newState)
