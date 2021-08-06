@@ -33,8 +33,7 @@ class NodeSolver(private val instance: Instance) : ISolver {
             unsolvedNode.mustVisitTargetEdges
         )
         cgSolver.solve()
-        val lpFeasible = !cgSolver.lpInfeasible
-        if (!lpFeasible)
+        if (cgSolver.lpInfeasible)
             return unsolvedNode.copy(lpSolved = true, lpFeasible = false)
 
         if (unsolvedNode.parentLpObjective <= cgSolver.lpObjective - Parameters.eps) {
@@ -55,4 +54,3 @@ class NodeSolver(private val instance: Instance) : ISolver {
         )
     }
 }
-

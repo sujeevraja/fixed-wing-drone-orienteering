@@ -19,6 +19,14 @@ class State private constructor(
      */
     val vertex: Int,
     /**
+     * Target of incident vertex.
+     */
+    val target: Int,
+    /**
+     * Target of predecessor vertex, will be -1 for source vertices.
+     */
+    val predecessorTarget: Int,
+    /**
      * Sum of edge lengths on partial path.
      */
     val pathLength: Double,
@@ -57,6 +65,8 @@ class State private constructor(
      * true if dominated by another State, false otherwise
      */
     var dominated = false
+
+    var dominatingPredecessor: Int? = null
 
     /**
      * Readable string representation of object
@@ -114,6 +124,8 @@ class State private constructor(
             isForward = isForward,
             parent = this,
             vertex = newVertex,
+            target = newTarget,
+            predecessorTarget = target,
             pathLength = pathLength + edgeLength,
             score = score + vertexScore,
             reducedCost = newReducedCost,
@@ -252,17 +264,18 @@ class State private constructor(
         fun buildTerminalState(
             isForward: Boolean,
             vertex: Int,
+            target: Int,
             numTargets: Int
         ): State {
-
             val numberOfLongs : Int = (numTargets / Parameters.numBits) + 1
-
             val arrayOfLongs = LongArray(numberOfLongs){0L}
 
             return State(
                 isForward = isForward,
                 parent = null,
                 vertex = vertex,
+                target = target,
+                predecessorTarget = -1,
                 pathLength = 0.0,
                 score = 0.0,
                 reducedCost = 0.0,

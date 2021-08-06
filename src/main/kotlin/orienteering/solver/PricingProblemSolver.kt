@@ -41,57 +41,70 @@ class PricingProblemSolver(
      * Number of targets (i.e. vertex clusters) in given instance.
      */
     private val numTargets = instance.numTargets
+
     /**
      * Number of vertices in given instance.
      */
     private val numVertices = graph.vertexSet().maxOrNull()!! + 1
+
     /**
      * source vertices
      */
     private val srcVertices =
         instance.getVertices(instance.sourceTarget).filter { it in graph.vertexSet() }
+
     /**
      * destination vertices
      */
     private val dstVertices =
         instance.getVertices(instance.destinationTarget).filter { it in graph.vertexSet() }
+
     /**
      * maximum length of a vehicle's path
      */
     private val maxPathLength = instance.budget
+
     /**
      * True at index i if target i is critical (Theta in paper).
      */
     private var isCritical = BooleanArray(numTargets) { false }
+
     /**
      * True at index i if target i is visited multiple times by the optimal path of a search
      * iteration (Psi in paper).
      */
     private var isVisitedMultipleTimes = BooleanArray(numTargets) { false }
+
     /**
      * Forward states indexed by vertex id.
      */
     private var forwardStates = List(numVertices) { mutableListOf<State>() }
+
     /**
      * Backward states indexed by vertex id.
      */
     private var backwardStates = List(numVertices) { mutableListOf<State>() }
+
     /**
      * Unprocessed forward states in ascending order of bang-for-buck.
      */
     private var unprocessedForwardStates = PriorityQueue<State>()
+
     /**
      * Unprocessed backward states in descending order of bang-for-buck.
      */
     private var unprocessedBackwardStates = PriorityQueue<State>()
+
     /**
      * Switch to decide whether a forward or backward unprocessed state needs to be extended.
      */
     private var processForwardState = true
+
     /**
      * Route with least reduced cost (used to define Psi at the end of a search iteration).
      */
     private var optimalRoute: Route? = null
+
     /**
      * Elementary paths with negative reduced cost.
      */
@@ -122,14 +135,24 @@ class PricingProblemSolver(
         // Store source states.
         for (srcVertex in srcVertices) {
             forwardStates[srcVertex].add(
-                State.buildTerminalState(true, srcVertex, numTargets)
+                State.buildTerminalState(
+                    true,
+                    srcVertex,
+                    instance.whichTarget(srcVertex),
+                    numTargets
+                )
             )
         }
 
         // Store destination state.
         for (dstVertex in dstVertices) {
             backwardStates[dstVertex].add(
-                State.buildTerminalState(false, dstVertex, numTargets)
+                State.buildTerminalState(
+                    false,
+                    dstVertex,
+                    instance.whichTarget(dstVertex),
+                    numTargets
+                )
             )
         }
 
@@ -261,34 +284,25 @@ class PricingProblemSolver(
             // Current state is a forward state, so join with all non-dominated backward states
 
             if (state.isForward) {
-
                 // Join with all backward states.
-
                 for (e in graph.outgoingEdgesOf(vertex)) {
-
                     for (bs in backwardStates[graph.getEdgeTarget(e)]) {
                         val shouldExit = save(state, bs)
                         if (shouldExit)
                             return true
                     }
-
                 }
-                if (TimeChecker.timeLimitReached()) {
+                if (TimeChecker.timeLimitReached())
                     return true
-                }
 
                 processState(state) {
                     unprocessedForwardStates.add(it)
                 }
-                if (TimeChecker.timeLimitReached()) {
+                if (TimeChecker.timeLimitReached())
                     return true
-                }
-            }
-            else { // Current state is a backward state
-
+            } else { // Current state is a backward state
                 // Join with all forward states.
                 for (e in graph.incomingEdgesOf(vertex)) {
-
                     for (fs in forwardStates[graph.getEdgeSource(e)]) {
                         val shouldExit = save(fs, state)
                         if (shouldExit)
@@ -296,17 +310,15 @@ class PricingProblemSolver(
                     }
                 }
 
-                if (TimeChecker.timeLimitReached()) {
+                if (TimeChecker.timeLimitReached())
                     return true
-                }
 
                 processState(state) {
                     unprocessedBackwardStates.add(it)
                 }
 
-                if (TimeChecker.timeLimitReached()) {
+                if (TimeChecker.timeLimitReached())
                     return true
-                }
             }
         }
 
@@ -430,11 +442,8 @@ class PricingProblemSolver(
     }
 
     private fun extendForward(state: State, onExtend: (State) -> Unit) {
-
         val currentVertex = state.vertex
-
         for (e in graph.outgoingEdgesOf(currentVertex)) {
-
             val nextVertex = graph.getEdgeTarget(e)
 
             // Don't extend to critical targets more than once
@@ -455,13 +464,9 @@ class PricingProblemSolver(
     }
 
     private fun extendBackward(state: State, onExtend: (State) -> Unit) {
-
         val currentVertex = state.vertex
-
         for (e in graph.incomingEdgesOf(currentVertex)) {
-
             val prevVertex = graph.getEdgeSource(e)
-
             if (state.usedCriticalTarget(instance.whichTarget(prevVertex)))
                 continue
 
@@ -476,21 +481,18 @@ class PricingProblemSolver(
 
     }
 
-    private fun sameTarget(v1: Int, v2: Int): Boolean {
-        return instance.whichTarget(v1) == instance.whichTarget(v2)
-    }
+    private fun sameTarget(v1: Int, v2: Int): Boolean =
+        instance.whichTarget(v1) == instance.whichTarget(v2)
 
     private fun canExtend(state: State): Boolean {
-        if (state.dominated) {
+        if (state.dominated)
             return false
-        }
 
         // Prevent extension of states that have consumed more than half the path length
         // budget. This reduces the number of extensions to be considered, while ensuring that
         // optimality is unaffected. Refer to section 4.3 in the paper for further details.
-        if (state.pathLength >= (maxPathLength / 2.0) - Parameters.eps) {
+        if (state.pathLength >= (maxPathLength / 2.0) - Parameters.eps)
             return false
-        }
 
         if (Parameters.useNumTargetsForDominance) {
             // Paths joined will always be on an edge (i,j) with a forward label at i and a
@@ -515,9 +517,9 @@ class PricingProblemSolver(
 
         val rcUpdate =
             if (state.isForward)
-                targetReducedCosts[neighborTarget] + targetEdgeDuals[instance.whichTarget(state.vertex)][neighborTarget]
+                targetReducedCosts[neighborTarget] + targetEdgeDuals[state.target][neighborTarget]
             else
-                targetReducedCosts[neighborTarget] + targetEdgeDuals[neighborTarget][instance.whichTarget(state.vertex)]
+                targetReducedCosts[neighborTarget] + targetEdgeDuals[neighborTarget][state.target]
 
         return state.extend(
             newVertex = neighbor,
@@ -538,21 +540,19 @@ class PricingProblemSolver(
      * @return true if enough negative reduced cost columns are available, false otherwise
      */
     private fun save(forwardState: State, backwardState: State): Boolean {
-        if (!feasible(forwardState, backwardState) || !halfway(forwardState, backwardState)) {
+        if (!feasible(forwardState, backwardState) || !halfway(forwardState, backwardState))
             return false
-        }
 
-        val forwardTarget = instance.whichTarget(forwardState.vertex)
-        val backwardTarget = instance.whichTarget(backwardState.vertex)
-
+        val forwardTarget = forwardState.target
+        val backwardTarget = backwardState.target
         val reducedCost = (routeDual + forwardState.reducedCost + backwardState.reducedCost +
                 targetEdgeDuals[forwardTarget][backwardTarget])
 
-        if (reducedCost >= -Parameters.eps) {
+        if (reducedCost >= -Parameters.eps)
             return false
-        }
 
-        val joinedVertexPath = forwardState.getPartialPathVertices().asReversed() + backwardState.getPartialPathVertices()
+        val joinedVertexPath = forwardState.getPartialPathVertices()
+            .asReversed() + backwardState.getPartialPathVertices()
 
         val route = Route(
             joinedVertexPath,
@@ -562,15 +562,13 @@ class PricingProblemSolver(
             reducedCost
         )
 
-        if (optimalRoute == null || reducedCost <= optimalRoute!!.reducedCost - Parameters.eps) {
+        if (optimalRoute == null || reducedCost <= optimalRoute!!.reducedCost - Parameters.eps)
             optimalRoute = route
-        }
 
         if (!hasCycle(joinedVertexPath)) {
             elementaryRoutes.add(route)
-            if (elementaryRoutes.size >= Parameters.maxPathsInsideSearch) {
+            if (elementaryRoutes.size >= Parameters.maxPathsInsideSearch)
                 return true
-            }
         }
 
         return false
@@ -643,20 +641,29 @@ class PricingProblemSolver(
         newState: State,
         onExtend: (State) -> Unit
     ) {
+        // if (newState.myBackwardState0())
+        //     1
         // Before checking for domination, updating unreachable targets for stronger dominance
         if (hasCriticalTargets)
             updateUnreachableCriticalTargets(newState)
 
         // Checking for domination both ways
         for (i in existingStates.indices.reversed()) {
-            if (existingStates[i].dominates(newState, useVisitCondition))
-                return
-
-            if (newState.dominates(existingStates[i], useVisitCondition))
+            val existingState = existingStates[i]
+            if (existingState.dominates(newState, useVisitCondition)) {
+                if (canRemoveDominated(existingState, newState)) {
+                    newState.dominated = true
+                    return
+                }
+            } else if (newState.dominates(existingState, useVisitCondition) &&
+                canRemoveDominated(newState, existingState)
+            ) {
+                existingState.dominated = true
                 existingStates.removeAt(i)
+            }
         }
 
-        // New state is not dominated by previously found non-dominated states. Update non-dominated states
+        // As the new state is found to be non-dominated, store it for further processing.
         existingStates.add(newState)
         onExtend(newState)
     }
@@ -671,10 +678,8 @@ class PricingProblemSolver(
         val currentVertex = state.vertex
 
         if (state.isForward) {
-
             // Finding all targets reachable from the current target using a single edge
             for (e in graph.outgoingEdgesOf(currentVertex)) {
-
                 val nextTarget = instance.whichTarget(graph.getEdgeTarget(e))
                 val edgeLength = graph.getEdgeWeight(e)
 
@@ -682,12 +687,9 @@ class PricingProblemSolver(
                 if (isCritical[nextTarget] && state.pathLength + edgeLength > instance.budget)
                     state.markCriticalTargetUnreachable(nextTarget)
             }
-        }
-        else {
-
+        } else {
             // Finding all targets reachable from the current target using a single edge
             for (e in graph.incomingEdgesOf(currentVertex)) {
-
                 val prevTarget = instance.whichTarget(graph.getEdgeSource(e))
                 val edgeLength = graph.getEdgeWeight(e)
 
@@ -704,3 +706,13 @@ class PricingProblemSolver(
      */
     companion object : KLogging()
 }
+
+/**
+ * NOTE: This function mutates the dominated state, specifically the [State.dominatingPredecessor]
+ * member, if [dominated] cannot be removed.
+ */
+private fun canRemoveDominated(dominating: State, dominated: State): Boolean =
+    if (dominated.dominatingPredecessor == null) {
+        dominated.dominatingPredecessor = dominating.predecessorTarget
+        false
+    } else dominated.dominatingPredecessor != dominating.predecessorTarget

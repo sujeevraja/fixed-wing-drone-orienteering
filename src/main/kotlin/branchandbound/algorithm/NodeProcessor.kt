@@ -173,7 +173,7 @@ class NodeProcessor(
             return true
         }
 
-        if (solvedNode.lpObjective <= lowerBound - eps) {
+        if (solvedNode.lpObjective <= lowerBound + eps) {
             log.info { "$solvedNode pruned by bound" }
             return true
         }
