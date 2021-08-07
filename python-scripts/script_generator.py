@@ -41,7 +41,6 @@ class Config:
                                                "final-results",
                                                "instances.csv")
 
-        self.dominance_runs = False
         self.exhaustive_runs = False
         self.simple_search_runs = False
         self.single_thread_runs = False
@@ -69,26 +68,17 @@ class Controller:
 
     def __init__(self, config):
         self.config = config
-        self._base_cmd = None
-
-    def run(self):
         self._base_cmd = [
             "java", "-Xms32m", "-Xmx32g",
             "-Djava.library.path={}".format(self.config.cplex_lib_path),
             "-jar", "./uber.jar",
         ]
 
+    def run(self):
         self._prepare_uberjar()
 
         if self.config.bang_for_buck_runs:
             self._setup_bang_for_buck_runs()
-
-        if self.config.dominance_runs:
-            self._generate_non_exhaustive_setup(
-                "dominance", cmd_args=[
-                    "-s", "1",
-                    "-i", "1",
-                    "-rd", "0", ])
 
         if self.config.simple_search_runs:
             self._generate_non_exhaustive_setup(
@@ -256,8 +246,6 @@ def handle_command_line():
 
     parser.add_argument("-b", "--bangforbuck", action="store_true",
                         help="generate runs to test efficacy of bang-for-buck")
-    parser.add_argument("-d", "--dominance", action="store_true",
-                        help="generate runs file for dominance comparison")
     parser.add_argument("-e", "--exhaustive", action="store_true",
                         help="generate runs file for testing all instances")
     parser.add_argument("-i", "--instancefilepath", type=str,
@@ -271,7 +259,6 @@ def handle_command_line():
     config = Config()
 
     config.bang_for_buck_runs = args.bangforbuck
-    config.dominance_runs = args.dominance
     config.exhaustive_runs = args.exhaustive
     config.simple_search_runs = args.simple
     config.single_thread_runs = args.threading
