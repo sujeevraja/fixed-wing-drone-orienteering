@@ -89,7 +89,6 @@ class Controller:
             raise ScriptException(f"unknown run type {self.config.run_type}")
 
         arg_sets = [
-            ["-s", "1", "-i", "1"],
             ["-s", "1", "-i", "0"],
         ]
         self._generate_non_exhaustive_setup(test_name, arg_sets)
