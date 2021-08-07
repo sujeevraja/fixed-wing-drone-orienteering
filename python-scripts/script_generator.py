@@ -6,6 +6,7 @@ import logging
 import os
 import shutil
 import subprocess
+import typing
 
 
 log = logging.getLogger(__name__)
@@ -22,34 +23,9 @@ class ScriptException(Exception):
         return repr(self.value)
 
 
-class Config:
-    """Class that holds global parameters."""
-
-    def __init__(self):
-        self.script_folder_path = os.path.dirname(os.path.realpath(__file__))
-        self.base_path = os.path.abspath(
-            os.path.join(self.script_folder_path, '..'))
-        self.cplex_lib_path = guess_cplex_library_path()
-        self.data_path = os.path.join(self.base_path, 'data')
-        self.jar_path = os.path.join(
-            self.base_path, 'build', 'libs', 'uber.jar')
-
-        # Path to csv file with instance path, instance name and number of
-        # discretizations. Instances from this file will be used to generate
-        # run commands.
-        self.instance_file_path = os.path.join(self.base_path,
-                                               "final-results",
-                                               "instances.csv")
-
-        self.exhaustive_runs = False
-        self.simple_search_runs = False
-        self.single_thread_runs = False
-        self.bang_for_buck_runs = False
-
-
-def guess_cplex_library_path():
-    gp_path = os.path.join(os.path.expanduser(
-        "~"), ".gradle", "gradle.properties")
+def guess_cplex_library_path() -> str:
+    gp_path = os.path.join(os.path.expanduser("~"), ".gradle",
+                           "gradle.properties")
     if not os.path.isfile(gp_path):
         raise ScriptException(
             "gradle.properties not available at {}".format(gp_path))
@@ -63,10 +39,30 @@ def guess_cplex_library_path():
     raise ScriptException("unable to read value of cplexLibPath ")
 
 
+def get_base_path() -> str:
+    return os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+
+
+def get_data_path() -> str:
+    return os.path.join(get_base_path(), "data")
+
+
+def get_jar_path() -> str:
+    return os.path.join(get_base_path(), "build", "libs", "uber.jar")
+
+
+class Config(typing.NamedTuple):
+    csv_path: str
+    run_type: str
+    cplex_lib_path: str = guess_cplex_library_path()
+    data_path: str = get_data_path()
+    jar_path: str = get_jar_path()
+
+
 class Controller:
     """class that manages the functionality of the entire script."""
 
-    def __init__(self, config):
+    def __init__(self, config: Config):
         self.config = config
         self._base_cmd = [
             "java", "-Xms32m", "-Xmx32g",
@@ -76,25 +72,27 @@ class Controller:
 
     def run(self):
         self._prepare_uberjar()
-
-        if self.config.bang_for_buck_runs:
+        if self.config.run_type == "b":
             self._setup_bang_for_buck_runs()
+            return
 
-        if self.config.simple_search_runs:
-            self._generate_non_exhaustive_setup(
-                "simple", cmd_args=[
-                    "-s", "1",
-                    "-i", "0", ])
-
-        if self.config.single_thread_runs:
-            self._generate_non_exhaustive_setup(
-                "onethread", cmd_args=[
-                    "-s", "1",
-                    "-i", "1", ])
-
-        if self.config.exhaustive_runs:
+        if self.config.run_type == "e":
             self._generate_exhaustive_setup(
                 cases=self._collect_exhaustive_cases())
+            return
+
+        if self.config.run_type == "s":
+            test_name = "search"
+        elif self.config.run_type == "t":
+            test_name = "threading"
+        else:
+            raise ScriptException(f"unknown run type {self.config.run_type}")
+
+        arg_sets = [
+            ["-s", "1", "-i", "1"],
+            ["-s", "1", "-i", "0"],
+        ]
+        self._generate_non_exhaustive_setup(test_name, arg_sets)
 
     def _setup_bang_for_buck_runs(self):
         cases = self._collect_exhaustive_cases(discretizations=["2", "4"])
@@ -104,31 +102,31 @@ class Controller:
         ]
         self._generate_exhaustive_setup(cases, args, "bangforbuck")
 
-    def _generate_non_exhaustive_setup(self, test_name, cmd_args):
+    def _generate_non_exhaustive_setup(
+            self, test_name: str, arg_sets: typing.List[typing.List[str]]):
         cases = self._collect_cases_from_file()
         runs_file_path = os.path.join(
-            self.config.script_folder_path, '{}_runs.txt'.format(test_name))
+            os.path.dirname(__file__), f"{test_name}_runs.txt")
 
         with open(runs_file_path, 'w') as f_out:
             counter = 0
             for folder_name, instance_name, num_disc in cases:
                 folder_path = './data/{}/'.format(folder_name)
-                results_file_name = "results_{}.yaml".format(counter)
-
-                results_path = os.path.join("results", results_file_name)
-                results_path = "./{}".format(results_path)
-
                 cmd = [c for c in self._base_cmd]
                 cmd.extend([
                     "-n", instance_name,
                     "-p", folder_path,
-                    "-o", results_path,
                     "-d", str(num_disc),
                 ])
-                cmd.extend(cmd_args)
-                f_out.write(' '.join(cmd))
-                f_out.write('\n')
-                counter += 1
+
+                for cmd_args in arg_sets:
+                    results_file_name = "results_{}.yaml".format(counter)
+                    results_path = os.path.join("results", results_file_name)
+                    results_path = "./{}".format(results_path)
+                    cmd1 = cmd + cmd_args + ["-o", results_path]
+                    f_out.write(' '.join(cmd1))
+                    f_out.write('\n')
+                    counter += 1
 
         log.info("wrote cases to {}".format(runs_file_path))
         self._prepare_test_folder(
@@ -137,7 +135,7 @@ class Controller:
     def _generate_exhaustive_setup(self, cases, additional_cmds=[],
                                    test_name="exhaustive"):
         runs_file_path = os.path.join(
-            self.config.script_folder_path, test_name + '_runs.txt')
+            os.path.dirname(__file__), f"{test_name}_runs.txt")
 
         with open(runs_file_path, 'w') as f_out:
             counter = 0
@@ -187,7 +185,7 @@ class Controller:
 
     def _collect_cases_from_file(self):
         cases = []
-        with open(self.config.instance_file_path, 'r', newline='') as csvfile:
+        with open(self.config.csv_path, 'r', newline='') as csvfile:
             reader = csv.reader(csvfile)
             next(reader)  # skip header row
             for row in reader:
@@ -204,23 +202,26 @@ class Controller:
         return list(set([(c[0], c[1]) for c in cases]))
 
     def _prepare_uberjar(self):
-        os.chdir(self.config.base_path)
+        base_path = get_base_path()
+        cwd = os.getcwd()
+        os.chdir(base_path)
         subprocess.check_call(['gradle', 'clean', 'cleanlogs', 'uberjar'])
         if not os.path.isfile(self.config.jar_path):
             raise ScriptException("uberjar build failed")
         log.info("prepared uberjar")
+        os.chdir(cwd)
 
     def _prepare_test_folder(self, test_name, cases):
-        rt_path = os.path.join(self.config.base_path, test_name)
+        rt_path = os.path.join(get_base_path(), test_name)
         os.makedirs(rt_path, exist_ok=True)
         shutil.copy(self.config.jar_path, os.path.join(rt_path, 'uber.jar'))
         runs_file_name = '{}_runs.txt'.format(test_name)
         for f in [runs_file_name, 'submit-batch.sh', 'slurm-batch-job.sh']:
-            src_path = os.path.join(self.config.script_folder_path, f)
+            src_path = os.path.join(os.path.dirname(__file__), f)
             dst_path = os.path.join(rt_path, f)
             shutil.copy(src_path, dst_path)
 
-        os.remove(os.path.join(self.config.script_folder_path, runs_file_name))
+        os.remove(os.path.join(os.path.dirname(__file__), runs_file_name))
         log.info('copied runs file and shell scripts to {}'.format(rt_path))
 
         test_data_path = os.path.join(rt_path, 'data')
@@ -241,31 +242,26 @@ class Controller:
         log.info('created output and result folders.')
 
 
-def handle_command_line():
-    parser = argparse.ArgumentParser()
+def handle_command_line() -> Config:
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
-    parser.add_argument("-b", "--bangforbuck", action="store_true",
-                        help="generate runs to test efficacy of bang-for-buck")
-    parser.add_argument("-e", "--exhaustive", action="store_true",
-                        help="generate runs file for testing all instances")
-    parser.add_argument("-i", "--instancefilepath", type=str,
-                        help="path to csv file with instances to run")
-    parser.add_argument("-s", "--simple", action="store_true",
-                        help="generate runs file for simple search")
-    parser.add_argument("-t", "--threading", action="store_true",
-                        help="generate runs file for threading comparison")
+    # Path to csv file with instance path, instance name and number of
+    # discretizations. Instances from this file will be used to generate
+    # run commands.
+    results_path = os.path.join(get_base_path(), "final-results-v2")
+    fpath = os.path.join(results_path, "search_comparison_instances.csv")
+    parser.add_argument("-c", "--csv_path", type=str,
+                        help="path to csv file with instances to run",
+                        default=fpath)
+
+    parser.add_argument("-r", "--run_type", choices=["b", "e", "s", "t"],
+                        help="run type: bang-for-buck (b), exhaustive (e), "
+                        "search (s) or thread (t)",
+                        default="s")
 
     args = parser.parse_args()
-    config = Config()
-
-    config.bang_for_buck_runs = args.bangforbuck
-    config.exhaustive_runs = args.exhaustive
-    config.simple_search_runs = args.simple
-    config.single_thread_runs = args.threading
-    if args.instancefilepath:
-        config.instance_file_path = args.instancefilepath
-
-    return config
+    return Config(**vars(args))
 
 
 def main():
