@@ -196,29 +196,23 @@ class PricingProblemSolver(
     // Need to update how cycles detected
     private fun initializeIteration() {
         // Update critical vertices.
-        for (i in isCritical.indices) {
-            if (!isCritical[i]) {
+        for (i in isCritical.indices)
+            if (!isCritical[i])
                 isCritical[i] = isVisitedMultipleTimes[i]
-            }
-        }
 
         // Clear all states except source and destination.
         for (i in forwardStates.indices) {
-            if (i !in srcVertices) {
+            if (i !in srcVertices)
                 forwardStates[i].clear()
-            } else {
-                for (state in forwardStates[i]) {
-                    state.extended = false
-                    state.dominated = false
-                }
+            else for (state in forwardStates[i]) {
+                state.extended = false
+                state.dominated = false
             }
-            if (i !in dstVertices) {
+            if (i !in dstVertices)
                 backwardStates[i].clear()
-            } else {
-                for (state in backwardStates[i]) {
-                    state.extended = false
-                    state.dominated = false
-                }
+            else for (state in backwardStates[i]) {
+                state.extended = false
+                state.dominated = false
             }
         }
 
@@ -226,9 +220,8 @@ class PricingProblemSolver(
         if (optimalRoute != null && hasCycle(optimalRoute!!.vertexPath)) {
             optimalRoute = elementaryRoutes.firstOrNull()
             for (route in elementaryRoutes.drop(1)) {
-                if (route.reducedCost <= optimalRoute!!.reducedCost - Constants.EPS) {
+                if (route.reducedCost <= optimalRoute!!.reducedCost - Constants.EPS)
                     optimalRoute = route
-                }
             }
         }
     }
@@ -236,7 +229,6 @@ class PricingProblemSolver(
     /**
      * Implementation of the I-DSSR algorithm presented in the paper.
      */
-
     private fun interleavedSearch(): Boolean {
         val criticalTargets = (0 until numTargets).filter { isCritical[it] }
         logger.debug("critical targets: $criticalTargets")
@@ -244,80 +236,62 @@ class PricingProblemSolver(
         // Extend source states.
         for (srcVertex in srcVertices) {
             for (state in forwardStates[srcVertex]) {
-                processState(state) {
-                    unprocessedForwardStates.add(it)
-                }
+                processState(state) { unprocessedForwardStates.add(it) }
             }
         }
 
         // Extend destination state.
         for (dstVertex in dstVertices) {
             for (state in backwardStates[dstVertex]) {
-                processState(state) {
-                    unprocessedBackwardStates.add(it)
-                }
+                processState(state) { unprocessedBackwardStates.add(it) }
             }
         }
 
         while (unprocessedForwardStates.isNotEmpty() || unprocessedBackwardStates.isNotEmpty()) {
-            if (TimeChecker.timeLimitReached(parameters.timeLimitInSeconds)) {
+            if (TimeChecker.timeLimitReached(parameters.timeLimitInSeconds))
                 return true
-            }
 
             var state: State? = null
             if (processForwardState) {
-                if (unprocessedForwardStates.isNotEmpty()) {
+                if (unprocessedForwardStates.isNotEmpty())
                     state = unprocessedForwardStates.remove()
-                }
-            } else if (unprocessedBackwardStates.isNotEmpty()) {
+            } else if (unprocessedBackwardStates.isNotEmpty())
                 state = unprocessedBackwardStates.remove()
-            }
             processForwardState = !processForwardState
-            if (state == null || state.dominated) {
-                continue
-            }
 
-            if (state.extended) {
+            if (state == null || state.dominated)
+                continue
+
+            if (state.extended)
                 throw OrienteeringException("extended state in unprocessed state container")
-            }
 
             val vertex = state.vertex
 
             // Current state is a forward state, so join with all non-dominated backward states
-
             if (state.isForward) {
                 // Join with all backward states.
-                for (e in graph.outgoingEdgesOf(vertex)) {
-                    for (bs in backwardStates[graph.getEdgeTarget(e)]) {
-                        val shouldExit = save(state, bs)
-                        if (shouldExit)
+                for (e in graph.outgoingEdgesOf(vertex))
+                    for (bs in backwardStates[graph.getEdgeTarget(e)])
+                        if (save(state, bs))
                             return true
-                    }
-                }
                 if (TimeChecker.timeLimitReached(parameters.timeLimitInSeconds))
                     return true
 
-                processState(state) {
-                    unprocessedForwardStates.add(it)
-                }
+                processState(state) { unprocessedForwardStates.add(it) }
+
                 if (TimeChecker.timeLimitReached(parameters.timeLimitInSeconds))
                     return true
             } else { // Current state is a backward state
                 // Join with all forward states.
-                for (e in graph.incomingEdgesOf(vertex)) {
-                    for (fs in forwardStates[graph.getEdgeSource(e)]) {
-                        val shouldExit = save(fs, state)
-                        if (shouldExit)
+                for (e in graph.incomingEdgesOf(vertex))
+                    for (fs in forwardStates[graph.getEdgeSource(e)])
+                        if (save(fs, state))
                             return true
-                    }
-                }
 
                 if (TimeChecker.timeLimitReached(parameters.timeLimitInSeconds))
                     return true
 
-                processState(state) {
-                    unprocessedBackwardStates.add(it)
-                }
+                processState(state) { unprocessedBackwardStates.add(it) }
 
                 if (TimeChecker.timeLimitReached(parameters.timeLimitInSeconds))
                     return true
@@ -337,58 +311,43 @@ class PricingProblemSolver(
         candidateVertices.addAll(dstVertices)
 
         while (candidateVertices.isNotEmpty()) {
-            if (TimeChecker.timeLimitReached(parameters.timeLimitInSeconds)) {
+            if (TimeChecker.timeLimitReached(parameters.timeLimitInSeconds))
                 return true
-            }
+
             val vertex = candidateVertices.first()
 
             // Complete all forward extensions.
-            for (state in forwardStates[vertex]) {
-                if (!state.dominated) {
-                    processState(state) {
-                        candidateVertices.add(it.vertex)
-                    }
-                }
-            }
-            if (TimeChecker.timeLimitReached(parameters.timeLimitInSeconds)) {
+            for (state in forwardStates[vertex])
+                if (!state.dominated)
+                    processState(state) { candidateVertices.add(it.vertex) }
+
+            if (TimeChecker.timeLimitReached(parameters.timeLimitInSeconds))
                 return true
-            }
 
             // Complete all backward extensions.
-            for (state in backwardStates[vertex]) {
-                if (!state.dominated) {
-                    processState(state) {
-                        candidateVertices.add(it.vertex)
-                    }
-                }
-            }
-            if (TimeChecker.timeLimitReached(parameters.timeLimitInSeconds)) {
+            for (state in backwardStates[vertex])
+                if (!state.dominated)
+                    processState(state) { candidateVertices.add(it.vertex) }
+
+            if (TimeChecker.timeLimitReached(parameters.timeLimitInSeconds))
                 return true
-            }
 
             candidateVertices.remove(vertex)
         }
 
         // Join forward and backward paths.
-        for (i in 0 until numVertices) {
-            for (j in 0 until numVertices) {
-                if (j == i || !graph.containsEdge(i, j)) {
-                    continue
-                }
-                for (fs in forwardStates[i]) {
-                    for (bs in backwardStates[j]) {
-                        val shouldExit = save(fs, bs)
-                        if (shouldExit) {
-                            return true
-                        }
-                    }
-                }
-                if (TimeChecker.timeLimitReached(parameters.timeLimitInSeconds)) {
-                    return true
-                }
-            }
-        }
+        val edgeSet = graph.edgeSet()
+        for (edge in edgeSet) {
+            val head = graph.getEdgeSource(edge)
+            val tail = graph.getEdgeTarget(edge)
+            for (fs in forwardStates[head])
+                for (bs in backwardStates[tail])
+                    if (save(fs, bs))
+                        return true
 
+            if (TimeChecker.timeLimitReached(parameters.timeLimitInSeconds))
+                return true
+        }
         return false
     }
 
@@ -424,9 +383,8 @@ class PricingProblemSolver(
         val visited = hashSetOf<Int>()
         for (vertex in path) {
             val target = instance.whichTarget(vertex)
-            if (visited.contains(target)) {
+            if (visited.contains(target))
                 return true
-            }
             visited.add(target)
         }
         return false
@@ -500,9 +458,8 @@ class PricingProblemSolver(
             // Paths joined will always be on an edge (i,j) with a forward label at i and a
             // backward label at j. So, any label has visited more targets than (numTargets - 1)
             // can be discarded.
-            if (state.numTargetsVisited > numTargets - 1) {
+            if (state.numTargetsVisited > numTargets - 1)
                 return false
-            }
         }
 
         return true
@@ -510,18 +467,15 @@ class PricingProblemSolver(
 
     private fun extendIfFeasible(state: State, neighbor: Int, edgeLength: Double): State? {
         // Prevent budget infeasibility.
-        if (state.pathLength + edgeLength > maxPathLength) {
+        if (state.pathLength + edgeLength > maxPathLength)
             return null
-        }
 
         // Here, extension is feasible. So, generate and return it.
         val neighborTarget = instance.whichTarget(neighbor)
 
-        val rcUpdate =
-            if (state.isForward)
-                targetReducedCosts[neighborTarget] + targetEdgeDuals[state.target][neighborTarget]
-            else
-                targetReducedCosts[neighborTarget] + targetEdgeDuals[neighborTarget][state.target]
+        val rcUpdate = targetReducedCosts[neighborTarget] +
+                if (state.isForward) targetEdgeDuals[state.target][neighborTarget]
+                else targetEdgeDuals[neighborTarget][state.target]
 
         return state.extend(
             newVertex = neighbor,
@@ -584,12 +538,11 @@ class PricingProblemSolver(
      *
      * @return true if path is feasible, false otherwise.
      */
-    private fun feasible(fs: State, bs: State): Boolean {
-        return (!fs.hasCommonCriticalVisits(bs) &&
-                getJoinedPathLength(fs, bs) <= maxPathLength &&
-                (fs.parent == null || !sameTarget(fs.parent.vertex, bs.vertex)) &&
-                (bs.parent == null || !sameTarget(fs.vertex, bs.parent.vertex)))
-    }
+    private fun feasible(fs: State, bs: State): Boolean = !fs.hasCommonCriticalVisits(bs) &&
+            getJoinedPathLength(fs, bs) <= maxPathLength &&
+            (fs.parent == null || !sameTarget(fs.parent.vertex, bs.vertex)) &&
+            (bs.parent == null || !sameTarget(fs.vertex, bs.parent.vertex))
+
 
     /**
      * Compute the path length of path obtained by joining the given states.
@@ -598,9 +551,8 @@ class PricingProblemSolver(
      * @param bs backward state with partial path to destination
      * @return computed path cost (i.e. total edge length)
      */
-    private fun getJoinedPathLength(fs: State, bs: State): Double {
-        return fs.pathLength + bs.pathLength + graph.getEdgeWeight(fs.vertex, bs.vertex)
-    }
+    private fun getJoinedPathLength(fs: State, bs: State): Double =
+        fs.pathLength + bs.pathLength + graph.getEdgeWeight(fs.vertex, bs.vertex)
 
     /**
      * Check if the given forward and backward state satisfy "half-way-point" conditions.
@@ -611,26 +563,21 @@ class PricingProblemSolver(
      */
     private fun halfway(fs: State, bs: State): Boolean {
         val currDiff = (fs.pathLength - bs.pathLength).absoluteValue
-        if (currDiff <= Constants.EPS) {
+        if (currDiff <= Constants.EPS)
             return true
-        }
 
         val joinEdgeLength = graph.getEdgeWeight(fs.vertex, bs.vertex)
         var otherDiff = 0.0
         if (fs.pathLength <= bs.pathLength - Constants.EPS) {
-            if (bs.parent != null) {
+            if (bs.parent != null)
                 otherDiff = (fs.pathLength + joinEdgeLength - bs.parent.pathLength).absoluteValue
-            }
-        } else if (fs.parent != null) {
+        } else if (fs.parent != null)
             otherDiff = (fs.parent.pathLength - (joinEdgeLength + bs.pathLength)).absoluteValue
-        }
 
-        if (currDiff <= otherDiff - Constants.EPS) {
+        if (currDiff <= otherDiff - Constants.EPS)
             return true
-        }
-        if (currDiff >= otherDiff + Constants.EPS) {
+        if (currDiff >= otherDiff + Constants.EPS)
             return false
-        }
         return fs.pathLength >= bs.pathLength + Constants.EPS
     }
 
