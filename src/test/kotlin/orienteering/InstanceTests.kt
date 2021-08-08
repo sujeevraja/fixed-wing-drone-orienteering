@@ -4,16 +4,16 @@
 package orienteering
 
 import org.junit.jupiter.api.Test
-import orienteering.data.InstanceDto
+import orienteering.data.InstanceBuilder
 import orienteering.main.numVertices
 import kotlin.test.assertEquals
 
 class InstanceTests {
     @Test fun `instance reading`() {
-        val instance = InstanceDto(
+        val instance = InstanceBuilder(
                 "p2.2.a.txt",
                 "./data/Set_21_234/",
-                2, 1.0).getInstance()
+                2, 1.0).instance
         assertEquals(7.5, instance.budget, "budget incorrect")
         assertEquals(21, instance.numTargets, "target count incorrect")
         assertEquals(7, instance.graph.numVertices(), "vertex count incorrect")

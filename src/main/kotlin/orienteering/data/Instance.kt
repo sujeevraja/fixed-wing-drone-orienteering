@@ -28,7 +28,6 @@ class Instance(
     private val targetOfVertex: List<Int>,
     private val verticesInTarget: List<List<Int>>
 ) {
-    val numVertices = graph.numVertices()
     val targetScores = (0 until numTargets).map {
         val vertices = verticesInTarget[it]
         if (vertices.isEmpty()) 0.0 else vertexScores[vertices[0]]
