@@ -672,9 +672,7 @@ class PricingProblemSolver(
      * lengths need not satisfy the triangle inequality for this to behave properly.
      */
     private fun updateUnreachableCriticalTargets(state: State) {
-
         val currentVertex = state.vertex
-
         if (state.isForward) {
             // Finding all targets reachable from the current target using a single edge
             for (e in graph.outgoingEdgesOf(currentVertex)) {
@@ -696,7 +694,6 @@ class PricingProblemSolver(
                     state.markCriticalTargetUnreachable(prevTarget)
             }
         }
-
     }
 
     /**
@@ -716,7 +713,9 @@ class PricingProblemSolver(
  * Springer, Boston, MA, 2005. 33-65.
  */
 private fun canRemoveDominated(dominating: State, dominated: State): Boolean =
-    if (dominated.dominatingPredecessor == null) {
+    if (dominating.predecessorTargetUnreachable || dominating.predecessorTarget == dominated.predecessorTarget)
+        true
+    else if (dominated.dominatingPredecessor == null) {
         dominated.dominatingPredecessor = dominating.predecessorTarget
         false
     } else dominated.dominatingPredecessor != dominating.predecessorTarget

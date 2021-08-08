@@ -78,7 +78,7 @@ class CliParser : CliktCommand() {
     val useInterleavedSearch: Int by option(
         "-i",
         help = "use interleaved search (1) or simple search (0)"
-    ).int().default(1).validate {
+    ).int().default(0).validate {
         require(it == 1 || it == 0) {
             "should be 1 or 0"
         }
