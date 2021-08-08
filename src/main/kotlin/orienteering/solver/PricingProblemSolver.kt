@@ -1,6 +1,7 @@
 package orienteering.solver
 
 import mu.KLogging
+import orienteering.Constants
 import orienteering.data.Instance
 import orienteering.data.Parameters
 import orienteering.data.Route
@@ -32,6 +33,7 @@ import kotlin.math.absoluteValue
  */
 class PricingProblemSolver(
     private val instance: Instance,
+    private val parameters: Parameters,
     private val routeDual: Double,
     private val targetReducedCosts: List<Double>,
     private val targetEdgeDuals: List<List<Double>>,
@@ -124,8 +126,8 @@ class PricingProblemSolver(
      * For interleaved search, this condition is controlled by the "relaxDominanceRules" parameter.
      * For simple search, this parameter is always true.
      */
-    private var useVisitCondition = (!Parameters.relaxDominanceRules ||
-            !Parameters.useInterleavedSearch)
+    private var useVisitCondition = (!parameters.relaxDominanceRules ||
+            !parameters.useInterleavedSearch)
 
     /**
      * Generates negative reduced cost elementaryRoutes.
@@ -162,7 +164,7 @@ class PricingProblemSolver(
             logger.debug("----- START search iteration $searchIteration")
             initializeIteration()
 
-            val stopSearch = if (Parameters.useInterleavedSearch) interleavedSearch()
+            val stopSearch = if (parameters.useInterleavedSearch) interleavedSearch()
             else simpleSearch()
 
             if (stopSearch) {
@@ -170,8 +172,8 @@ class PricingProblemSolver(
                 break
             }
 
-            if (Parameters.useInterleavedSearch &&
-                elementaryRoutes.size >= Parameters.maxPathsAfterSearch
+            if (parameters.useInterleavedSearch &&
+                elementaryRoutes.size >= parameters.maxPathsAfterSearch
             ) {
                 logger.debug("----- STOP column search due to elementary route existence")
                 break
@@ -224,7 +226,7 @@ class PricingProblemSolver(
         if (optimalRoute != null && hasCycle(optimalRoute!!.vertexPath)) {
             optimalRoute = elementaryRoutes.firstOrNull()
             for (route in elementaryRoutes.drop(1)) {
-                if (route.reducedCost <= optimalRoute!!.reducedCost - Parameters.eps) {
+                if (route.reducedCost <= optimalRoute!!.reducedCost - Constants.EPS) {
                     optimalRoute = route
                 }
             }
@@ -258,7 +260,7 @@ class PricingProblemSolver(
         }
 
         while (unprocessedForwardStates.isNotEmpty() || unprocessedBackwardStates.isNotEmpty()) {
-            if (TimeChecker.timeLimitReached()) {
+            if (TimeChecker.timeLimitReached(parameters.timeLimitInSeconds)) {
                 return true
             }
 
@@ -292,13 +294,13 @@ class PricingProblemSolver(
                             return true
                     }
                 }
-                if (TimeChecker.timeLimitReached())
+                if (TimeChecker.timeLimitReached(parameters.timeLimitInSeconds))
                     return true
 
                 processState(state) {
                     unprocessedForwardStates.add(it)
                 }
-                if (TimeChecker.timeLimitReached())
+                if (TimeChecker.timeLimitReached(parameters.timeLimitInSeconds))
                     return true
             } else { // Current state is a backward state
                 // Join with all forward states.
@@ -310,14 +312,14 @@ class PricingProblemSolver(
                     }
                 }
 
-                if (TimeChecker.timeLimitReached())
+                if (TimeChecker.timeLimitReached(parameters.timeLimitInSeconds))
                     return true
 
                 processState(state) {
                     unprocessedBackwardStates.add(it)
                 }
 
-                if (TimeChecker.timeLimitReached())
+                if (TimeChecker.timeLimitReached(parameters.timeLimitInSeconds))
                     return true
             }
         }
@@ -335,7 +337,7 @@ class PricingProblemSolver(
         candidateVertices.addAll(dstVertices)
 
         while (candidateVertices.isNotEmpty()) {
-            if (TimeChecker.timeLimitReached()) {
+            if (TimeChecker.timeLimitReached(parameters.timeLimitInSeconds)) {
                 return true
             }
             val vertex = candidateVertices.first()
@@ -348,7 +350,7 @@ class PricingProblemSolver(
                     }
                 }
             }
-            if (TimeChecker.timeLimitReached()) {
+            if (TimeChecker.timeLimitReached(parameters.timeLimitInSeconds)) {
                 return true
             }
 
@@ -360,7 +362,7 @@ class PricingProblemSolver(
                     }
                 }
             }
-            if (TimeChecker.timeLimitReached()) {
+            if (TimeChecker.timeLimitReached(parameters.timeLimitInSeconds)) {
                 return true
             }
 
@@ -381,7 +383,7 @@ class PricingProblemSolver(
                         }
                     }
                 }
-                if (TimeChecker.timeLimitReached()) {
+                if (TimeChecker.timeLimitReached(parameters.timeLimitInSeconds)) {
                     return true
                 }
             }
@@ -491,10 +493,10 @@ class PricingProblemSolver(
         // Prevent extension of states that have consumed more than half the path length
         // budget. This reduces the number of extensions to be considered, while ensuring that
         // optimality is unaffected. Refer to section 4.3 in the paper for further details.
-        if (state.pathLength >= (maxPathLength / 2.0) - Parameters.eps)
+        if (state.pathLength >= (maxPathLength / 2.0) - Constants.EPS)
             return false
 
-        if (Parameters.useNumTargetsForDominance) {
+        if (parameters.useNumTargetsForDominance) {
             // Paths joined will always be on an edge (i,j) with a forward label at i and a
             // backward label at j. So, any label has visited more targets than (numTargets - 1)
             // can be discarded.
@@ -528,7 +530,7 @@ class PricingProblemSolver(
             edgeLength = edgeLength,
             vertexScore = instance.targetScores[neighborTarget],
             reducedCostChange = rcUpdate,
-            useBangForBuck = Parameters.useBangForBuck
+            useBangForBuck = parameters.useBangForBuck
         )
     }
 
@@ -548,7 +550,7 @@ class PricingProblemSolver(
         val reducedCost = (routeDual + forwardState.reducedCost + backwardState.reducedCost +
                 targetEdgeDuals[forwardTarget][backwardTarget])
 
-        if (reducedCost >= -Parameters.eps)
+        if (reducedCost >= -Constants.EPS)
             return false
 
         val joinedVertexPath = forwardState.getPartialPathVertices()
@@ -562,12 +564,12 @@ class PricingProblemSolver(
             reducedCost
         )
 
-        if (optimalRoute == null || reducedCost <= optimalRoute!!.reducedCost - Parameters.eps)
+        if (optimalRoute == null || reducedCost <= optimalRoute!!.reducedCost - Constants.EPS)
             optimalRoute = route
 
         if (!hasCycle(joinedVertexPath)) {
             elementaryRoutes.add(route)
-            if (elementaryRoutes.size >= Parameters.maxPathsInsideSearch)
+            if (elementaryRoutes.size >= parameters.maxPathsInsideSearch)
                 return true
         }
 
@@ -609,13 +611,13 @@ class PricingProblemSolver(
      */
     private fun halfway(fs: State, bs: State): Boolean {
         val currDiff = (fs.pathLength - bs.pathLength).absoluteValue
-        if (currDiff <= Parameters.eps) {
+        if (currDiff <= Constants.EPS) {
             return true
         }
 
         val joinEdgeLength = graph.getEdgeWeight(fs.vertex, bs.vertex)
         var otherDiff = 0.0
-        if (fs.pathLength <= bs.pathLength - Parameters.eps) {
+        if (fs.pathLength <= bs.pathLength - Constants.EPS) {
             if (bs.parent != null) {
                 otherDiff = (fs.pathLength + joinEdgeLength - bs.parent.pathLength).absoluteValue
             }
@@ -623,13 +625,13 @@ class PricingProblemSolver(
             otherDiff = (fs.parent.pathLength - (joinEdgeLength + bs.pathLength)).absoluteValue
         }
 
-        if (currDiff <= otherDiff - Parameters.eps) {
+        if (currDiff <= otherDiff - Constants.EPS) {
             return true
         }
-        if (currDiff >= otherDiff + Parameters.eps) {
+        if (currDiff >= otherDiff + Constants.EPS) {
             return false
         }
-        return fs.pathLength >= bs.pathLength + Parameters.eps
+        return fs.pathLength >= bs.pathLength + Constants.EPS
     }
 
     /**
@@ -648,13 +650,21 @@ class PricingProblemSolver(
         // Checking for domination both ways
         for (i in existingStates.indices.reversed()) {
             val existingState = existingStates[i]
-            if (existingState.dominates(newState, useVisitCondition)) {
+            if (existingState.dominates(
+                    newState,
+                    useVisitCondition,
+                    parameters.useNumTargetsForDominance
+                )
+            ) {
                 if (canRemoveDominated(existingState, newState)) {
                     newState.dominated = true
                     return
                 }
-            } else if (newState.dominates(existingState, useVisitCondition) &&
-                canRemoveDominated(newState, existingState)
+            } else if (newState.dominates(
+                    existingState,
+                    useVisitCondition,
+                    parameters.useNumTargetsForDominance
+                ) && canRemoveDominated(newState, existingState)
             ) {
                 existingState.dominated = true
                 existingStates.removeAt(i)

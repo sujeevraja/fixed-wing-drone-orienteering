@@ -4,6 +4,7 @@ import branchandbound.api.INode
 import branchandbound.api.ISolver
 import ilog.cplex.IloCplex
 import mu.KotlinLogging
+import orienteering.Constants
 import orienteering.data.Instance
 import orienteering.data.Parameters
 import orienteering.main.OrienteeringException
@@ -11,7 +12,7 @@ import orienteering.main.preProcess
 
 private val log = KotlinLogging.logger {}
 
-class NodeSolver(private val instance: Instance) : ISolver {
+class NodeSolver(private val instance: Instance, private val parameters: Parameters) : ISolver {
     private val sourceVertices = instance.getVertices(instance.sourceTarget)
     private val sinkVertices = instance.getVertices(instance.destinationTarget)
     private val cplex = IloCplex()
@@ -27,6 +28,7 @@ class NodeSolver(private val instance: Instance) : ISolver {
         log.debug { "solving node ${unsolvedNode.id}" }
         val cgSolver = ColumnGenSolver(
             instance,
+            parameters,
             cplex,
             unsolvedNode.graph,
             unsolvedNode.mustVisitTargets,
@@ -36,7 +38,7 @@ class NodeSolver(private val instance: Instance) : ISolver {
         if (cgSolver.lpInfeasible)
             return unsolvedNode.copy(lpSolved = true, lpFeasible = false)
 
-        if (unsolvedNode.parentLpObjective <= cgSolver.lpObjective - Parameters.eps) {
+        if (unsolvedNode.parentLpObjective <= cgSolver.lpObjective - Constants.EPS) {
             log.error { "best LP objective: ${unsolvedNode.parentLpObjective}" }
             log.error("node LP objective: ${cgSolver.lpObjective}")
             throw OrienteeringException("parent node LP objective smaller than child's")
@@ -47,7 +49,7 @@ class NodeSolver(private val instance: Instance) : ISolver {
             lpOptimal = cgSolver.lpOptimal,
             lpObjective = cgSolver.lpObjective,
             lpSolution = cgSolver.lpSolution,
-            lpIntegral = cgSolver.lpSolution.all { it.second >= 1.0 - Parameters.eps },
+            lpIntegral = cgSolver.lpSolution.all { it.second >= 1.0 - Constants.EPS },
             mipObjective = cgSolver.mipObjective,
             mipSolution = cgSolver.mipSolution,
             targetReducedCosts = cgSolver.targetReducedCosts

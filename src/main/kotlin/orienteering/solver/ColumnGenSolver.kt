@@ -2,6 +2,7 @@ package orienteering.solver
 
 import ilog.cplex.IloCplex
 import mu.KLogging
+import orienteering.Constants
 import orienteering.data.Instance
 import orienteering.data.Parameters
 import orienteering.data.Route
@@ -12,6 +13,7 @@ import orienteering.main.SetGraph
  */
 class ColumnGenSolver(
     private val instance: Instance,
+    private val parameters: Parameters,
     private val cplex: IloCplex,
     private val graph: SetGraph,
     private val mustVisitTargets: IntArray,
@@ -80,7 +82,7 @@ class ColumnGenSolver(
         while (true) {
             logger.debug("----- START column generation iteration $columnGenIteration")
             solveRestrictedMasterProblem()
-            if (TimeChecker.timeLimitReached()) {
+            if (TimeChecker.timeLimitReached(parameters.timeLimitInSeconds)) {
                 break
             }
 
@@ -110,6 +112,7 @@ class ColumnGenSolver(
         val pricingProblemSolver =
             PricingProblemSolver(
                 instance,
+                parameters,
                 vehicleCoverDual,
                 targetReducedCosts,
                 targetEdgeDuals,
@@ -142,7 +145,7 @@ class ColumnGenSolver(
             val setCoverSolution = setCoverModel.getSolution()
             val selectedRoutes = mutableListOf<Route>()
             for (i in setCoverSolution.indices) {
-                if (setCoverSolution[i] >= Parameters.eps) {
+                if (setCoverSolution[i] >= Constants.EPS) {
                     selectedRoutes.add(columns[i])
                 }
             }
@@ -174,11 +177,11 @@ class ColumnGenSolver(
             lpSolution.clear()
             val setCoverSolution = setCoverModel.getSolution()
             for (i in setCoverSolution.indices) {
-                if (setCoverSolution[i] >= Parameters.eps) {
+                if (setCoverSolution[i] >= Constants.EPS) {
                     lpSolution.add(Pair(columns[i], setCoverSolution[i]))
                 }
             }
-            lpInfeasible = setCoverModel.getAuxiliaryVariableSolution() >= Parameters.eps
+            lpInfeasible = setCoverModel.getAuxiliaryVariableSolution() >= Constants.EPS
         }
         cplex.clearModel()
     }
