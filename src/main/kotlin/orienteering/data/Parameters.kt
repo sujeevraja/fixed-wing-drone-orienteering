@@ -3,107 +3,63 @@ package orienteering.data
 /**
  * Singleton to hold all the parameters of the algorithm/instance
  */
-class Parameters {
+data class Parameters(
     /**
      * name of instance file
      */
-    var instanceName: String = "p2.2.a.txt"
-        private set
+    val instanceName: String,
     /**
      * path to folder with instance file
      */
-    var instancePath: String = "./data/Set_21_234"
-        private set
+    val instancePath: String,
+    /**
+     * path to YAML file where input and solution KPIs will be written
+     */
+    val outputPath: String,
     /**
      * algorithm to use (1 for branch-and-cut, 2 for branch-and-price)
      */
-    var algorithm: Int = 2  // 1 for BC, 2 for BP
-        private set
+    val algorithm: Int,
     /**
      * turn radius of the vehicle
      */
-    var turnRadius: Double = 1.0
-        private set
+    val turnRadius: Double,
     /**
      * number of discretizations of the heading angle at each target
      */
-    var numDiscretizations: Int = 1
-        private set
+    val numDiscretizations: Int,
     /**
      * limit on number of reduced cost columns to stop pricing problem
      */
-    var maxPathsInsideSearch: Int = 500
-        private set
+    val maxPathsInsideSearch: Int,
     /**
      * Maximum time allowed for algorithm
      */
-    var timeLimitInSeconds: Int = 3600
-        private set
+    val timeLimitInSeconds: Int,
     /**
      * If true, states can dominate others only if they visit a fewer number of critical targets.
      */
-    var useNumTargetsForDominance = false
-        private set
+    val useNumTargetsForDominance: Boolean,
     /**
      * If true, dominance rules will be relaxed in early iterations of DSSR.
      */
-    var relaxDominanceRules = true
-        private set
+    val relaxDominanceRules: Boolean,
     /**
      * Number of solver coroutines to use in branch-and-price (1 means sequential).
      */
-    var numSolverCoroutines: Int = 8
-        private set
+    val numSolverCoroutines: Int,
     /**
      * Use I-DSSR if true and original DSSR (from Righini, Salani paper) if false
      */
-    var useInterleavedSearch: Boolean = true
-        private set
+    val useInterleavedSearch: Boolean,
     /**
-     * If true, use best bang for buck to select labels. Use least reduced cost otherwise.
+     * If true, use best bang for buck to select labels. Use the least reduced cost otherwise.
      */
-    var useBangForBuck: Boolean = true
-        private set
+    val useBangForBuck: Boolean,
     /**
      * If the most negative reduced cost column of a DSSR search iteration is not elementary, but
      * the number of elementary routes with negative reduced cost collected during the search is
      * greater than or equal to this value, that DSSR iteration will be terminated.
      */
-    val maxPathsAfterSearch = 10
-    /**
-     * Number of bits on system
-     */
-    val numBits = 64
-
-    companion object {
-        fun initialize(
-            instanceName: String,
-            instancePath: String,
-            algorithm: Int,
-            turnRadius: Double,
-            numDiscretizations: Int,
-            numReducedCostColumns: Int,
-            timeLimitInSeconds: Int,
-            useInterleavedSearch: Boolean,
-            useBangForBuck: Boolean,
-            useNumTargetsForDominance: Boolean,
-            relaxDominanceRules: Boolean,
-            numSolverCoroutines: Int
-        ): Parameters {
-            val parameters = Parameters()
-            parameters.instanceName = instanceName
-            parameters.instancePath = instancePath
-            parameters.algorithm = algorithm
-            parameters.turnRadius = turnRadius
-            parameters.numDiscretizations = numDiscretizations
-            parameters.maxPathsInsideSearch = numReducedCostColumns
-            parameters.timeLimitInSeconds = timeLimitInSeconds
-            parameters.useInterleavedSearch = useInterleavedSearch
-            parameters.useBangForBuck = useBangForBuck
-            parameters.useNumTargetsForDominance = useNumTargetsForDominance
-            parameters.relaxDominanceRules = relaxDominanceRules
-            parameters.numSolverCoroutines = numSolverCoroutines
-            return parameters
-        }
-    }
-}
+    val maxPathsAfterSearch: Int = 10
+)

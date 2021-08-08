@@ -63,7 +63,7 @@ class BranchAndCutSolver(
         edgeVariable = mutableMapOf()
         updatedGraph.vertexSet().iterator().forEach {
             val adjacentVertices: MutableList<Int> = Graphs.successorListOf(updatedGraph, it)
-            if (!adjacentVertices.isEmpty()) {
+            if (adjacentVertices.isNotEmpty()) {
                 edgeVariable[it] = mutableMapOf()
                 for (j in adjacentVertices)
                     edgeVariable.getValue(it)[j] = cplex.boolVar("x_${it}_$j")
@@ -90,7 +90,7 @@ class BranchAndCutSolver(
         lengthVariable = mutableMapOf()
         updatedGraph.vertexSet().iterator().forEach {
             val adjacentVertices: MutableList<Int> = Graphs.successorListOf(updatedGraph, it)
-            if (!adjacentVertices.isEmpty()) {
+            if (adjacentVertices.isNotEmpty()) {
                 lengthVariable[it] = mutableMapOf()
                 for (j in adjacentVertices)
                     lengthVariable.getValue(it)[j] =
@@ -213,7 +213,7 @@ class BranchAndCutSolver(
         updatedGraph.vertexSet().iterator().forEach {
             if (instance.whichTarget(it) == instance.sourceTarget) return@forEach
             val adjacentVertices: MutableList<Int> = Graphs.successorListOf(updatedGraph, it)
-            if (!adjacentVertices.isEmpty()) {
+            if (adjacentVertices.isNotEmpty()) {
                 for (j in adjacentVertices) {
                     val constraintExpression: IloLinearNumExpr = cplex.linearNumExpr()
                     constraintExpression.addTerm(1.0, lengthVariable[it]?.get(j))
@@ -253,7 +253,6 @@ class BranchAndCutSolver(
      */
     private fun addEdgeVisitConstraints() {
         mustVisitEdges.forEach { cplex.addEq(edgeVariable[it.first]!![it.second], 1.0) }
-        return
     }
 
     /**

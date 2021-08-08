@@ -22,13 +22,12 @@ import kotlin.math.sqrt
  * @constructor creates a new problem instance with given data.
  */
 
-class InstanceDto(
+class InstanceBuilder(
     private val name: String,
     private val path: String,
     private val numDiscretizations: Int,
     private val rho: Double
 ) {
-
     /**
      * @property instance object orienteering instance object
      * @property lines lines that will be read from given set instance file
@@ -43,7 +42,7 @@ class InstanceDto(
      * @property graph directed weighted graph containing all the information
      */
 
-    private var instance: Instance
+    val instance: Instance
     private lateinit var lines: List<String>
     private var source = 0
     private var destination = 1
@@ -108,7 +107,7 @@ class InstanceDto(
             MutableList(numVertices) { DubinsCoords(-1.0, -1.0, -1.0) }
 
         targetOfVertex = MutableList(numVertices) { -1 }
-        verticesInTarget = MutableList(numTargets) { emptyList<Int>() }
+        verticesInTarget = MutableList(numTargets) { emptyList() }
 
         val h: Double = 2.0 * PI / numDiscretizations.toDouble()
         val discretizations: Array<Double> = Array(numDiscretizations) { it * h }
@@ -152,13 +151,6 @@ class InstanceDto(
         logger.debug("number of vertices: ${graph.numVertices()}")
         logger.debug("completed instance initialization.")
     }
-
-    /**
-     * Getter for the Instance object built DTO constructor.
-     *
-     * @return built instance
-     */
-    fun getInstance(): Instance = instance
 
     /**
      * Collects lines from problem data file and update some variables for further parsing.
