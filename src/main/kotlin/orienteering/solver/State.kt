@@ -88,6 +88,8 @@ class State private constructor(
      */
     var dominatingPredecessor: Int? = null
 
+    var predecessorTargetUnreachable: Boolean = false
+
     /**
      * Readable string representation of object
      */
@@ -251,9 +253,8 @@ class State private constructor(
      */
     fun hasCommonCriticalVisits(other: State): Boolean {
         for (i in visitedCriticalBits.indices) {
-            if (visitedCriticalBits[i] and other.visitedCriticalBits[i] != 0L) {
+            if (visitedCriticalBits[i] and other.visitedCriticalBits[i] != 0L)
                 return true
-            }
         }
         return false
     }
@@ -265,9 +266,8 @@ class State private constructor(
     fun markCriticalTargetUnreachable(target: Int) {
         val quotient : Int = target / Parameters.numBits
         val remainder : Int = target % Parameters.numBits
-
-        // Updating unreachable critical targets
         unreachableCriticalBits[quotient] = unreachableCriticalBits[quotient] or (1L shl remainder)
+        predecessorTargetUnreachable = ((1L shl remainder) and unreachableCriticalBits[quotient]) != 0L
     }
 
     /**
@@ -288,8 +288,6 @@ class State private constructor(
             numTargets: Int
         ): State {
             val numberOfLongs : Int = (numTargets / Parameters.numBits) + 1
-            val arrayOfLongs = LongArray(numberOfLongs){0L}
-
             return State(
                 isForward = isForward,
                 parent = null,
@@ -300,8 +298,8 @@ class State private constructor(
                 score = 0.0,
                 reducedCost = 0.0,
                 numTargetsVisited = 1,
-                visitedCriticalBits = arrayOfLongs,
-                unreachableCriticalBits = arrayOfLongs,
+                visitedCriticalBits = LongArray(numberOfLongs) { 0L },
+                unreachableCriticalBits = LongArray(numberOfLongs) { 0L },
                 selectionMetric = 0.0)
         }
 
