@@ -716,7 +716,9 @@ class PricingProblemSolver(
  * Springer, Boston, MA, 2005. 33-65.
  */
 private fun canRemoveDominated(dominating: State, dominated: State): Boolean =
-    if (dominated.dominatingPredecessor == null) {
+    if (dominating.predecessorTarget == dominated.predecessorTarget)
+        true
+    else if (dominated.dominatingPredecessor == null) {
         dominated.dominatingPredecessor = dominating.predecessorTarget
         false
     } else dominated.dominatingPredecessor != dominating.predecessorTarget
