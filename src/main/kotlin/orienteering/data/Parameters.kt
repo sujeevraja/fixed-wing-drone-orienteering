@@ -3,7 +3,7 @@ package orienteering.data
 /**
  * Singleton to hold all the parameters of the algorithm/instance
  */
-object Parameters {
+class Parameters {
     /**
      * name of instance file
      */
@@ -69,42 +69,41 @@ object Parameters {
      * the number of elementary routes with negative reduced cost collected during the search is
      * greater than or equal to this value, that DSSR iteration will be terminated.
      */
-    const val maxPathsAfterSearch = 10
-    /**
-     * Tolerance used to compare double values.
-     */
-    const val eps = 1e-5
+    val maxPathsAfterSearch = 10
     /**
      * Number of bits on system
      */
-    const val numBits = 64
+    val numBits = 64
 
-    fun initialize(
-        instanceName: String,
-        instancePath: String,
-        algorithm: Int,
-        turnRadius: Double,
-        numDiscretizations: Int,
-        numReducedCostColumns: Int,
-        timeLimitInSeconds: Int,
-        useInterleavedSearch: Boolean,
-        useBangForBuck: Boolean,
-        useNumTargetsForDominance: Boolean,
-        relaxDominanceRules: Boolean,
-        numSolverCoroutines: Int
-    ) {
-        Parameters.instanceName = instanceName
-        Parameters.instancePath = instancePath
-        Parameters.algorithm = algorithm
-        Parameters.turnRadius = turnRadius
-        Parameters.numDiscretizations = numDiscretizations
-        maxPathsInsideSearch = numReducedCostColumns
-        Parameters.timeLimitInSeconds = timeLimitInSeconds
-        Parameters.useInterleavedSearch = useInterleavedSearch
-        Parameters.useBangForBuck = useBangForBuck
-        Parameters.useNumTargetsForDominance = useNumTargetsForDominance
-        Parameters.relaxDominanceRules = relaxDominanceRules
-        Parameters.numSolverCoroutines = numSolverCoroutines
+    companion object {
+        fun initialize(
+            instanceName: String,
+            instancePath: String,
+            algorithm: Int,
+            turnRadius: Double,
+            numDiscretizations: Int,
+            numReducedCostColumns: Int,
+            timeLimitInSeconds: Int,
+            useInterleavedSearch: Boolean,
+            useBangForBuck: Boolean,
+            useNumTargetsForDominance: Boolean,
+            relaxDominanceRules: Boolean,
+            numSolverCoroutines: Int
+        ): Parameters {
+            val parameters = Parameters()
+            parameters.instanceName = instanceName
+            parameters.instancePath = instancePath
+            parameters.algorithm = algorithm
+            parameters.turnRadius = turnRadius
+            parameters.numDiscretizations = numDiscretizations
+            parameters.maxPathsInsideSearch = numReducedCostColumns
+            parameters.timeLimitInSeconds = timeLimitInSeconds
+            parameters.useInterleavedSearch = useInterleavedSearch
+            parameters.useBangForBuck = useBangForBuck
+            parameters.useNumTargetsForDominance = useNumTargetsForDominance
+            parameters.relaxDominanceRules = relaxDominanceRules
+            parameters.numSolverCoroutines = numSolverCoroutines
+            return parameters
+        }
     }
 }
-

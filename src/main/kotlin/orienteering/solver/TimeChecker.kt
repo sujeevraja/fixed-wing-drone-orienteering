@@ -32,10 +32,10 @@ object TimeChecker: KLogging() {
      * Once the time limit has been reached, [limitHit] is set to true permanently. This is to
      * avoid measuring times repeatedly.
      */
-    fun timeLimitReached(): Boolean {
+    fun timeLimitReached(timeLimitInSeconds: Int): Boolean {
         if (!limitHit) {
             val elapsedTimeInSeconds = ((System.currentTimeMillis() - startTime) / 1000.0).toInt()
-            limitHit = elapsedTimeInSeconds >= Parameters.timeLimitInSeconds
+            limitHit = elapsedTimeInSeconds >= timeLimitInSeconds
             if (limitHit)
                 logger.warn("time limit reached")
         }

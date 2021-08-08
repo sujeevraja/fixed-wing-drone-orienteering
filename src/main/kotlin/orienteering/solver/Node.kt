@@ -4,6 +4,7 @@ import branchandbound.api.INode
 import mu.KotlinLogging
 import org.jgrapht.Graphs
 import org.jgrapht.graph.DefaultWeightedEdge
+import orienteering.Constants
 import orienteering.data.Instance
 import orienteering.data.Parameters
 import orienteering.data.Route
@@ -107,7 +108,7 @@ data class Node(
                 isInteger(targetFlows[i])
             ) continue
 
-            if (bestTarget == null || targetReducedCosts[i] <= leastReducedCost!! - Parameters.eps) {
+            if (bestTarget == null || targetReducedCosts[i] <= leastReducedCost!! - Constants.EPS) {
                 bestTarget = i
                 leastReducedCost = targetReducedCosts[i]
             }
@@ -125,7 +126,7 @@ data class Node(
                 if (isInteger(flow))
                     continue
 
-                if (bestEdge == null || targetReducedCosts[fromTarget] <= leastReducedCost!! - Parameters.eps) {
+                if (bestEdge == null || targetReducedCosts[fromTarget] <= leastReducedCost!! - Constants.EPS) {
                     bestEdge = Pair(fromTarget, toTarget)
                     leastReducedCost = targetReducedCosts[fromTarget]
                 }
@@ -140,7 +141,7 @@ data class Node(
     /**
      * Checks if [num] is close to an integer value.
      */
-    private fun isInteger(num: Double): Boolean = (num - round(num)).absoluteValue <= Parameters.eps
+    private fun isInteger(num: Double): Boolean = (num - round(num)).absoluteValue <= Constants.EPS
 
     /**
      * Creates child nodes by branching on visits to [target].
@@ -305,8 +306,8 @@ data class Node(
      */
     override fun compareTo(other: Node): Int {
         return when {
-            lpObjective >= other.lpObjective + Parameters.eps -> -1
-            lpObjective <= other.lpObjective - Parameters.eps -> 1
+            lpObjective >= other.lpObjective + Constants.EPS -> -1
+            lpObjective <= other.lpObjective - Constants.EPS -> 1
             id < other.id -> -1
             id > other.id -> 1
             else -> 0

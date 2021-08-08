@@ -18,6 +18,7 @@ import kotlin.system.measureTimeMillis
  */
 class Controller {
     private lateinit var instance: Instance
+    private lateinit var parameters: Parameters
     private lateinit var cplex: IloCplex
     private lateinit var resultsPath: String
     private val results = sortedMapOf<String, Any>()
@@ -29,8 +30,7 @@ class Controller {
         val parser = CliParser()
         parser.main(args)
         resultsPath = parser.outputPath
-
-        Parameters.initialize(
+        parameters = Parameters.initialize(
             instanceName = parser.instanceName,
             instancePath = parser.instancePath,
             algorithm = parser.algorithm,
@@ -62,10 +62,10 @@ class Controller {
      */
     fun populateInstance() {
         instance = InstanceDto(
-            Parameters.instanceName,
-            Parameters.instancePath,
-            Parameters.numDiscretizations,
-            Parameters.turnRadius
+            parameters.instanceName,
+            parameters.instancePath,
+            parameters.numDiscretizations,
+            parameters.turnRadius
         ).getInstance()
         results["budget"] = instance.budget
     }
@@ -91,7 +91,7 @@ class Controller {
     fun run() {
         TimeChecker.startTracking()
         val timeElapsedMillis = measureTimeMillis {
-            when (Parameters.algorithm) {
+            when (parameters.algorithm) {
                 1 -> runBranchAndCut()
                 2 -> runBranchAndPrice()
                 else -> throw OrienteeringException("unknown algorithm type")
@@ -115,9 +115,10 @@ class Controller {
      */
     private fun runBranchAndPrice() {
         logger.info("algorithm: branch and price")
-        val sln = solveWithBranchAndPrice(instance)
+        val sln = solveWithBranchAndPrice(instance, parameters)
         results["root_lower_bound"] = sln.rootLowerBound
-        results["root_upper_bound"] = if (sln.rootUpperBound >= 1e20) "infinity" else sln.rootUpperBound
+        results["root_upper_bound"] =
+            if (sln.rootUpperBound >= 1e20) "infinity" else sln.rootUpperBound
         results["root_lp_optimal"] = sln.rootLpOptimal
         results["root_gap_percentage"] = computePercentGap(sln.rootLowerBound, sln.rootUpperBound)
         results["final_lower_bound"] = sln.lowerBound
@@ -149,13 +150,16 @@ class Controller {
     companion object : KLogging()
 }
 
-private fun solveWithBranchAndPrice(instance: Instance): BranchAndPriceSolution {
+private fun solveWithBranchAndPrice(
+    instance: Instance,
+    parameters: Parameters
+): BranchAndPriceSolution {
     val idGenerator = generateSequence(0L) { it + 1 }.iterator()
     val solution = BranchAndBoundApi.runBranchAndBound(
-        (0 until Parameters.numSolverCoroutines).map { NodeSolver(instance) },
+        (0 until parameters.numSolverCoroutines).map { NodeSolver(instance, parameters) },
         SelectionStrategy.BEST_BOUND,
         Node(id = idGenerator.next(), instance.graph),
-        { TimeChecker.timeLimitReached() }
+        { TimeChecker.timeLimitReached(parameters.timeLimitInSeconds) }
     ) {
         (it as Node).branch(instance, idGenerator)
     } ?: return BranchAndPriceSolution()

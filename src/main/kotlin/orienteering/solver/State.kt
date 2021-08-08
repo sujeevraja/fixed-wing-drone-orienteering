@@ -1,6 +1,6 @@
 package orienteering.solver
 
-import orienteering.data.Parameters
+import orienteering.Constants
 
 /**
  * Stores forward/backward partial path information for the DSSR labeling procedure.
@@ -102,8 +102,8 @@ class State private constructor(
      * Comparator based on reduced cost per unit length used to store states in a priority queue.
      */
     override fun compareTo(other: State): Int = when {
-        selectionMetric <= other.selectionMetric - Parameters.eps -> -1
-        selectionMetric >= other.selectionMetric + Parameters.eps -> 1
+        selectionMetric <= other.selectionMetric - Constants.EPS -> -1
+        selectionMetric >= other.selectionMetric + Constants.EPS -> 1
         else -> 0
     }
 
@@ -139,7 +139,7 @@ class State private constructor(
         // Updating metric used for selection of unprocessed state
         val metric =
             if (useBangForBuck)
-                if (pathLength >= Parameters.eps) reducedCost / pathLength else 0.0
+                if (pathLength >= Constants.EPS) reducedCost / pathLength else 0.0
             else newReducedCost
 
         return State(
@@ -165,32 +165,32 @@ class State private constructor(
      *
      * @param useVisitCondition if true, a stricter dominance check is enforced.
      */
-    fun dominates(other: State, useVisitCondition: Boolean): Boolean {
+    fun dominates(
+        other: State,
+        useVisitCondition: Boolean,
+        useNumTargetsForDominance: Boolean
+    ): Boolean {
+        if (reducedCost >= other.reducedCost + Constants.EPS)
+            return false
 
         var strict = false
-
-        if (reducedCost >= other.reducedCost + Parameters.eps)
-            return false
-
-        if (reducedCost <= other.reducedCost - Parameters.eps)
+        if (reducedCost <= other.reducedCost - Constants.EPS)
             strict = true
 
-        if (pathLength >= other.pathLength + Parameters.eps)
+        if (pathLength >= other.pathLength + Constants.EPS)
             return false
 
-        if (!strict && pathLength <= other.pathLength - Parameters.eps)
+        if (!strict && pathLength <= other.pathLength - Constants.EPS)
             strict = true
 
         // Checking visited critical vertices
 
         if (useVisitCondition) {
-            if (Parameters.useNumTargetsForDominance) {
-                if (numTargetsVisited > other.numTargetsVisited) {
+            if (useNumTargetsForDominance) {
+                if (numTargetsVisited > other.numTargetsVisited)
                     return false
-                }
-                if (!strict && numTargetsVisited < other.numTargetsVisited) {
+                if (!strict && numTargetsVisited < other.numTargetsVisited)
                     strict = true
-                }
             }
             for (i in visitedCriticalBits.indices) {
                 // Following condition is satisfied when "this" visits a critical target and
@@ -240,8 +240,8 @@ class State private constructor(
      * state.
      */
     fun usedCriticalTarget(target: Int): Boolean {
-        val quotient: Int = target / Parameters.numBits
-        val remainder: Int = target % Parameters.numBits
+        val quotient: Int = target / Constants.NUM_BITS
+        val remainder: Int = target % Constants.NUM_BITS
 
         val combined = visitedCriticalBits[quotient] or unreachableCriticalBits[quotient]
 
@@ -264,10 +264,12 @@ class State private constructor(
      * target will always exceed the budget
      */
     fun markCriticalTargetUnreachable(target: Int) {
-        val quotient : Int = target / Parameters.numBits
-        val remainder : Int = target % Parameters.numBits
+        val quotient: Int = target / Constants.NUM_BITS
+        val remainder: Int = target % Constants.NUM_BITS
+
         unreachableCriticalBits[quotient] = unreachableCriticalBits[quotient] or (1L shl remainder)
-        predecessorTargetUnreachable = ((1L shl remainder) and unreachableCriticalBits[quotient]) != 0L
+        predecessorTargetUnreachable =
+            ((1L shl remainder) and unreachableCriticalBits[quotient]) != 0L
     }
 
     /**
@@ -287,7 +289,7 @@ class State private constructor(
             target: Int,
             numTargets: Int
         ): State {
-            val numberOfLongs : Int = (numTargets / Parameters.numBits) + 1
+            val numberOfLongs: Int = (numTargets / Constants.NUM_BITS) + 1
             return State(
                 isForward = isForward,
                 parent = null,
@@ -300,15 +302,16 @@ class State private constructor(
                 numTargetsVisited = 1,
                 visitedCriticalBits = LongArray(numberOfLongs) { 0L },
                 unreachableCriticalBits = LongArray(numberOfLongs) { 0L },
-                selectionMetric = 0.0)
+                selectionMetric = 0.0
+            )
         }
 
         /**
          * Helper function to mark visit to [target] in the given [visitedBits] numbers.
          */
         private fun markVisited(visitedBits: LongArray, target: Int) {
-            val quotient: Int = target / Parameters.numBits
-            val remainder: Int = target % Parameters.numBits
+            val quotient: Int = target / Constants.NUM_BITS
+            val remainder: Int = target % Constants.NUM_BITS
             visitedBits[quotient] = visitedBits[quotient] or (1L shl remainder)
         }
     }
