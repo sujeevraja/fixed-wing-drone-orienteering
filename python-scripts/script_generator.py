@@ -83,6 +83,15 @@ class Controller:
                 cases=self._collect_exhaustive_cases())
             return
 
+        if self.config.run_type == "u":
+            self._generate_exhaustive_setup(
+                cases=self._collect_exhaustive_cases(
+                    discretizations=["1"], excludes=[]),
+                test_name="euclidean"
+            )
+            return
+
+
         if self.config.run_type == "s":
             test_name = "search"
         elif self.config.run_type == "t":
@@ -147,7 +156,7 @@ class Controller:
                     "-n", file_name,
                     "-p", "./data/{}/".format(folder),
                     "-d", str(num_disc),
-                    "-i", "1", ])
+                    "-i", "0", ])
 
                 if not additional_cmds:
                     cmd.extend(["-o", prefix + "_{}.yaml".format(counter)])
@@ -168,10 +177,10 @@ class Controller:
         self._prepare_test_folder(
             test_name, self._get_folder_and_file_names(cases))
 
-    def _collect_exhaustive_cases(self, discretizations=["2", "4", "6"]):
+    def _collect_exhaustive_cases(self, discretizations=["2", "4", "6"], excludes = ["_100_", "_102_"]):
         cases = []
         for folder in os.listdir(self.config.data_path):
-            if '_100_' in folder or '_102_' in folder:
+            if excludes and any([e in folder for e in excludes]):
                 continue
 
             for f in os.listdir(os.path.join(self.config.data_path, folder)):
@@ -258,9 +267,9 @@ def handle_command_line() -> Config:
                         help="path to csv file with instances to run",
                         default=fpath)
 
-    parser.add_argument("-r", "--run_type", choices=["b", "e", "s", "t"],
+    parser.add_argument("-r", "--run_type", choices=["b", "e", "s", "t", "u"],
                         help="run type: bang-for-buck (b), exhaustive (e), "
-                        "search (s) or thread (t)",
+                        "search (s), thread (t) or euclidean (u)",
                         default="s")
 
     parser.add_argument("-u", "--uberjar", action="store_true",
