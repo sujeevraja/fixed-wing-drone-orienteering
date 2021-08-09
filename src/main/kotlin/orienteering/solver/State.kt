@@ -221,25 +221,6 @@ class State private constructor(
                 hasCycle = true
             )
         }
-
-
-        /*
-        return State(
-            isForward = isForward,
-            parent = this,
-            vertex = newVertex,
-            target = newTarget,
-            predecessorTarget = target,
-            pathLength = pathLength + edgeLength,
-            score = score + vertexScore,
-            reducedCost = newReducedCost,
-            numTargetsVisited = numTargetsVisited + 1,
-            visitedCriticalBits = newVisitedCriticalBits,
-            visitedGeneralBits = newVisitedGeneralBits,
-            selectionMetric = metric
-        )
-
-         */
     }
 
     /**
