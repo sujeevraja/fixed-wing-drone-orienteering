@@ -54,6 +54,7 @@ def get_jar_path() -> str:
 class Config(typing.NamedTuple):
     csv_path: str
     run_type: str
+    uberjar: bool
     cplex_lib_path: str = guess_cplex_library_path()
     data_path: str = get_data_path()
     jar_path: str = get_jar_path()
@@ -71,7 +72,8 @@ class Controller:
         ]
 
     def run(self):
-        self._prepare_uberjar()
+        if self.config.uberjar:
+            self._prepare_uberjar()
         if self.config.run_type == "b":
             self._setup_bang_for_buck_runs()
             return
@@ -213,7 +215,9 @@ class Controller:
     def _prepare_test_folder(self, test_name, cases):
         rt_path = os.path.join(get_base_path(), test_name)
         os.makedirs(rt_path, exist_ok=True)
-        shutil.copy(self.config.jar_path, os.path.join(rt_path, 'uber.jar'))
+        if self.config.uberjar:
+            shutil.copy(self.config.jar_path,
+                os.path.join(rt_path, 'uber.jar'))
         runs_file_name = '{}_runs.txt'.format(test_name)
         for f in [runs_file_name, 'submit-batch.sh', 'slurm-batch-job.sh']:
             src_path = os.path.join(os.path.dirname(__file__), f)
@@ -258,6 +262,9 @@ def handle_command_line() -> Config:
                         help="run type: bang-for-buck (b), exhaustive (e), "
                         "search (s) or thread (t)",
                         default="s")
+
+    parser.add_argument("-u", "--uberjar", action="store_true",
+                        help="generate uberJar")
 
     args = parser.parse_args()
     return Config(**vars(args))
