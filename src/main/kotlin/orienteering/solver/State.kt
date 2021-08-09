@@ -47,10 +47,6 @@ class State private constructor(
      */
     private val visitedCriticalBits: LongArray,
     /**
-     * Numbers whose bits are used to track unreachable critical targets using bitwise operations
-     */
-    private val unreachableCriticalBits: LongArray,
-    /**
      * Used in the comparator to order states, can be equal to [reducedCost] or bang for buck
      * (i.e. reduced cost per unit path length).
      */
@@ -87,8 +83,6 @@ class State private constructor(
      * [canRemoveDominated] in the [PricingProblemSolver] file.
      */
     var dominatingPredecessor: Int? = null
-
-    var predecessorTargetUnreachable: Boolean = false
 
     /**
      * Readable string representation of object
@@ -153,7 +147,6 @@ class State private constructor(
             reducedCost = newReducedCost,
             numTargetsVisited = numTargetsVisited + 1,
             visitedCriticalBits = newVisitedCriticalBits,
-            unreachableCriticalBits = unreachableCriticalBits.copyOf(),
             selectionMetric = metric
         )
     }
@@ -184,7 +177,6 @@ class State private constructor(
             strict = true
 
         // Checking visited critical vertices
-
         if (useVisitCondition) {
             if (useNumTargetsForDominance) {
                 if (numTargetsVisited > other.numTargetsVisited)
@@ -195,17 +187,12 @@ class State private constructor(
             for (i in visitedCriticalBits.indices) {
                 // Following condition is satisfied when "this" visits a critical target and
                 // "other" does not. So, "this" does not dominate the "other".
-
-                val thisCombined = visitedCriticalBits[i] or unreachableCriticalBits[i]
-                val otherCombined = other.visitedCriticalBits[i] or other.unreachableCriticalBits[i]
-
-                if (thisCombined and otherCombined.inv() != 0L) {
+                if (visitedCriticalBits[i] and other.visitedCriticalBits[i].inv() != 0L)
                     return false
-                }
 
                 // Following condition is satisfied when "this" does not visit a critical target
                 // and "other" does. So, "this" strictly dominates "other".
-                if (!strict && (thisCombined.inv() and otherCombined != 0L)) {
+                if (!strict && (visitedCriticalBits[i].inv() and other.visitedCriticalBits[i] != 0L)) {
                     strict = true
                 }
             }
@@ -242,9 +229,7 @@ class State private constructor(
     fun usedCriticalTarget(target: Int): Boolean {
         val quotient: Int = target / Constants.NUM_BITS
         val remainder: Int = target % Constants.NUM_BITS
-
-        val combined = visitedCriticalBits[quotient] or unreachableCriticalBits[quotient]
-
+        val combined = visitedCriticalBits[quotient]
         return combined and (1L shl remainder) != 0L
     }
 
@@ -252,24 +237,10 @@ class State private constructor(
      * Returns true if any critical target is visited both by this and [other], false otherwise.
      */
     fun hasCommonCriticalVisits(other: State): Boolean {
-        for (i in visitedCriticalBits.indices) {
+        for (i in visitedCriticalBits.indices)
             if (visitedCriticalBits[i] and other.visitedCriticalBits[i] != 0L)
                 return true
-        }
         return false
-    }
-
-    /**
-     * Function that marks a critical [target] as unreachable in the sense that using a single edge to reach this
-     * target will always exceed the budget
-     */
-    fun markCriticalTargetUnreachable(target: Int) {
-        val quotient: Int = target / Constants.NUM_BITS
-        val remainder: Int = target % Constants.NUM_BITS
-
-        unreachableCriticalBits[quotient] = unreachableCriticalBits[quotient] or (1L shl remainder)
-        predecessorTargetUnreachable =
-            ((1L shl remainder) and unreachableCriticalBits[quotient]) != 0L
     }
 
     /**
@@ -301,7 +272,6 @@ class State private constructor(
                 reducedCost = 0.0,
                 numTargetsVisited = 1,
                 visitedCriticalBits = LongArray(numberOfLongs) { 0L },
-                unreachableCriticalBits = LongArray(numberOfLongs) { 0L },
                 selectionMetric = 0.0
             )
         }

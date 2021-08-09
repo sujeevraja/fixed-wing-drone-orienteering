@@ -582,18 +582,16 @@ class PricingProblemSolver(
     }
 
     /**
-     * Add [newState] to [existingStates] if it is not dominated by any state in [existingStates].
-     * If [newState] is dominated, mark it as dominated, just in case it is held elsewhere for use.
+     * Check dominance both ways between every state in [existingStates] and [newState] and discard states whose
+     * extensions are also feasible for some other state. When checking 2-way dominance, add [newState] to
+     * [existingStates] if it is not dominated by any state in [existingStates]. If any state is dominated (i.e. cannot
+     * be extended) and can be discarded, mark it as dominated just in case it is held elsewhere for use.
      */
     private fun updateNonDominatedStates(
         existingStates: MutableList<State>,
         newState: State,
         onExtend: (State) -> Unit
     ) {
-        // Before checking for domination, updating unreachable targets for stronger dominance
-        if (hasCriticalTargets)
-            updateUnreachableCriticalTargets(newState)
-
         // Checking for domination both ways
         for (i in existingStates.indices.reversed()) {
             val existingState = existingStates[i]
@@ -603,7 +601,7 @@ class PricingProblemSolver(
                     parameters.useNumTargetsForDominance
                 )
             ) {
-                if (canRemoveDominated(existingState, newState)) {
+                if (canDiscardDominated(existingState, newState)) {
                     newState.dominated = true
                     return
                 }
@@ -611,7 +609,7 @@ class PricingProblemSolver(
                     existingState,
                     useVisitCondition,
                     parameters.useNumTargetsForDominance
-                ) && canRemoveDominated(newState, existingState)
+                ) && canDiscardDominated(newState, existingState)
             ) {
                 existingState.dominated = true
                 existingStates.removeAt(i)
@@ -624,36 +622,6 @@ class PricingProblemSolver(
     }
 
     /**
-     * Function that identifies all targets that are unreachable for a given state in the sense that taking a single
-     * edge to a new critical target will exceed the length budget. Since only a single move is considered, the edge
-     * lengths need not satisfy the triangle inequality for this to behave properly.
-     */
-    private fun updateUnreachableCriticalTargets(state: State) {
-        val currentVertex = state.vertex
-        if (state.isForward) {
-            // Finding all targets reachable from the current target using a single edge
-            for (e in graph.outgoingEdgesOf(currentVertex)) {
-                val nextTarget = instance.whichTarget(graph.getEdgeTarget(e))
-                val edgeLength = graph.getEdgeWeight(e)
-
-                // If the next target is a critical target, check if it is unreachable and mark if so
-                if (isCritical[nextTarget] && state.pathLength + edgeLength > instance.budget)
-                    state.markCriticalTargetUnreachable(nextTarget)
-            }
-        } else {
-            // Finding all targets reachable from the current target using a single edge
-            for (e in graph.incomingEdgesOf(currentVertex)) {
-                val prevTarget = instance.whichTarget(graph.getEdgeSource(e))
-                val edgeLength = graph.getEdgeWeight(e)
-
-                // If the target is a critical target, check if it is unreachable and mark if so
-                if (isCritical[prevTarget] && state.pathLength + edgeLength > instance.budget)
-                    state.markCriticalTargetUnreachable(prevTarget)
-            }
-        }
-    }
-
-    /**
      * Logger object
      */
     companion object : KLogging()
@@ -661,18 +629,33 @@ class PricingProblemSolver(
 
 /**
  * Check if the [dominated] state can be removed from consideration even though it is dominated by the [dominating]
- * state. If yes, return true. Otherwise, make sure to update the dominating predecessor value of [dominated]
+ * state. If yes, return true. Otherwise, make sure to update the dominating predecessor value of [dominated].
  *
  * This function makes sure that 2-cycle elimination is handled correctly. For specifics on how this elimination works,
  * refer to the subsection titled "SPPRC-2-cyc" in Page 51 of the following book chapter.
  *
  * Irnich, Stefan, and Guy Desaulniers. "Shortest path problems with resource constraints." Column generation.
  * Springer, Boston, MA, 2005. 33-65.
+ *
+ * There are 3 possible cases to handle here:
+ * - If the predecessor states of [dominating] and [dominated] are the same, all feasible extensions of [dominated] are
+ *   also feasible for [dominating]. So, [dominating] can be discarded.
+ * - If [dominated] state's predecessor is null, it has no dominating state yet. So, initialize its dominating
+ *   predecessor.
+ * - If [dominated] state's predecessor is not null (say 'a'), discard [dominated] if the predecessor of [dominating]
+ *   is different from 'a' (as there are 2 states with different predecessors dominating [dominated]) and do not
+ *   discard [dominated] otherwise.
+ *
+ * Note that there is a separate condition in the SPPRC-2-cyc section that says that if [dominated] cannot be extended
+ * to its predecessor, then [dominated] can be discarded. However, if the triangle inequality is not satisfied, this
+ * "cannot extend to" check becomes costly as we have to check every possible path from the incident vertex of
+ * [dominated] to its predecessor. So, we do not use that condition here.
  */
-private fun canRemoveDominated(dominating: State, dominated: State): Boolean =
-    if (dominating.predecessorTargetUnreachable || dominating.predecessorTarget == dominated.predecessorTarget)
-        true
-    else if (dominated.dominatingPredecessor == null) {
+private fun canDiscardDominated(dominating: State, dominated: State): Boolean = when {
+    dominating.predecessorTarget == dominated.predecessorTarget -> true
+    dominated.dominatingPredecessor == null -> {
         dominated.dominatingPredecessor = dominating.predecessorTarget
         false
-    } else dominated.dominatingPredecessor != dominating.predecessorTarget
+    }
+    else -> dominated.dominatingPredecessor != dominating.predecessorTarget
+}
