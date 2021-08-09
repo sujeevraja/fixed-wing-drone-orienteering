@@ -46,11 +46,15 @@ class State private constructor(
      * Numbers whose bits are used to track critical target visits using bitwise operations.
      */
     private val visitedCriticalBits: LongArray,
+
+    private val visitedGeneralBits : LongArray,
     /**
      * Used in the comparator to order states, can be equal to [reducedCost] or bang for buck
      * (i.e. reduced cost per unit path length).
      */
-    private val selectionMetric: Double
+    private val selectionMetric: Double,
+
+    private val hasCycle : Boolean
 ) : Comparable<State> {
     /**
      * true if all extensions have been generated, false otherwise
@@ -124,6 +128,8 @@ class State private constructor(
         // If new target is a critical target, mark it as being visited
         val newVisitedCriticalBits = visitedCriticalBits.copyOf()
 
+        val newVisitedGeneralBits = visitedGeneralBits.copyOf()
+
         if (isCritical)
             markVisited(newVisitedCriticalBits, newTarget)
 
@@ -136,6 +142,83 @@ class State private constructor(
                 if (pathLength >= Constants.EPS) reducedCost / pathLength else 0.0
             else newReducedCost
 
+        if (!hasCycle) {
+
+            // Current state does not already have a cycle present in its partial path
+
+            // Checking if the extension to newTarget results in a cycle
+            if (usedGeneralTarget(newTarget)) {
+
+                // Extension to newTarget results in a cycle. Don't need to update visited vertices, so directly
+                // return the new state with hasCycle set to true
+
+                return State(
+                    isForward = isForward,
+                    parent = this,
+                    vertex = newVertex,
+                    target = newTarget,
+                    predecessorTarget = target,
+                    pathLength = pathLength + edgeLength,
+                    score = score + vertexScore,
+                    reducedCost = newReducedCost,
+                    numTargetsVisited = numTargetsVisited + 1,
+                    visitedCriticalBits = newVisitedCriticalBits,
+                    visitedGeneralBits = newVisitedGeneralBits,
+                    selectionMetric = metric,
+                    hasCycle = true
+                )
+
+            }
+            else {
+
+                // Extension to newTarget does not result in a cycle, i.e., newTarget has not yet been visited
+
+                // Marking newTarget as visited and return a new state with hasCycle set to false
+                markVisited(newTarget, newVisitedGeneralBits)
+
+                return State(
+                    isForward = isForward,
+                    parent = this,
+                    vertex = newVertex,
+                    target = newTarget,
+                    predecessorTarget = target,
+                    pathLength = pathLength + edgeLength,
+                    score = score + vertexScore,
+                    reducedCost = newReducedCost,
+                    numTargetsVisited = numTargetsVisited + 1,
+                    visitedCriticalBits = newVisitedCriticalBits,
+                    visitedGeneralBits = newVisitedGeneralBits,
+                    selectionMetric = metric,
+                    hasCycle = false
+                )
+            }
+        }
+        else {
+
+            // State already has a cycle previously detected, so do not need to check for new cycles.
+            // Marking the newTarget as visited (even if it was already marked before, because there's no need
+            // to check before marking)
+            markVisited(newTarget, newVisitedGeneralBits)
+
+            return State(
+                isForward = isForward,
+                parent = this,
+                vertex = newVertex,
+                target = newTarget,
+                predecessorTarget = target,
+                pathLength = pathLength + edgeLength,
+                score = score + vertexScore,
+                reducedCost = newReducedCost,
+                numTargetsVisited = numTargetsVisited + 1,
+                visitedCriticalBits = newVisitedCriticalBits,
+                visitedGeneralBits = newVisitedGeneralBits,
+                selectionMetric = metric,
+                hasCycle = true
+            )
+        }
+
+
+        /*
         return State(
             isForward = isForward,
             parent = this,
@@ -147,8 +230,11 @@ class State private constructor(
             reducedCost = newReducedCost,
             numTargetsVisited = numTargetsVisited + 1,
             visitedCriticalBits = newVisitedCriticalBits,
+            visitedGeneralBits = newVisitedGeneralBits,
             selectionMetric = metric
         )
+
+         */
     }
 
     /**
@@ -232,6 +318,13 @@ class State private constructor(
         return combined and (1L shl remainder) != 0L
     }
 
+    fun usedGeneralTarget(target : Int) : Boolean {
+        val quotient : Int = target / Constants.NUM_BITS
+        val remainder : Int = target % Constants.NUM_BITS
+
+        return visitedGeneralBits[quotient] and (1L shl remainder) != 0L
+    }
+
     /**
      * Returns true if any critical target is visited both by this and [other], false otherwise.
      */
@@ -240,6 +333,21 @@ class State private constructor(
             if (visitedCriticalBits[i] and other.visitedCriticalBits[i] != 0L)
                 return true
         return false
+    }
+
+    fun hasCommonGeneralVisits(otherState : State) : Boolean {
+        for (i in visitedGeneralBits.indices) {
+            if (visitedGeneralBits[i] and otherState.visitedGeneralBits[i] != 0L)
+                return true
+        }
+        return false
+    }
+
+    private fun markVisited(target : Int, visitedVertices : LongArray) {
+        val quotient : Int = target / Constants.NUM_BITS
+        val remainder : Int = target % Constants.NUM_BITS
+
+        visitedVertices[quotient] or (1L shl remainder)
     }
 
     /**
@@ -271,7 +379,9 @@ class State private constructor(
                 reducedCost = 0.0,
                 numTargetsVisited = 1,
                 visitedCriticalBits = LongArray(numberOfLongs) { 0L },
-                selectionMetric = 0.0
+                visitedGeneralBits = LongArray(numberOfLongs) {0L},
+                selectionMetric = 0.0,
+                hasCycle = false
             )
         }
 
