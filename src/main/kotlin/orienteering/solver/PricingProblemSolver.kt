@@ -214,12 +214,24 @@ class PricingProblemSolver(
         }
 
         // Update optimal route with best cached elementary route if necessary.
+        if (optimalRoute != null && !optimalRoute!!.isElementary) {
+            optimalRoute = elementaryRoutes.firstOrNull()
+            for (route in elementaryRoutes.drop(1)) {
+                if (route.reducedCost <= optimalRoute!!.reducedCost - Constants.EPS)
+                    optimalRoute = route
+            }
+        }
+
+
+        /*
         if (optimalRoute?.vertexPath?.let { hasCycle(it) } == true) {
             optimalRoute = elementaryRoutes.firstOrNull()
             for (route in elementaryRoutes.drop(1))
                 if (route.reducedCost <= optimalRoute!!.reducedCost - Constants.EPS)
                     optimalRoute = route
         }
+
+         */
     }
 
     /**
@@ -365,23 +377,6 @@ class PricingProblemSolver(
         }
         val multipleVisits = (0 until numTargets).filter { isVisitedMultipleTimes[it] }
         logger.debug("current multiple visits: $multipleVisits")
-    }
-
-    /**
-     * Returns true if the given path visits a target more than once, false otherwise.
-     *
-     * @param path list of vertices.
-     */
-    // Need to make obsolete
-    private fun hasCycle(path: List<Int>): Boolean {
-        val visited = hashSetOf<Int>()
-        for (vertex in path) {
-            val target = instance.whichTarget(vertex)
-            if (visited.contains(target))
-                return true
-            visited.add(target)
-        }
-        return false
     }
 
     /**
