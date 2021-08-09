@@ -192,9 +192,8 @@ class State private constructor(
 
                 // Following condition is satisfied when "this" does not visit a critical target
                 // and "other" does. So, "this" strictly dominates "other".
-                if (!strict && (visitedCriticalBits[i].inv() and other.visitedCriticalBits[i] != 0L)) {
+                if (!strict && (visitedCriticalBits[i].inv() and other.visitedCriticalBits[i] != 0L))
                     strict = true
-                }
             }
         }
 
