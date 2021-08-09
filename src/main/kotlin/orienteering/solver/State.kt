@@ -54,7 +54,7 @@ class State private constructor(
      */
     private val selectionMetric: Double,
 
-    private val hasCycle : Boolean
+    val hasCycle : Boolean
 ) : Comparable<State> {
     /**
      * true if all extensions have been generated, false otherwise

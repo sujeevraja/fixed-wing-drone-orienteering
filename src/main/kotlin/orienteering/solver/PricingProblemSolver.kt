@@ -512,21 +512,55 @@ class PricingProblemSolver(
         val joinedVertexPath = forwardState.getPartialPathVertices()
             .asReversed() + backwardState.getPartialPathVertices()
 
-        val route = Route(
-            joinedVertexPath,
-            joinedVertexPath.map { instance.whichTarget(it) },
-            forwardState.score + backwardState.score,
-            getJoinedPathLength(forwardState, backwardState),
-            reducedCost
-        )
 
-        if (optimalRoute == null || reducedCost <= optimalRoute!!.reducedCost - Constants.EPS)
-            optimalRoute = route
+        // Negative reduced cost route found
 
-        if (!hasCycle(joinedVertexPath)) {
-            elementaryRoutes.add(route)
+        // Checking if route is elementary
+
+        if (!(forwardState.hasCycle || backwardState.hasCycle) &&
+                !forwardState.hasCommonGeneralVisits(backwardState)) {
+
+            // Path found is elementary
+
+            val newRoute = Route(
+                vertexPath = joinedVertexPath,
+                targetPath = joinedVertexPath.map{instance.whichTarget(it)},
+                score = forwardState.score + backwardState.score,
+                length = getJoinedPathLength(forwardState, backwardState),
+                reducedCost = reducedCost,
+                isElementary = true
+            )
+
+            elementaryRoutes.add(newRoute)
+
+            // Updating the optimal route
+            if (optimalRoute == null || reducedCost <= optimalRoute!!.reducedCost - Constants.EPS)
+                optimalRoute = newRoute
+
+            // Checking if maximum number of elementary routes has been reached
             if (elementaryRoutes.size >= parameters.maxPathsInsideSearch)
                 return true
+        }
+        else {
+
+            // Route found is not an elementary path
+
+            // Checking if the optimal route can be updated
+            if (optimalRoute == null || reducedCost <= optimalRoute!!.reducedCost - Constants.EPS) {
+
+                // Better route found
+
+                optimalRoute = Route(
+                    vertexPath = joinedVertexPath,
+                    targetPath = joinedVertexPath.map{instance.whichTarget(it)},
+                    score = forwardState.score + backwardState.score,
+                    length = getJoinedPathLength(forwardState, backwardState),
+                    reducedCost = reducedCost,
+                    isElementary = false
+                )
+
+            }
+
         }
 
         return false
