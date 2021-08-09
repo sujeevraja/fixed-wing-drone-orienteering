@@ -10,6 +10,7 @@ import orienteering.main.format
  * @param score sum of scores of targets visited by route.
  * @param length sum of lengths of edges on route.
  * @param reducedCost sum of reduced costs of targets visited by route.
+ * @param isElementary boolean indicating whether the target path is elementary or not
  */
 data class Route(
     val vertexPath: List<Int>,
