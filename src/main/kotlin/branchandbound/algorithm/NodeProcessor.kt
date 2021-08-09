@@ -250,6 +250,7 @@ class NodeProcessor(
                 )
             }
         )
+        log.info { "Final solution objective: ${incumbent?.mipObjective}"}
         log.info { "sent to solution channel" }
     }
 }

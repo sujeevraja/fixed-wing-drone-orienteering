@@ -47,10 +47,19 @@ class State private constructor(
      */
     private val visitedCriticalBits: LongArray,
     /**
+     * Numbers whose bits are used to track general targets that have been visited, regardless if they are critical
+     * or not, using bitwise operations
+     */
+    private val visitedGeneralBits : LongArray,
+    /**
      * Used in the comparator to order states, can be equal to [reducedCost] or bang for buck
      * (i.e. reduced cost per unit path length).
      */
-    private val selectionMetric: Double
+    private val selectionMetric: Double,
+    /**
+     * Boolean used to indicate whether the partial path corresponding to the state contains at least one cycle
+     */
+    val hasCycle : Boolean
 ) : Comparable<State> {
     /**
      * true if all extensions have been generated, false otherwise
@@ -120,9 +129,9 @@ class State private constructor(
         reducedCostChange: Double,
         useBangForBuck: Boolean
     ): State {
-
         // If new target is a critical target, mark it as being visited
         val newVisitedCriticalBits = visitedCriticalBits.copyOf()
+        val newVisitedGeneralBits = visitedGeneralBits.copyOf()
 
         if (isCritical)
             markVisited(newVisitedCriticalBits, newTarget)
@@ -131,10 +140,30 @@ class State private constructor(
         val newReducedCost = reducedCost + reducedCostChange
 
         // Updating metric used for selection of unprocessed state
-        val metric =
-            if (useBangForBuck)
-                if (pathLength >= Constants.EPS) reducedCost / pathLength else 0.0
-            else newReducedCost
+        val metric = when {
+            !useBangForBuck -> newReducedCost
+            pathLength >= Constants.EPS -> newReducedCost / pathLength
+            else -> 0.0
+        }
+
+        val newHasCycle = when {
+            hasCycle -> {
+                // State already has a cycle previously detected, so do not need to check for new cycles.
+                // Marking the newTarget as visited (even if it was already marked before, because there's no need
+                // to check before marking)
+                markVisited(newTarget, newVisitedGeneralBits)
+                true
+            }
+            // Extension to newTarget results in a cycle. Don't need to update visited vertices, so directly
+            // return the new state with hasCycle set to true
+            usedGeneralTarget(newTarget) -> true
+            else -> {
+                // Extension to newTarget does not result in a cycle, i.e., newTarget has not yet been visited
+                // Marking newTarget as visited and return a new state with hasCycle set to false
+                markVisited(newTarget, newVisitedGeneralBits)
+                false
+            }
+        }
 
         return State(
             isForward = isForward,
@@ -147,7 +176,9 @@ class State private constructor(
             reducedCost = newReducedCost,
             numTargetsVisited = numTargetsVisited + 1,
             visitedCriticalBits = newVisitedCriticalBits,
-            selectionMetric = metric
+            visitedGeneralBits = newVisitedGeneralBits,
+            selectionMetric = metric,
+            hasCycle = newHasCycle
         )
     }
 
@@ -228,8 +259,18 @@ class State private constructor(
     fun usedCriticalTarget(target: Int): Boolean {
         val quotient: Int = target / Constants.NUM_BITS
         val remainder: Int = target % Constants.NUM_BITS
-        val combined = visitedCriticalBits[quotient]
-        return combined and (1L shl remainder) != 0L
+
+        return visitedCriticalBits[quotient] and (1L shl remainder) != 0L
+    }
+
+    /**
+     * Returns true if general [target] has been used, false otherwise, regardless if [target] is critical or not.
+     */
+    private fun usedGeneralTarget(target : Int) : Boolean {
+        val quotient : Int = target / Constants.NUM_BITS
+        val remainder : Int = target % Constants.NUM_BITS
+
+        return visitedGeneralBits[quotient] and (1L shl remainder) != 0L
     }
 
     /**
@@ -240,6 +281,27 @@ class State private constructor(
             if (visitedCriticalBits[i] and other.visitedCriticalBits[i] != 0L)
                 return true
         return false
+    }
+
+    /**
+     * Returns true if any target, critical or not, is visited both by this and [otherState], false otherwise.
+     */
+    fun hasCommonGeneralVisits(otherState : State) : Boolean {
+        for (i in visitedGeneralBits.indices) {
+            if (visitedGeneralBits[i] and otherState.visitedGeneralBits[i] != 0L)
+                return true
+        }
+        return false
+    }
+
+    /**
+     * Marking a target as visited using bitwise operations
+     */
+    private fun markVisited(target : Int, visitedVertices : LongArray) {
+        val quotient : Int = target / Constants.NUM_BITS
+        val remainder : Int = target % Constants.NUM_BITS
+
+        visitedVertices[quotient] = visitedVertices[quotient] or (1L shl remainder)
     }
 
     /**
@@ -271,7 +333,9 @@ class State private constructor(
                 reducedCost = 0.0,
                 numTargetsVisited = 1,
                 visitedCriticalBits = LongArray(numberOfLongs) { 0L },
-                selectionMetric = 0.0
+                visitedGeneralBits = LongArray(numberOfLongs) {0L},
+                selectionMetric = 0.0,
+                hasCycle = false
             )
         }
 

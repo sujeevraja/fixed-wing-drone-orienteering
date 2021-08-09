@@ -214,12 +214,24 @@ class PricingProblemSolver(
         }
 
         // Update optimal route with best cached elementary route if necessary.
+        if (optimalRoute != null && !optimalRoute!!.isElementary) {
+            optimalRoute = elementaryRoutes.firstOrNull()
+            for (route in elementaryRoutes.drop(1)) {
+                if (route.reducedCost <= optimalRoute!!.reducedCost - Constants.EPS)
+                    optimalRoute = route
+            }
+        }
+
+
+        /*
         if (optimalRoute?.vertexPath?.let { hasCycle(it) } == true) {
             optimalRoute = elementaryRoutes.firstOrNull()
             for (route in elementaryRoutes.drop(1))
                 if (route.reducedCost <= optimalRoute!!.reducedCost - Constants.EPS)
                     optimalRoute = route
         }
+
+         */
     }
 
     /**
@@ -368,23 +380,6 @@ class PricingProblemSolver(
     }
 
     /**
-     * Returns true if the given path visits a target more than once, false otherwise.
-     *
-     * @param path list of vertices.
-     */
-    // Need to make obsolete
-    private fun hasCycle(path: List<Int>): Boolean {
-        val visited = hashSetOf<Int>()
-        for (vertex in path) {
-            val target = instance.whichTarget(vertex)
-            if (visited.contains(target))
-                return true
-            visited.add(target)
-        }
-        return false
-    }
-
-    /**
      * This is the ProcessLabel function presented in Algorithm 2 in the paper.
      */
     private fun processState(state: State, onExtend: (State) -> Unit) {
@@ -512,21 +507,55 @@ class PricingProblemSolver(
         val joinedVertexPath = forwardState.getPartialPathVertices()
             .asReversed() + backwardState.getPartialPathVertices()
 
-        val route = Route(
-            joinedVertexPath,
-            joinedVertexPath.map { instance.whichTarget(it) },
-            forwardState.score + backwardState.score,
-            getJoinedPathLength(forwardState, backwardState),
-            reducedCost
-        )
 
-        if (optimalRoute == null || reducedCost <= optimalRoute!!.reducedCost - Constants.EPS)
-            optimalRoute = route
+        // Negative reduced cost route found
 
-        if (!hasCycle(joinedVertexPath)) {
-            elementaryRoutes.add(route)
+        // Checking if route is elementary
+
+        if (!(forwardState.hasCycle || backwardState.hasCycle) &&
+                !forwardState.hasCommonGeneralVisits(backwardState)) {
+
+            // Path found is elementary
+
+            val newRoute = Route(
+                vertexPath = joinedVertexPath,
+                targetPath = joinedVertexPath.map{instance.whichTarget(it)},
+                score = forwardState.score + backwardState.score,
+                length = getJoinedPathLength(forwardState, backwardState),
+                reducedCost = reducedCost,
+                isElementary = true
+            )
+
+            elementaryRoutes.add(newRoute)
+
+            // Updating the optimal route
+            if (optimalRoute == null || reducedCost <= optimalRoute!!.reducedCost - Constants.EPS)
+                optimalRoute = newRoute
+
+            // Checking if maximum number of elementary routes has been reached
             if (elementaryRoutes.size >= parameters.maxPathsInsideSearch)
                 return true
+        }
+        else {
+
+            // Route found is not an elementary path
+
+            // Checking if the optimal route can be updated
+            if (optimalRoute == null || reducedCost <= optimalRoute!!.reducedCost - Constants.EPS) {
+
+                // Better route found
+
+                optimalRoute = Route(
+                    vertexPath = joinedVertexPath,
+                    targetPath = joinedVertexPath.map{instance.whichTarget(it)},
+                    score = forwardState.score + backwardState.score,
+                    length = getJoinedPathLength(forwardState, backwardState),
+                    reducedCost = reducedCost,
+                    isElementary = false
+                )
+
+            }
+
         }
 
         return false
