@@ -129,10 +129,8 @@ class State private constructor(
         reducedCostChange: Double,
         useBangForBuck: Boolean
     ): State {
-
         // If new target is a critical target, mark it as being visited
         val newVisitedCriticalBits = visitedCriticalBits.copyOf()
-
         val newVisitedGeneralBits = visitedGeneralBits.copyOf()
 
         if (isCritical)
@@ -142,85 +140,46 @@ class State private constructor(
         val newReducedCost = reducedCost + reducedCostChange
 
         // Updating metric used for selection of unprocessed state
-        val metric =
-            if (useBangForBuck)
-                if (pathLength >= Constants.EPS) reducedCost / pathLength else 0.0
-            else newReducedCost
+        val metric = when {
+            !useBangForBuck -> newReducedCost
+            pathLength >= Constants.EPS -> newReducedCost / pathLength
+            else -> 0.0
+        }
 
-        if (!hasCycle) {
-
-            // Current state does not already have a cycle present in its partial path
-
-            // Checking if the extension to newTarget results in a cycle
-            if (usedGeneralTarget(newTarget)) {
-
-                // Extension to newTarget results in a cycle. Don't need to update visited vertices, so directly
-                // return the new state with hasCycle set to true
-
-                return State(
-                    isForward = isForward,
-                    parent = this,
-                    vertex = newVertex,
-                    target = newTarget,
-                    predecessorTarget = target,
-                    pathLength = pathLength + edgeLength,
-                    score = score + vertexScore,
-                    reducedCost = newReducedCost,
-                    numTargetsVisited = numTargetsVisited + 1,
-                    visitedCriticalBits = newVisitedCriticalBits,
-                    visitedGeneralBits = newVisitedGeneralBits,
-                    selectionMetric = metric,
-                    hasCycle = true
-                )
-
+        val newHasCycle = when {
+            hasCycle -> {
+                // State already has a cycle previously detected, so do not need to check for new cycles.
+                // Marking the newTarget as visited (even if it was already marked before, because there's no need
+                // to check before marking)
+                markVisited(newTarget, newVisitedGeneralBits)
+                true
             }
-            else {
-
+            // Extension to newTarget results in a cycle. Don't need to update visited vertices, so directly
+            // return the new state with hasCycle set to true
+            usedGeneralTarget(newTarget) -> true
+            else -> {
                 // Extension to newTarget does not result in a cycle, i.e., newTarget has not yet been visited
-
                 // Marking newTarget as visited and return a new state with hasCycle set to false
                 markVisited(newTarget, newVisitedGeneralBits)
-
-                return State(
-                    isForward = isForward,
-                    parent = this,
-                    vertex = newVertex,
-                    target = newTarget,
-                    predecessorTarget = target,
-                    pathLength = pathLength + edgeLength,
-                    score = score + vertexScore,
-                    reducedCost = newReducedCost,
-                    numTargetsVisited = numTargetsVisited + 1,
-                    visitedCriticalBits = newVisitedCriticalBits,
-                    visitedGeneralBits = newVisitedGeneralBits,
-                    selectionMetric = metric,
-                    hasCycle = false
-                )
+                false
             }
         }
-        else {
 
-            // State already has a cycle previously detected, so do not need to check for new cycles.
-            // Marking the newTarget as visited (even if it was already marked before, because there's no need
-            // to check before marking)
-            markVisited(newTarget, newVisitedGeneralBits)
-
-            return State(
-                isForward = isForward,
-                parent = this,
-                vertex = newVertex,
-                target = newTarget,
-                predecessorTarget = target,
-                pathLength = pathLength + edgeLength,
-                score = score + vertexScore,
-                reducedCost = newReducedCost,
-                numTargetsVisited = numTargetsVisited + 1,
-                visitedCriticalBits = newVisitedCriticalBits,
-                visitedGeneralBits = newVisitedGeneralBits,
-                selectionMetric = metric,
-                hasCycle = true
-            )
-        }
+        return State(
+            isForward = isForward,
+            parent = this,
+            vertex = newVertex,
+            target = newTarget,
+            predecessorTarget = target,
+            pathLength = pathLength + edgeLength,
+            score = score + vertexScore,
+            reducedCost = newReducedCost,
+            numTargetsVisited = numTargetsVisited + 1,
+            visitedCriticalBits = newVisitedCriticalBits,
+            visitedGeneralBits = newVisitedGeneralBits,
+            selectionMetric = metric,
+            hasCycle = newHasCycle
+        )
     }
 
     /**
