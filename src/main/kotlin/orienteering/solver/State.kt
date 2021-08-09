@@ -318,7 +318,7 @@ class State private constructor(
         return visitedCriticalBits[quotient] and (1L shl remainder) != 0L
     }
 
-    fun usedGeneralTarget(target : Int) : Boolean {
+    private fun usedGeneralTarget(target : Int) : Boolean {
         val quotient : Int = target / Constants.NUM_BITS
         val remainder : Int = target % Constants.NUM_BITS
 
