@@ -46,14 +46,19 @@ class State private constructor(
      * Numbers whose bits are used to track critical target visits using bitwise operations.
      */
     private val visitedCriticalBits: LongArray,
-
+    /**
+     * Numbers whose bits are used to track general targets that have been visited, regardless if they are critical
+     * or not, using bitwise operations
+     */
     private val visitedGeneralBits : LongArray,
     /**
      * Used in the comparator to order states, can be equal to [reducedCost] or bang for buck
      * (i.e. reduced cost per unit path length).
      */
     private val selectionMetric: Double,
-
+    /**
+     * Boolean used to indicate whether the partial path corresponding to the state contains at least one cycle
+     */
     val hasCycle : Boolean
 ) : Comparable<State> {
     /**
@@ -318,6 +323,9 @@ class State private constructor(
         return visitedCriticalBits[quotient] and (1L shl remainder) != 0L
     }
 
+    /**
+     * Returns true if general [target] has been used, false otherwise, regardless if [target] is critical or not.
+     */
     private fun usedGeneralTarget(target : Int) : Boolean {
         val quotient : Int = target / Constants.NUM_BITS
         val remainder : Int = target % Constants.NUM_BITS
@@ -335,6 +343,9 @@ class State private constructor(
         return false
     }
 
+    /**
+     * Returns true if any target, critical or not, is visited both by this and [otherState], false otherwise.
+     */
     fun hasCommonGeneralVisits(otherState : State) : Boolean {
         for (i in visitedGeneralBits.indices) {
             if (visitedGeneralBits[i] and otherState.visitedGeneralBits[i] != 0L)
@@ -347,7 +358,7 @@ class State private constructor(
         val quotient : Int = target / Constants.NUM_BITS
         val remainder : Int = target % Constants.NUM_BITS
 
-        visitedVertices[quotient] or (1L shl remainder)
+        visitedVertices[quotient] = visitedVertices[quotient] or (1L shl remainder)
     }
 
     /**
