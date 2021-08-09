@@ -1,7 +1,6 @@
 package orienteering.solver
 
 import mu.KLogging
-import orienteering.data.Parameters
 
 /**
  * Singleton that serves as the sole point of reference to check whether a specified time limit

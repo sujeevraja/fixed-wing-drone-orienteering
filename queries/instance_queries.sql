@@ -15,7 +15,7 @@ select instance_path, instance_name, number_of_discretizations from exhaustive_i
     order by instance_path, instance_name, number_of_discretizations
 
 -- This query selects instances to do a single vs multi-threading comparison of DSSR.
-select instance_path, instance_name, number_of_discretizations from exhaustive_dssr where
+select instance_path, instance_name, number_of_discretizations from exhaustive_dssr_reachable where
     optimality_reached = "True"
     and cast(number_of_nodes_solved as integer) > 1
     and cast(solution_time_in_seconds as decimal(16,2)) < 3600.0

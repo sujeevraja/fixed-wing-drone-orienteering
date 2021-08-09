@@ -6,7 +6,6 @@ import org.jgrapht.Graphs
 import org.jgrapht.graph.DefaultWeightedEdge
 import orienteering.Constants
 import orienteering.data.Instance
-import orienteering.data.Parameters
 import orienteering.data.Route
 import orienteering.main.SetGraph
 import orienteering.main.format
