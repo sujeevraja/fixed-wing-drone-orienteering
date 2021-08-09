@@ -354,6 +354,9 @@ class State private constructor(
         return false
     }
 
+    /**
+     * Marking a target as visited using bitwise operations
+     */
     private fun markVisited(target : Int, visitedVertices : LongArray) {
         val quotient : Int = target / Constants.NUM_BITS
         val remainder : Int = target % Constants.NUM_BITS
