@@ -1,7 +1,6 @@
 package orienteering.data
 
 import orienteering.main.SetGraph
-import orienteering.main.numVertices
 
 /**
  * Class that holds the Dubins Team orienteering instance data

@@ -75,27 +75,27 @@ class PricingProblemSolver(
      * True at index i if target i is visited multiple times by the optimal path of a search
      * iteration (Psi in paper).
      */
-    private var isVisitedMultipleTimes = BooleanArray(numTargets) { false }
+    private val isVisitedMultipleTimes = BooleanArray(numTargets) { false }
 
     /**
      * Forward states indexed by vertex id.
      */
-    private var forwardStates = List(numVertices) { mutableListOf<State>() }
+    private val forwardStates = List(numVertices) { mutableListOf<State>() }
 
     /**
      * Backward states indexed by vertex id.
      */
-    private var backwardStates = List(numVertices) { mutableListOf<State>() }
+    private val backwardStates = List(numVertices) { mutableListOf<State>() }
 
     /**
      * Unprocessed forward states in ascending order of bang-for-buck.
      */
-    private var unprocessedForwardStates = PriorityQueue<State>()
+    private val unprocessedForwardStates = PriorityQueue<State>()
 
     /**
      * Unprocessed backward states in descending order of bang-for-buck.
      */
-    private var unprocessedBackwardStates = PriorityQueue<State>()
+    private val unprocessedBackwardStates = PriorityQueue<State>()
 
     /**
      * Switch to decide whether a forward or backward unprocessed state needs to be extended.
@@ -103,15 +103,14 @@ class PricingProblemSolver(
     private var processForwardState = true
 
     /**
-     * Route with least reduced cost (used to define Psi at the end of a search iteration).
+     * Route with the least reduced cost (used to define Psi at the end of a search iteration).
      */
     private var optimalRoute: Route? = null
 
     /**
      * Elementary paths with negative reduced cost.
      */
-    var elementaryRoutes = mutableListOf<Route>()
-        private set
+    val elementaryRoutes = mutableListOf<Route>()
 
     /**
      * Flag for indicating if at least one target has been indicated as a critical target
@@ -126,13 +125,11 @@ class PricingProblemSolver(
      * For interleaved search, this condition is controlled by the "relaxDominanceRules" parameter.
      * For simple search, this parameter is always true.
      */
-    private var useVisitCondition = (!parameters.relaxDominanceRules ||
-            !parameters.useInterleavedSearch)
+    private var useVisitCondition = !parameters.relaxDominanceRules || !parameters.useInterleavedSearch
 
     /**
-     * Generates negative reduced cost elementaryRoutes.
+     * Generate negative reduced cost elementaryRoutes.
      */
-    //Good
     fun generateColumns() {
         // Store source states.
         for (srcVertex in srcVertices) {
@@ -217,12 +214,11 @@ class PricingProblemSolver(
         }
 
         // Update optimal route with best cached elementary route if necessary.
-        if (optimalRoute != null && hasCycle(optimalRoute!!.vertexPath)) {
+        if (optimalRoute?.vertexPath?.let { hasCycle(it) } == true) {
             optimalRoute = elementaryRoutes.firstOrNull()
-            for (route in elementaryRoutes.drop(1)) {
+            for (route in elementaryRoutes.drop(1))
                 if (route.reducedCost <= optimalRoute!!.reducedCost - Constants.EPS)
                     optimalRoute = route
-            }
         }
     }
 
@@ -234,11 +230,9 @@ class PricingProblemSolver(
         logger.debug("critical targets: $criticalTargets")
 
         // Extend source states.
-        for (srcVertex in srcVertices) {
-            for (state in forwardStates[srcVertex]) {
+        for (srcVertex in srcVertices)
+            for (state in forwardStates[srcVertex])
                 processState(state) { unprocessedForwardStates.add(it) }
-            }
-        }
 
         // Extend destination state.
         for (dstVertex in dstVertices) {
@@ -411,7 +405,7 @@ class PricingProblemSolver(
                 continue
 
             // No 2-cycles
-            if (state.parent != null && sameTarget(state.parent.vertex, nextVertex))
+            if (state.parent?.target == instance.whichTarget(nextVertex))
                 continue
 
             // Checking if an extension is feasible
@@ -419,7 +413,13 @@ class PricingProblemSolver(
             val extension = extendIfFeasible(state, nextVertex, edgeLength) ?: continue
 
             // Extension is feasible. Update non-dominated states accordingly
-            updateNonDominatedStates(forwardStates[nextVertex], extension, onExtend)
+            updateNonDominatedStates(
+                forwardStates[nextVertex],
+                extension,
+                useVisitCondition,
+                parameters.useNumTargetsForDominance,
+                onExtend
+            )
         }
     }
 
@@ -430,19 +430,21 @@ class PricingProblemSolver(
             if (state.usedCriticalTarget(instance.whichTarget(prevVertex)))
                 continue
 
-            if (state.parent != null && sameTarget(state.parent.vertex, prevVertex))
+            if (state.parent?.target == instance.whichTarget(prevVertex))
                 continue
 
             val edgeLength = graph.getEdgeWeight(prevVertex, currentVertex)
             val extension = extendIfFeasible(state, prevVertex, edgeLength) ?: continue
 
-            updateNonDominatedStates(backwardStates[prevVertex], extension, onExtend)
+            updateNonDominatedStates(
+                backwardStates[prevVertex],
+                extension,
+                useVisitCondition,
+                parameters.useNumTargetsForDominance,
+                onExtend
+            )
         }
-
     }
-
-    private fun sameTarget(v1: Int, v2: Int): Boolean =
-        instance.whichTarget(v1) == instance.whichTarget(v2)
 
     private fun canExtend(state: State): Boolean {
         if (state.dominated)
@@ -496,7 +498,7 @@ class PricingProblemSolver(
      * @return true if enough negative reduced cost columns are available, false otherwise
      */
     private fun save(forwardState: State, backwardState: State): Boolean {
-        if (!feasible(forwardState, backwardState) || !halfway(forwardState, backwardState))
+        if (!feasible(forwardState, backwardState) || !halfway(forwardState, backwardState, graph))
             return false
 
         val forwardTarget = forwardState.target
@@ -540,8 +542,8 @@ class PricingProblemSolver(
      */
     private fun feasible(fs: State, bs: State): Boolean = !fs.hasCommonCriticalVisits(bs) &&
             getJoinedPathLength(fs, bs) <= maxPathLength &&
-            (fs.parent == null || !sameTarget(fs.parent.vertex, bs.vertex)) &&
-            (bs.parent == null || !sameTarget(fs.vertex, bs.parent.vertex))
+            (fs.parent == null || fs.parent.target != bs.target) &&
+            (bs.parent == null || fs.target != bs.parent.target)
 
 
     /**
@@ -554,77 +556,80 @@ class PricingProblemSolver(
     private fun getJoinedPathLength(fs: State, bs: State): Double =
         fs.pathLength + bs.pathLength + graph.getEdgeWeight(fs.vertex, bs.vertex)
 
-    /**
-     * Check if the given forward and backward state satisfy "half-way-point" conditions.
-     *
-     * @param fs forward state for partial path from source
-     * @param bs backward state for partial path to destination
-     * @return true if (fs,bs) satisfy the half-way-point condition, false otherwise
-     */
-    private fun halfway(fs: State, bs: State): Boolean {
-        val currDiff = (fs.pathLength - bs.pathLength).absoluteValue
-        if (currDiff <= Constants.EPS)
-            return true
-
-        val joinEdgeLength = graph.getEdgeWeight(fs.vertex, bs.vertex)
-        var otherDiff = 0.0
-        if (fs.pathLength <= bs.pathLength - Constants.EPS) {
-            if (bs.parent != null)
-                otherDiff = (fs.pathLength + joinEdgeLength - bs.parent.pathLength).absoluteValue
-        } else if (fs.parent != null)
-            otherDiff = (fs.parent.pathLength - (joinEdgeLength + bs.pathLength)).absoluteValue
-
-        if (currDiff <= otherDiff - Constants.EPS)
-            return true
-        if (currDiff >= otherDiff + Constants.EPS)
-            return false
-        return fs.pathLength >= bs.pathLength + Constants.EPS
-    }
-
-    /**
-     * Check dominance both ways between every state in [existingStates] and [newState] and discard states whose
-     * extensions are also feasible for some other state. When checking 2-way dominance, add [newState] to
-     * [existingStates] if it is not dominated by any state in [existingStates]. If any state is dominated (i.e. cannot
-     * be extended) and can be discarded, mark it as dominated just in case it is held elsewhere for use.
-     */
-    private fun updateNonDominatedStates(
-        existingStates: MutableList<State>,
-        newState: State,
-        onExtend: (State) -> Unit
-    ) {
-        // Checking for domination both ways
-        for (i in existingStates.indices.reversed()) {
-            val existingState = existingStates[i]
-            if (existingState.dominates(
-                    newState,
-                    useVisitCondition,
-                    parameters.useNumTargetsForDominance
-                )
-            ) {
-                if (canDiscardDominated(existingState, newState)) {
-                    newState.dominated = true
-                    return
-                }
-            } else if (newState.dominates(
-                    existingState,
-                    useVisitCondition,
-                    parameters.useNumTargetsForDominance
-                ) && canDiscardDominated(newState, existingState)
-            ) {
-                existingState.dominated = true
-                existingStates.removeAt(i)
-            }
-        }
-
-        // As the new state is found to be non-dominated, store it for further processing.
-        existingStates.add(newState)
-        onExtend(newState)
-    }
 
     /**
      * Logger object
      */
     companion object : KLogging()
+}
+
+/**
+ * Check dominance both ways between every state in [existingStates] and [newState] and discard states whose
+ * extensions are also feasible for some other state. When checking 2-way dominance, add [newState] to
+ * [existingStates] if it is not dominated by any state in [existingStates]. If any state is dominated (i.e. cannot
+ * be extended) and can be discarded, mark it as dominated just in case it is held elsewhere for use.
+ */
+private fun updateNonDominatedStates(
+    existingStates: MutableList<State>,
+    newState: State,
+    useVisitCondition: Boolean,
+    useNumTargetsForDominance: Boolean,
+    onExtend: (State) -> Unit
+) {
+    // Checking for domination both ways
+    for (i in existingStates.indices.reversed()) {
+        val existingState = existingStates[i]
+        if (existingState.dominates(
+                newState,
+                useVisitCondition,
+                useNumTargetsForDominance
+            )
+        ) {
+            if (canDiscardDominated(existingState, newState)) {
+                newState.dominated = true
+                return
+            }
+        } else if (newState.dominates(
+                existingState,
+                useVisitCondition,
+                useNumTargetsForDominance
+            ) && canDiscardDominated(newState, existingState)
+        ) {
+            existingState.dominated = true
+            existingStates.removeAt(i)
+        }
+    }
+
+    // As the new state is found to be non-dominated, store it for further processing.
+    existingStates.add(newState)
+    onExtend(newState)
+}
+
+/**
+ * Check if the given forward and backward state satisfy "half-way-point" conditions.
+ *
+ * @param fs forward state for partial path from source
+ * @param bs backward state for partial path to destination
+ * @return true if (fs,bs) satisfy the half-way-point condition, false otherwise
+ */
+private fun halfway(fs: State, bs: State, graph: SetGraph): Boolean {
+    val currDiff = (fs.pathLength - bs.pathLength).absoluteValue
+    if (currDiff <= Constants.EPS)
+        return true
+
+    val joinEdgeLength = graph.getEdgeWeight(fs.vertex, bs.vertex)
+    var otherDiff = 0.0
+    if (fs.pathLength <= bs.pathLength - Constants.EPS) {
+        if (bs.parent != null)
+            otherDiff = (fs.pathLength + joinEdgeLength - bs.parent.pathLength).absoluteValue
+    } else if (fs.parent != null)
+        otherDiff = (fs.parent.pathLength - (joinEdgeLength + bs.pathLength)).absoluteValue
+
+    if (currDiff <= otherDiff - Constants.EPS)
+        return true
+    if (currDiff >= otherDiff + Constants.EPS)
+        return false
+    return fs.pathLength >= bs.pathLength + Constants.EPS
 }
 
 /**
