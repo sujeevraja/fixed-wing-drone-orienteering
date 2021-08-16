@@ -5,13 +5,6 @@ Code for computational experiments of the paper
 It can solve the team orienteering problem for fixed-wing drones
 using branch-and-cut and branch-and-price.
 
-## Branches
-
-The _master_ branch contains all solver code and can be used to run either
-algorithm with any of the instances available in the "data" folder. See the
-"Running the solver" section for further details. The _results_ branch
-contains scripts, plots and csv files related to results reported in the paper.
-
 ## Dependencies
 
 - CPLEX
@@ -93,3 +86,9 @@ in a browser.
 ## License
 
 MIT License. See LICENSE file for details.
+
+## Results
+
+The "final-results" folder contains results used for the first submission of the paper. The "final-results-v2"
+folder contains the latest results. Refer to the readme file in "final-results-v2" for further details about the
+results.
