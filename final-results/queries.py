@@ -1,13 +1,11 @@
 def generate_exhaustive_table_count_query(category='optimal', num_targets=21, num_discretizations=2):
-    query = 'select count(*) from exhaustive where '
+    query = 'select count(*) from exhaustive_dssr_bit_based_cycles where '
     query += 'cast(number_of_discretizations as integer) = {} and '.format(num_discretizations)
     query += 'instance_path like "%{}%" and '.format(num_targets)
     if category == 'optimal':
-        query += 'optimality_reached = "True" and cast(root_lower_bound as decimal(16,2)) > 0.0'
-    if category == 'infeasible':
-        query += 'optimality_reached = "True" and cast(root_lower_bound as decimal(16,2)) = 0.0'
+        query += 'cast(solution_time_in_seconds as decimal(16,2)) < 3600.0'
     if category == 'timed-out':
-        query += 'optimality_reached = "False"'
+        query += 'cast(solution_time_in_seconds as decimal(16,2)) >= 3600.0'
     return query
 
 def generate_exhaustive_opt_table_query(num_targets=21, discretizations=[2, 4, 6]):
@@ -29,9 +27,9 @@ def generate_exhaustive_opt_table_query(num_targets=21, discretizations=[2, 4, 6
             printf("%d", ex_3.number_of_nodes_solved) as nodes_6,
             printf("%.2f", ex_3.solution_time_in_seconds) as time_6,
             printf("%.2f", ex_3.root_lower_bound) as rlb_6
-        from exhaustive as ex_1
-        inner join exhaustive as ex_2
-        inner join exhaustive as ex_3
+        from exhaustive_dssr_bit_based_cycles as ex_1
+        inner join exhaustive_dssr_bit_based_cycles as ex_2
+        inner join exhaustive_dssr_bit_based_cycles as ex_3
         on ex_1.instance_name = ex_2.instance_name and ex_1.instance_name = ex_3.instance_name
         where
             ( (ex_1.optimality_reached = "True" and cast(ex_1.root_lower_bound as decimal(16,2)) > 0.0) or
@@ -69,24 +67,22 @@ def generate_idssr_query():
 def generate_concurrency_query():
     return """
         select
-            exhaustive.instance_name,
-            cast(substr(exhaustive.instance_path, 12, 2) as integer) as num_targets,
-            one_thread_interleaved.solution_time_in_seconds as one_thread_time,
-            one_thread_interleaved.optimality_reached as one_thread_opt_reached,
-            exhaustive.solution_time_in_seconds as concurrent_time,
-            exhaustive.optimality_reached as concurrent_opt_reached,
-            exhaustive.average_concurrent_solves as concurrent_solves,
-            exhaustive.maximum_concurrent_solves as max_concurrent_solves
-        from one_thread_interleaved
-        join exhaustive
+            exhaustive_dssr_bit_based_cycles.instance_name,
+            cast(substr(exhaustive_dssr_bit_based_cycles.instance_path, 12, 2) as integer) as num_targets,
+            cast(one_thread_dssr_bit_based_cycles.number_of_discretizations as integer) as num_discretizations,
+            one_thread_dssr_bit_based_cycles.solution_time_in_seconds as one_thread_time,
+            one_thread_dssr_bit_based_cycles.optimality_reached as one_thread_opt_reached,
+            exhaustive_dssr_bit_based_cycles.solution_time_in_seconds as concurrent_time,
+            exhaustive_dssr_bit_based_cycles.optimality_reached as concurrent_opt_reached,
+            cast(exhaustive_dssr_bit_based_cycles.maximum_parallel_solves as integer) as max_concurrent_solves
+        from one_thread_dssr_bit_based_cycles
+        join exhaustive_dssr_bit_based_cycles
         on
-            one_thread_interleaved.instance_name = exhaustive.instance_name and
-            one_thread_interleaved.number_of_discretizations = exhaustive.number_of_discretizations
+            one_thread_dssr_bit_based_cycles.instance_name = exhaustive_dssr_bit_based_cycles.instance_name and
+            one_thread_dssr_bit_based_cycles.number_of_discretizations = exhaustive_dssr_bit_based_cycles.number_of_discretizations
         where 
-            cast(one_thread_interleaved.number_of_nodes_solved as integer) > 1 and 
-            one_thread_interleaved.optimality_reached = "True" and 
-			cast(substr(exhaustive.instance_path, 12, 2) as integer) != 66 and 
-			cast(one_thread_interleaved.solution_time_in_seconds as float) > 5.0
+            one_thread_dssr_bit_based_cycles.optimality_reached = "True" and 
+			cast(one_thread_dssr_bit_based_cycles.solution_time_in_seconds as float) > 5.0
         order by
-            one_thread_interleaved.instance_name
+            one_thread_dssr_bit_based_cycles.instance_name
         """
