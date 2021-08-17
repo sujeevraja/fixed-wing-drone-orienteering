@@ -462,9 +462,18 @@ class PricingProblemSolver(
         return true
     }
 
+    /**
+     * Extend [state] to [neighbor], a vertex connected to the incident vertex of [state] with an edge having length
+     * of [edgeLength] units. Return the extended state if the extension is feasible and null otherwise.
+     *
+     * Note that we block extensions if the extended partial path has length > L/2 without losing any feasible paths.
+     * To see why this is true, consider a feasible path in which a forward label is maximally extended to the source
+     * of an edge (p,q), that is, the partial path up to p has length <= L/2, but exceeds L/2 if the edge is included.
+     * Now, assume that we do not generate this path.
+     */
     private fun extendIfFeasible(state: State, neighbor: Int, edgeLength: Double): State? {
         // Prevent budget infeasibility.
-        if (state.pathLength + edgeLength > maxPathLength)
+        if (state.pathLength + edgeLength >= (maxPathLength / 2.0) + Constants.EPS)
             return null
 
         // Here, extension is feasible. So, generate and return it.
